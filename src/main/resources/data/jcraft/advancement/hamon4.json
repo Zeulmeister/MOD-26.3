@@ -1,0 +1,30 @@
+{
+  "parent": "jcraft:hamon3",
+  "criteria": {
+    "sendoed": {
+      "conditions": {},
+      "trigger": "jcraft:hamon4"
+    }
+  },
+  "display": {
+    "announce_to_chat": true,
+    "description": {
+      "translate": "advancements.jcraft.hamon4.description"
+    },
+    "frame": "goal",
+    "hidden": false,
+    "icon": {
+      "id": "jcraft:spec_disc"
+    },
+    "show_toast": true,
+    "title": {
+      "translate": "advancements.jcraft.hamon4.title"
+    }
+  },
+  "requirements": [
+    [
+      "sendoed"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

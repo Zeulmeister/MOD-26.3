@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    "jcraft:sinners_soul",
+    "jcraft:sinners_soul",
+    "jcraft:sinners_soul",
+    "jcraft:sinners_soul",
+    "jcraft:sinners_soul",
+    "jcraft:sinners_soul",
+    "jcraft:sinners_soul",
+    "jcraft:sinners_soul",
+    "jcraft:sinners_soul"
+  ],
+  "result": {
+    "id": "jcraft:soul_block"
+  }
+}

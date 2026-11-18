@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "id": "jcraft",
+  "version": "${version}",
+  "name": "JCraft: Eyes of Ender — Superior 26.3 Edition",
+  "description": "Recriação completa e aprimorada do JCraft (JoJo's Bizarre Adventure) para Minecraft 26.3 com Física Cinética no Time Stop, HUD Estilo Anime, Roda Radial Rápida, Modo Piloto Universal, Shaders RenderPearl 26.3 e 100% dos 37 Stands, 5 Specs e 7 Evoluções.",
+  "authors": [
+    "Zeulmeister",
+    "Arna",
+    "Ayutac",
+    "PlanetTeamSpeak"
+  ],
+  "contact": {
+    "homepage": "https://github.com/Zeulmeister/MOD-26.3",
+    "sources": "https://github.com/Zeulmeister/MOD-26.3"
+  },
+  "license": "All Rights Reserved",
+  "icon": "assets/jcraft/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "net.arna.jcraft.fabric.JCraftFabric"
+    ],
+    "client": [
+      "net.arna.jcraft.fabric.client.JCraftFabricClient"
+    ],
+    "cardinal-components": [
+      "net.arna.jcraft.fabric.common.component.JComponents"
+    ],
+    "terrablender": [
+      "net.arna.jcraft.fabric.common.terrablender.JTerraFabric"
+    ],
+    "modmenu": [
+      "net.arna.jcraft.fabric.client.JModMenuIntegration"
+    ]
+  },
+  "accessWidener": "jcraft.classtweaker",
+  "mixins": [
+    "jcraft.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.18.0",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  },
+  "custom": {
+    "cardinal-components": [
+      "jcraft:gravity_direction",
+      "jcraft:stand",
+      "jcraft:spec",
+      "jcraft:ph",
+      "jcraft:cooldowns",
+      "jcraft:time_stop",
+      "jcraft:misc",
+      "jcraft:bomb_tracker",
+      "jcraft:grab",
+      "jcraft:hit_property",
+      "jcraft:gravity_shift",
+      "jcraft:shockwave_handler",
+      "jcraft:texas_hold_em",
+      "jcraft:hamon",
+      "jcraft:vampire",
+      "jcraft:gunslinger"
+    ],
+    "lithium:options": {
+      "mixin.entity.collisions.intersection": false,
+      "mixin.entity.collisions.movement": false
+    }
+  }
+}

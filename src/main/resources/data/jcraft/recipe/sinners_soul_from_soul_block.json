@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "jcraft:soul_block"
+  ],
+  "result": {
+    "id": "jcraft:sinners_soul",
+    "count": 9
+  }
+}

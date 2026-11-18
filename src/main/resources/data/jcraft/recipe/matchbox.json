@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "A": "minecraft:gunpowder",
+    "B": "minecraft:stick",
+    "C": "minecraft:paper",
+    "D": "minecraft:red_dye"
+  },
+  "pattern": [
+    "ABC",
+    "ABD",
+    "ABC"
+  ],
+  "result": {
+    "id": "jcraft:matchbox"
+  }
+}

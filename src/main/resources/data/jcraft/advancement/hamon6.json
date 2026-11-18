@@ -1,0 +1,30 @@
+{
+  "parent": "jcraft:hamon5",
+  "criteria": {
+    "waved": {
+      "conditions": {},
+      "trigger": "jcraft:hamon6"
+    }
+  },
+  "display": {
+    "announce_to_chat": true,
+    "description": {
+      "translate": "advancements.jcraft.hamon6.description"
+    },
+    "frame": "challenge",
+    "hidden": false,
+    "icon": {
+      "id": "jcraft:spec_disc"
+    },
+    "show_toast": true,
+    "title": {
+      "translate": "advancements.jcraft.hamon6.title"
+    }
+  },
+  "requirements": [
+    [
+      "waved"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

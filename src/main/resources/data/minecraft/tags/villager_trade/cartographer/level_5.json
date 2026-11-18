@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "jcraft:cartographer/5/monastery_map",
+    "jcraft:cartographer/5/vampire_lair_map"
+  ]
+}

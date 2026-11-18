@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": "jcraft:stand_arrowhead",
+    "F": "minecraft:feather",
+    "S": "minecraft:stick"
+  },
+  "pattern": [
+    "  A",
+    " S ",
+    "F  "
+  ],
+  "result": {
+    "id": "jcraft:stand_arrow"
+  }
+}

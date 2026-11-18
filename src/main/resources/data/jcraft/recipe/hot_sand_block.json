@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "M": "minecraft:magma_block",
+    "S": "minecraft:sand"
+  },
+  "pattern": [
+    "SSS",
+    "SMS",
+    "SSS"
+  ],
+  "result": {
+    "id": "jcraft:hot_sand_block",
+    "count": 8
+  }
+}

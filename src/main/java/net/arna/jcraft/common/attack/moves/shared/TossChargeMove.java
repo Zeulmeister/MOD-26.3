@@ -1,0 +1,85 @@
+package net.arna.jcraft.common.attack.moves.shared;
+
+import com.mojang.datafixers.kinds.App;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import lombok.NonNull;
+import net.arna.jcraft.api.attack.IAttacker;
+import net.arna.jcraft.api.attack.MoveType;
+import net.arna.jcraft.api.attack.moves.AbstractHoldableMove;
+import net.arna.jcraft.api.registry.JTagRegistry;
+import net.arna.jcraft.api.stand.StandEntity;
+import net.arna.jcraft.common.util.JUtils;
+import net.minecraft.world.Containers;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+
+public final class TossChargeMove<A extends IAttacker<A, ?>> extends AbstractHoldableMove<TossChargeMove<A>, A> {
+
+    public TossChargeMove(int cooldown, int windup, int duration, float moveDistance, int minimumCharge) {
+        super(cooldown, windup, duration, moveDistance, minimumCharge);
+    }
+
+    @Override
+    public @NonNull MoveType<TossChargeMove<A>> getMoveType() {
+        return Type.INSTANCE.cast();
+    }
+
+    @Override
+    public void onInitiate(A attacker) {
+        super.onInitiate(attacker);
+        if (!(attacker instanceof StandEntity<?, ?> stand) || stand.level().isClientSide()) return;
+
+        final LivingEntity user = stand.getUser();
+        if (user == null) return;
+
+        ItemStack projectileSource = user.getItemInHand(InteractionHand.MAIN_HAND);
+        if (projectileSource.isEmpty() || projectileSource.is(JTagRegistry.UNTHROWABLE)) {
+            projectileSource = user.getItemInHand(InteractionHand.OFF_HAND);
+        }
+
+        if (projectileSource.isEmpty() || projectileSource.is(JTagRegistry.UNTHROWABLE)) return;
+
+        final ItemStack oldProjectile = stand.getItemInHand(InteractionHand.MAIN_HAND);
+        if (!oldProjectile.isEmpty()) return;
+
+        stand.setItemInHand(InteractionHand.MAIN_HAND, projectileSource.copyWithCount(1));
+        if (!(user instanceof Player player) || !player.isCreative()) {
+            projectileSource.shrink(1);
+        }
+    }
+
+    @Override
+    public boolean conditionsMet(A attacker) {
+        final ItemStack holdItem = attacker.getBaseEntity().getItemInHand(InteractionHand.MAIN_HAND);
+        return super.conditionsMet(attacker) &&
+                (JUtils.isHoldingSomethingThrowable(attacker.getUser()) || !holdItem.isEmpty());
+    }
+
+    @Override
+    public void onCancel(final A attacker) {
+        final LivingEntity baseEntity = attacker.getBaseEntity();
+        Containers.dropItemStack(baseEntity.level(), baseEntity.getX(), baseEntity.getY(), baseEntity.getZ(),
+                baseEntity.getItemInHand(InteractionHand.MAIN_HAND));
+    }
+
+    @Override
+    protected @NonNull TossChargeMove<A> getThis() {
+        return this;
+    }
+
+    @Override
+    public @NonNull TossChargeMove<A> copy() {
+        return copyExtras(new TossChargeMove<>(getCooldown(), getWindup(), getDuration(), getMoveDistance(), getMinimumCharge()));
+    }
+
+    public static class Type extends AbstractHoldableMove.Type<TossChargeMove<?>> {
+        public static final Type INSTANCE = new Type();
+
+        @Override
+        protected @NonNull App<RecordCodecBuilder.Mu<TossChargeMove<?>>, TossChargeMove<?>> buildCodec(RecordCodecBuilder.Instance<TossChargeMove<?>> instance) {
+            return instance.group(cooldown(), windup(), duration(), moveDistance(), minimumCharge()).apply(instance, TossChargeMove::new);
+        }
+    }
+}

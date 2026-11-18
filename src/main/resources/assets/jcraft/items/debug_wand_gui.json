@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "jcraft:item/debug_wand_gui"
+  }
+}

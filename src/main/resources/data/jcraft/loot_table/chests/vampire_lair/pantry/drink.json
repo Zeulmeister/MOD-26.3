@@ -1,0 +1,155 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 5,
+      "bonus_rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:potion",
+          "weight": 2,
+          "modifier": [
+            {
+              "id": "minecraft:healing",
+              "type": "minecraft:set_potion"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:potion",
+          "weight": 1,
+          "modifier": [
+            {
+              "id": "minecraft:strong_healing",
+              "type": "minecraft:set_potion"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:splash_potion",
+          "weight": 2,
+          "modifier": [
+            {
+              "id": "minecraft:harming",
+              "type": "minecraft:set_potion"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:splash_potion",
+          "weight": 1,
+          "modifier": [
+            {
+              "id": "minecraft:strong_harming",
+              "type": "minecraft:set_potion"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:potion",
+          "weight": 2,
+          "modifier": [
+            {
+              "id": "minecraft:leaping",
+              "type": "minecraft:set_potion"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:potion",
+          "weight": 1,
+          "modifier": [
+            {
+              "id": "minecraft:strong_leaping",
+              "type": "minecraft:set_potion"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:potion",
+          "weight": 2,
+          "modifier": [
+            {
+              "id": "minecraft:strength",
+              "type": "minecraft:set_potion"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:potion",
+          "weight": 1,
+          "modifier": [
+            {
+              "id": "minecraft:strong_strength",
+              "type": "minecraft:set_potion"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:splash_potion",
+          "weight": 2,
+          "modifier": [
+            {
+              "id": "minecraft:weakness",
+              "type": "minecraft:set_potion"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:splash_potion",
+          "weight": 2,
+          "modifier": [
+            {
+              "id": "minecraft:slowness",
+              "type": "minecraft:set_potion"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:splash_potion",
+          "weight": 1,
+          "modifier": [
+            {
+              "id": "minecraft:strong_slowness",
+              "type": "minecraft:set_potion"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:potion",
+          "weight": 2,
+          "modifier": [
+            {
+              "id": "minecraft:swiftness",
+              "type": "minecraft:set_potion"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:potion",
+          "weight": 1,
+          "modifier": [
+            {
+              "id": "minecraft:strong_swiftness",
+              "type": "minecraft:set_potion"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "random_sequence": "jcraft:vampire_lair/pantry/drink"
+}

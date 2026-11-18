@@ -1,0 +1,41 @@
+{
+  "additional_wants": {
+    "id": "minecraft:compass"
+  },
+  "wants": {
+    "id": "minecraft:emerald",
+    "count": 14
+  },
+  "gives": {
+    "id": "minecraft:filled_map"
+  },
+  "given_item_modifier": [
+    {
+      "type": "minecraft:exploration_map",
+      "decoration": "minecraft:red_x",
+      "destination": "#jcraft:on_meteorite_maps",
+      "search_radius": 100
+    },
+    {
+      "type": "minecraft:set_name",
+      "name": {
+        "translate": "filled_map.jcraft.meteorite"
+      },
+      "target": "item_name"
+    },
+    {
+      "type": "minecraft:filtered",
+      "item_filter": {
+        "predicates": {
+          "minecraft:map_id": {}
+        }
+      },
+      "on_fail": {
+        "type": "minecraft:discard"
+      }
+    }
+  ],
+  "max_uses": 12,
+  "reputation_discount": 0.2,
+  "xp": 20
+}

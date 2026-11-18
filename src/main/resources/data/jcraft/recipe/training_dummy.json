@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": "#minecraft:wool_carpets",
+    "W": "#minecraft:wool"
+  },
+  "pattern": [
+    "CWC",
+    "CWC",
+    "CWC"
+  ],
+  "result": {
+    "id": "jcraft:training_dummy"
+  }
+}

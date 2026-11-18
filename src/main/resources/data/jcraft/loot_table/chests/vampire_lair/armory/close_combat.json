@@ -1,0 +1,110 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": {
+        "min": 6,
+        "max": 10,
+        "type": "minecraft:uniform"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:iron_axe",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:iron_sword",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:shield",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "rolls": {
+        "min": 3,
+        "max": 6,
+        "type": "minecraft:uniform"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:iron_axe",
+          "weight": 2,
+          "modifier": [
+            {
+              "levels": {
+                "min": 10,
+                "max": 25
+              },
+              "treasure": false,
+              "type": "minecraft:enchant_with_levels"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:iron_sword",
+          "weight": 2,
+          "modifier": [
+            {
+              "levels": {
+                "min": 10,
+                "max": 25
+              },
+              "treasure": false,
+              "type": "minecraft:enchant_with_levels"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:shield",
+          "weight": 1,
+          "modifier": [
+            {
+              "levels": {
+                "min": 10,
+                "max": 25
+              },
+              "treasure": false,
+              "type": "minecraft:enchant_with_levels"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:air",
+          "weight": 99
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:trident",
+          "weight": 1,
+          "modifier": [
+            {
+              "enchantments": {
+                "minecraft:riptide": {
+                  "min": 1,
+                  "max": 3
+                }
+              },
+              "type": "minecraft:set_enchantments"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "random_sequence": "jcraft:chests/vampire_lair/armory/close_combat"
+}

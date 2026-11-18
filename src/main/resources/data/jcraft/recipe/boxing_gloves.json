@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "L": "minecraft:leather",
+    "R": "minecraft:red_dye",
+    "S": "minecraft:string"
+  },
+  "pattern": [
+    "LLR",
+    "SLL",
+    " SL"
+  ],
+  "result": {
+    "id": "jcraft:boxing_gloves"
+  }
+}

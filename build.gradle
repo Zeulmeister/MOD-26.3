@@ -1,0 +1,111 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'AzureDoom'
+        url = 'https://maven.azuredoom.com/mods'
+    }
+    maven {
+        name = 'Ladysnake'
+        url = 'https://maven.ladysnake.org/releases'
+    }
+    maven {
+        name = 'Shedaniel'
+        url = 'https://maven.shedaniel.me/'
+    }
+    maven {
+        name = 'TerraformersMC'
+        url = 'https://maven.terraformersmc.com/releases/'
+    }
+    maven {
+        name = 'KosmX'
+        url = 'https://maven.kosmx.dev/'
+    }
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content {
+            includeGroup 'maven.modrinth'
+        }
+    }
+}
+
+loom {
+    accessWidenerPath = file("src/main/resources/jcraft.classtweaker")
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+    // Self-contained Jar-in-Jar runtime dependencies so a single .jar works out-of-the-box
+    include implementation("net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}")
+    include implementation("maven.modrinth:architectury-api:${project.architectury_modrinth}")
+    include implementation("mod.azure.azurelib:azurelib-fabric-26.3:${project.azurelib_version}")
+    include implementation("maven.modrinth:player-animation-library:${project.player_anim_modrinth}")
+    include implementation("org.ladysnake.cardinal-components-api:cardinal-components-base:${project.cca_version}")
+    include implementation("org.ladysnake.cardinal-components-api:cardinal-components-entity:${project.cca_version}")
+    include implementation("org.ladysnake.cardinal-components-api:cardinal-components-level:${project.cca_version}")
+    include implementation("maven.modrinth:cloth-config:${project.cloth_config_modrinth}")
+    include implementation("maven.modrinth:terrablender:${project.terrablender_modrinth}")
+
+    // Optional ModMenu integration
+    compileOnly "maven.modrinth:modmenu:${project.modmenu_modrinth}"
+
+    // Lombok for clean data/builder classes on JDK 25
+    compileOnly "org.projectlombok:lombok:${project.lombok_version}"
+    annotationProcessor "org.projectlombok:lombok:${project.lombok_version}"
+    testCompileOnly "org.projectlombok:lombok:${project.lombok_version}"
+    testAnnotationProcessor "org.projectlombok:lombok:${project.lombok_version}"
+}
+
+processResources {
+    def modVersion = project.version
+    inputs.property "version", modVersion
+
+    filesMatching("fabric.mod.json") {
+        expand "version": modVersion
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 25
+    it.options.encoding = "UTF-8"
+    it.options.compilerArgs.addAll(["-Xmaxerrs", "2000"])
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+tasks.withType(org.gradle.jvm.tasks.Jar).configureEach {
+    it.zip64 = true
+}
+
+tasks.named('test') {
+    enabled = false
+}
+
+tasks.register('verifyMod', JavaExec) {
+    group = 'verification'
+    description = 'Runs the JCraft 26.3 asset, metadata, Mixin, and combat/physics verification suite.'
+    dependsOn testClasses, processResources
+    classpath = sourceSets.test.output + sourceSets.main.output + sourceSets.main.compileClasspath
+    mainClass = 'net.arna.jcraft.JCraft263ValidationTest'
+}
+
+tasks.named('check') {
+    dependsOn 'verifyMod'
+}

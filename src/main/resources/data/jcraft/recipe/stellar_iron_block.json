@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    "jcraft:stellar_iron_ingot",
+    "jcraft:stellar_iron_ingot",
+    "jcraft:stellar_iron_ingot",
+    "jcraft:stellar_iron_ingot",
+    "jcraft:stellar_iron_ingot",
+    "jcraft:stellar_iron_ingot",
+    "jcraft:stellar_iron_ingot",
+    "jcraft:stellar_iron_ingot",
+    "jcraft:stellar_iron_ingot"
+  ],
+  "result": {
+    "id": "jcraft:stellar_iron_block"
+  }
+}

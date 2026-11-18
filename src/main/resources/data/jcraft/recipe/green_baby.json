@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "minecraft:bone_block",
+    "G": "minecraft:green_dye",
+    "M": "minecraft:totem_of_undying",
+    "S": "jcraft:soul_block"
+  },
+  "pattern": [
+    "GBG",
+    "SMS",
+    "GBG"
+  ],
+  "result": {
+    "id": "jcraft:green_baby"
+  }
+}

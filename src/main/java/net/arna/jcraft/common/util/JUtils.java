@@ -1,0 +1,1271 @@
+package net.arna.jcraft.common.util;
+import net.minecraft.world.entity.EntityTypes;
+
+import io.netty.buffer.Unpooled;
+import it.unimi.dsi.fastutil.ints.IntObjectPair;
+import lombok.NonNull;
+import net.arna.jcraft.JCraft;
+import net.arna.jcraft.api.AttackData;
+import net.arna.jcraft.api.attack.enums.MoveInputType;
+import net.arna.jcraft.api.component.living.CommonHitPropertyComponent;
+import net.arna.jcraft.api.registry.JStatusRegistry;
+import net.arna.jcraft.api.registry.JTagRegistry;
+import net.arna.jcraft.api.spec.JSpec;
+import net.arna.jcraft.api.spec.JSpecHolder;
+import net.arna.jcraft.api.splatter.JSplatterManager;
+import net.arna.jcraft.api.stand.StandEntity;
+import net.arna.jcraft.api.stand.StandType;
+import net.arna.jcraft.api.stand.StandTypeUtil;
+import net.arna.jcraft.common.compat.FtbChunksCompat;
+import net.arna.jcraft.common.config.JServerConfig;
+import net.arna.jcraft.common.entity.damage.JDamageSources;
+import net.arna.jcraft.common.entity.projectile.GasCanProjectile;
+import net.arna.jcraft.common.entity.projectile.ItemTossProjectile;
+import net.arna.jcraft.common.entity.projectile.KnifeProjectile;
+import net.arna.jcraft.common.entity.projectile.ScalpelProjectile;
+import net.arna.jcraft.common.entity.stand.KingCrimsonEntity;
+import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
+import net.arna.jcraft.common.gravity.util.RotationUtil;
+import net.arna.jcraft.common.item.GasCanItem;
+import net.arna.jcraft.common.item.KnifeBundleItem;
+import net.arna.jcraft.common.item.KnifeItem;
+import net.arna.jcraft.common.item.ScalpelItem;
+import net.arna.jcraft.common.network.s2c.JExplosionPacket;
+import net.arna.jcraft.common.network.s2c.PlayerAnimPacket;
+import net.arna.jcraft.common.network.s2c.ServerChannelFeedbackPacket;
+import net.arna.jcraft.platform.JComponentPlatformUtils;
+import net.minecraft.ChatFormatting;
+import net.minecraft.advancements.Advancement;
+import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.world.entity.projectile.arrow.ThrownTrident;
+import net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball;
+import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEgg;
+import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEnderpearl;
+import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownSplashPotion;
+import net.minecraft.world.level.ServerExplosion;
+import net.minecraft.advancements.AdvancementProgress;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
+import net.minecraft.network.protocol.game.ClientboundSoundPacket;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ChunkMap;
+import net.minecraft.server.level.ServerChunkCache;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerPlayerConnection;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.EntityTypeTags;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.Container;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.damagesource.CombatRules;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.*;
+import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.*;
+import net.minecraft.world.item.*;
+import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Explosion;
+import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.SupportType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.*;
+import org.jetbrains.annotations.Nullable;
+import org.joml.Vector2f;
+
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+import static net.arna.jcraft.api.Attacks.damageLogic;
+
+public final class JUtils {
+
+    public static Vec3 randUnitVec(net.minecraft.util.RandomSource random) {
+        return new Vec3(random.nextGaussian(), random.nextGaussian(), random.nextGaussian()).normalize();
+    }
+
+    public static Vec3 randUnitVec(Random random) {
+        return new Vec3(random.nextGaussian(), random.nextGaussian(), random.nextGaussian()).normalize();
+    }
+
+    public static void addVelocity(Entity entity, Vec3 vel) {
+        GravityChangerAPI.addWorldVelocity(entity, vel.x, vel.y, vel.z);
+        syncVelocityUpdate(entity);
+    }
+
+    public static void addVelocity(Entity entity, double x, double y, double z) {
+        GravityChangerAPI.addWorldVelocity(entity, x, y, z);
+        syncVelocityUpdate(entity);
+    }
+
+    public static void setVelocity(Entity entity, Vec3 vel) {
+        entity.setDeltaMovement(vel.x, vel.y, vel.z);
+        syncVelocityUpdate(entity);
+    }
+
+    public static void setVelocity(Entity entity, double x, double y, double z) {
+        entity.setDeltaMovement(x, y, z);
+        syncVelocityUpdate(entity);
+    }
+
+    public static double angleBetween(@NonNull final Vec3 a, @NonNull final Vec3 b) {
+        final double aLength = a.length(), bLength = b.length();
+
+        if (aLength == 0 || bLength == 0) return 0.0;
+
+        return a.dot(b) / (aLength * bLength);
+    }
+
+    public static void syncVelocityUpdate(Entity entity) {
+        entity.syncVelocity = true;
+        if (entity instanceof ServerPlayer serverPlayer) {
+            serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(entity));
+        }
+    }
+
+    public static boolean canAct(LivingEntity living) {
+        MobEffectInstance stun = living.getEffect(JStatusRegistry.DAZED.asHolder());
+        return stun == null || stun.getAmplifier() == 2;
+    }
+
+    public static boolean canJump(LivingEntity living) {
+        if (!canAct(living)) return false;
+        if (living.hasEffect(JStatusRegistry.KNOCKDOWN.asHolder())) return false;
+
+        StandEntity<?, ?> stand = JUtils.getStand(living);
+        return (stand == null || !stand.isRemoteAndControllable());
+    }
+
+    public static void displayHitbox(Level world, Vec3 min, Vec3 max) {
+        displayHitbox(world, new AABB(min, max));
+    }
+
+    public static void displayHitbox(Level world, AABB box) {
+        displayHitboxes(world, Set.of(box));
+    }
+
+    public static void displayHitboxes(Level world, Collection<AABB> boxes) {
+        if (world instanceof ServerLevel serverLevel) {
+            final FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+            buf.writeShort(1);
+            buf.writeVarInt(boxes.size());
+
+            double minX = Double.MAX_VALUE;
+            double minY = Double.MAX_VALUE;
+            double minZ = Double.MAX_VALUE;
+
+            double maxX = Double.MIN_VALUE;
+            double maxY = Double.MIN_VALUE;
+            double maxZ = Double.MIN_VALUE;
+
+            for (AABB box : boxes) {
+                if (box.minX < minX) {
+                    minX = box.minX;
+                }
+                if (box.minY < minY) {
+                    minY = box.minY;
+                }
+                if (box.minZ < minZ) {
+                    minZ = box.minZ;
+                }
+
+                if (box.maxX < maxX) {
+                    maxX = box.maxX;
+                }
+                if (box.maxY < maxY) {
+                    maxY = box.maxY;
+                }
+                if (box.maxZ < maxZ) {
+                    maxZ = box.maxZ;
+                }
+
+                buf.writeDouble(box.minX);
+                buf.writeDouble(box.minY);
+                buf.writeDouble(box.minZ);
+
+                buf.writeDouble(box.maxX);
+                buf.writeDouble(box.maxY);
+                buf.writeDouble(box.maxZ);
+            }
+
+            final AABB entireBox = new AABB(minX, minY, minZ, maxX, maxY, maxZ).inflate(48);
+
+            ServerChannelFeedbackPacket.send(
+                    serverLevel.getPlayers(p -> entireBox.contains(p.position())),
+                    buf
+            );
+        } else {
+            throw new IllegalArgumentException("JUtils.displayHitboxes() must be called serverside!");
+        }
+    }
+
+    // Defaults to LivingEntity
+    public static Set<LivingEntity> generateHitbox(@NonNull Level world, @NonNull Vec3 center, double hitboxSize, @NonNull Set<Entity> except) {
+        return generateHitbox(world, center, hitboxSize, e -> !except.contains(e));
+    }
+
+    public static Set<LivingEntity> generateHitbox(@NonNull Level world, @NonNull Vec3 center, double hitboxSize, @NonNull Predicate<Entity> predicate) {
+        double size = hitboxSize / 2;
+
+        Vec3 v1 = center.subtract(size, size, size);
+        Vec3 v2 = center.add(size, size, size);
+
+        if (size > 0) {
+            displayHitbox(world, v1, v2);
+        }
+
+        List<LivingEntity> hit = world.getEntitiesOfClass(LivingEntity.class, new AABB(v1, v2),
+                EntitySelector.NO_CREATIVE_OR_SPECTATOR.and(predicate));
+        Set<LivingEntity> toReturn = new HashSet<>(hit);
+        for (LivingEntity l : hit)
+        {
+            if (l instanceof StandEntity<?, ?> stand && stand.hasUser() && predicate.test(stand.getUser())) {
+                toReturn.add(stand.getUserOrThrow());
+            }
+        }
+
+        return toReturn;
+    }
+
+    public static Set<LivingEntity> generateHitboxNoDisplay(Level world, Vec3 center, double hitboxSize, Predicate<Entity> predicate) {
+        double size = hitboxSize / 2;
+
+        Vec3 v1 = center.subtract(size, size, size);
+        Vec3 v2 = center.add(size, size, size);
+
+        List<LivingEntity> hit = world.getEntitiesOfClass(LivingEntity.class, new AABB(v1, v2),
+                EntitySelector.NO_CREATIVE_OR_SPECTATOR.and(predicate));
+        Set<LivingEntity> toReturn = new HashSet<>(hit);
+        for (LivingEntity l : hit)
+        {
+            if (l instanceof StandEntity<?, ?> stand && stand.hasUser()) {
+                toReturn.add(stand.getUserOrThrow());
+            }
+        }
+
+        return toReturn;
+    }
+
+    public static JSpec<?, ?> getSpec(LivingEntity livingEntity) {
+        return JComponentPlatformUtils.getSpecData(livingEntity).getSpec();
+    }
+
+    public static void serverPlaySound(SoundEvent sound, ServerLevel serverWorld, Vec3 pos) {
+        serverPlaySound(sound, serverWorld, pos, 32);
+    }
+
+    public static void serverPlaySound(SoundEvent sound, ServerLevel serverWorld, Vec3 pos, double radius) {
+        around(serverWorld, pos, radius).forEach(
+                serverPlayer -> serverPlayer.connection.send(
+                        new ClientboundSoundPacket(BuiltInRegistries.SOUND_EVENT.wrapAsHolder(sound), SoundSource.PLAYERS, pos.x, pos.y, pos.z, 1, 1, 0)
+                )
+        );
+    }
+
+    public static BlockHitResult genericBlockRaycast(Level world, Entity entity, double range, ClipContext.Block shapeType, ClipContext.Fluid fluidHandling) {
+        Vec3 eyePos = entity.position().add(GravityChangerAPI.getEyeOffset(entity));
+        return world.clip(
+                new ClipContext(
+                        eyePos,
+                        eyePos.add(entity.getLookAngle().scale(range)),
+                        shapeType,
+                        fluidHandling,
+                        entity
+                )
+        );
+    }
+
+    public static HitResult raycastAll(Entity entity, Vec3 start, Vec3 end, ClipContext.Fluid fluidHandling) {
+        return raycastAll(entity, start, end, fluidHandling, null);
+    }
+
+    /**
+     * @return The closer {@link EntityHitResult} or {@link BlockHitResult}, defaulting to the BlockHitResult
+     * if the distance is equal or no entity was hit.
+     */
+    public static HitResult raycastAll(Entity entity, Vec3 start, Vec3 end, ClipContext.Fluid fluidHandling, Predicate<Entity> entityPredicate) {
+        Level world = entity.level();
+        double rangeSquared = start.distanceToSqr(end);
+
+        Predicate<Entity> combined = EntitySelector.NO_CREATIVE_OR_SPECTATOR.and(e -> !e.isPassengerOfSameVehicle(entity));
+        if (entityPredicate != null) {
+            combined = combined.and(entityPredicate);
+        }
+
+        EntityHitResult eHit = ProjectileUtil.getEntityHitResult(entity, start, end,
+                entity.getBoundingBox().inflate(rangeSquared), // Not technically necessary but doesn't matter
+                combined,
+                rangeSquared
+        );
+        boolean entityHit = eHit != null && eHit.getType() == HitResult.Type.ENTITY;
+        HitResult bHit = world.clip(new ClipContext(start, end, ClipContext.Block.COLLIDER, fluidHandling, entity));
+
+        Vec3 blockPos = bHit.getLocation();
+
+        if (entityHit) {
+            Vec3 entityPos = eHit.getLocation();
+            if (blockPos.distanceToSqr(start) > entityPos.distanceToSqr(start)) {
+                return eHit;
+            } else {
+                return bHit;
+            }
+        }
+
+        return bHit;
+    }
+
+    public static Direction getLookDirection(Entity entity) {
+        Vec3 rotVec = entity.getLookAngle();
+
+        double x = rotVec.x;
+        double y = rotVec.y;
+        double z = rotVec.z;
+
+        double absX = Math.abs(x);
+        double absY = Math.abs(y);
+        double absZ = Math.abs(z);
+
+        Direction direction = Direction.DOWN;
+        if (absX > absY && absX > absZ) {
+            direction = x > 0 ? Direction.EAST : Direction.WEST;
+        } else if (absY > absX && absY > absZ) {
+            direction = y > 0 ? Direction.UP : Direction.DOWN;
+        } else if (absZ > absX && absZ > absY) {
+            direction = z > 0 ? Direction.SOUTH : Direction.NORTH;
+        }
+
+        return direction;
+    }
+
+    /**
+     * @return the stand user if the specified entity is a {@link StandEntity}
+     */
+    public static LivingEntity getUserIfStand(LivingEntity ent) {
+        if (ent instanceof StandEntity<?, ?> stand && stand.hasUser()) {
+            return stand.getUser();
+        }
+        return ent;
+    }
+
+    /**
+     * @return the stand user if the specified entity is a {@link StandEntity}
+     */
+    public static Entity getUserIfStand(Entity ent) {
+        if (ent instanceof StandEntity<?, ?> stand && stand.hasUser()) {
+            return stand.getUser();
+        }
+        return ent;
+    }
+
+    public static void projectileDamageLogic(Projectile proj, Level world, Entity ent, Vec3 kb, int stunTicks, int stunType, boolean overrideStun,
+                                             float damage, int blockstun, CommonHitPropertyComponent.HitAnimation hitAnimation) {
+        projectileDamageLogic(proj, world, ent, kb, stunTicks, stunType, overrideStun, damage, blockstun, hitAnimation, false, false, true);
+    }
+
+    public static void projectileDamageLogic(Projectile proj, Level world, Entity ent, Vec3 kb, int stunTicks, int stunType, boolean overrideStun,
+                                             float damage, int blockstun, CommonHitPropertyComponent.HitAnimation hitAnimation, boolean canBackstab, boolean unblockable) {
+        projectileDamageLogic(proj, world, ent, kb, stunTicks, stunType, overrideStun, damage, blockstun, hitAnimation, canBackstab, unblockable, true);
+    }
+
+    public static void projectileDamageLogic(Projectile proj, Level world, Entity ent, Vec3 kb, int stunTicks, int stunType, boolean overrideStun,
+                                             float damage, int blockstun, CommonHitPropertyComponent.HitAnimation hitAnimation,
+                                             boolean canBackstab, boolean unblockable, boolean cancelMoves) {
+        final Entity owner = proj.getOwner();
+
+        DamageSource source = (owner == null) ?
+                JDamageSources.create(world, DamageTypes.GENERIC) :
+                JDamageSources.create(world, DamageTypes.MOB_PROJECTILE, proj, owner);
+
+        projectileDamageLogic(proj, world, ent, new AttackData(
+                kb, stunTicks, stunType, overrideStun, damage, true,
+                blockstun, source, owner, hitAnimation, null,
+                canBackstab, unblockable, cancelMoves
+        ));
+    }
+
+    public static void projectileDamageLogic(Projectile proj, Level world, Entity ent, AttackData attackData) {
+        if (world.isClientSide()) {
+            return;
+        }
+        Objects.requireNonNull(proj, "Attempted to run ProjectileDamageLogic with invalid projectile in world " + world);
+
+        if (ent instanceof LivingEntity living) {
+            LivingEntity target = living;
+            if (ent instanceof StandEntity<?, ?> stand) {
+                target = stand.getUser();
+            }
+
+            damageLogic(world, target, attackData);
+        }
+
+        if (ent instanceof EndCrystal endCrystal) {
+            endCrystal.hurt(attackData.source(), attackData.damage());
+        }
+    }
+
+    public static float getDamageThroughArmor(final float damage, float totalArmor, float toughnessAttribute) {
+        if (totalArmor > 20.0f) totalArmor = 20.0f;
+        if (toughnessAttribute > 12.0f) toughnessAttribute = 12.0f;
+        float f = 2.0F + toughnessAttribute / 4.0F;
+        float g = Mth.clamp(totalArmor - damage / f, totalArmor * 0.2F, 20.0F);
+        return damage * (1.0F - g / 25.0F);
+    }
+
+    public static boolean isBlocking(LivingEntity entity) {
+        if (entity instanceof StandEntity<?, ?> stand) {
+            return stand.blocking;
+        }
+        StandEntity<?, ?> stand = JUtils.getStand(entity);
+        return stand != null && stand.blocking;
+    }
+
+    public static void stopTick(Entity entity) {
+        if (entity instanceof LivingEntity livingEntity) {
+            livingEntity.yBodyRotO = livingEntity.yBodyRot;
+            livingEntity.yHeadRotO = livingEntity.yHeadRot;
+            // attackAnim handled via ClientAvatarState in 26.3
+            //TODO check if this moved or changed livingEntity.lastLimbDistance = livingEntity.limbDistance;
+        }
+
+        entity.xo = entity.getX();
+        entity.yo = entity.getY();
+        entity.zo = entity.getZ();
+
+        entity.xOld = entity.getX();
+        entity.yOld = entity.getY();
+        entity.zOld = entity.getZ();
+
+        entity.xRotO = entity.getXRot();
+        entity.yRotO = entity.getYRot();
+
+        // walkDist handled via WalkAnimationState in 26.3
+    }
+
+    /**
+     * @return the change in position for an entity between the current and last tick.
+     */
+    public static Vec3 deltaPos(@NonNull Entity ent) {
+        return new Vec3(
+                ent.getX() - ent.xo,
+                ent.getY() - ent.yo,
+                ent.getZ() - ent.zo
+        );
+    }
+
+    public static List<BlockInfo> collectBlockInfo(Level world, BlockPos origin, int radius) {
+        List<BlockInfo> infoList = new ArrayList<>();
+
+        boolean[][] array = new boolean[radius * 2 + 1][radius * 2 + 1];
+
+        int originX = origin.getX();
+        int originY = origin.getY();
+        int originZ = origin.getZ();
+
+        for (int y = originY + radius; y >= originY - radius; y--) {
+            for (int x = originX - radius; x <= originX + radius; x++) {
+                for (int z = originZ - radius; z <= originZ + radius; z++) {
+                    double distance = Math.sqrt(Math.pow(x - originX, 2) + Math.pow(y - originY, 2) + Math.pow(z - originZ, 2));
+                    if (!(distance <= radius)) {
+                        continue;
+                    }
+
+                    double skipProbability = (distance / radius);
+                    if (!(world.getRandom().nextDouble() > skipProbability / 2)) {
+                        continue;
+                    }
+
+                    BlockPos pos = new BlockPos(x, y, z);
+                    BlockState state = world.getBlockState(pos);
+                    int x0 = x - originX + radius;
+                    int z0 = z - originZ + radius;
+                    if (!state.isFaceSturdy(world, pos, Direction.UP, SupportType.RIGID) || array[x0][z0]) {
+                        continue;
+                    }
+
+                    array[x0][z0] = true;
+
+                    BlockInfo info = new BlockInfo(state, pos);
+                    infoList.add(info);
+                }
+            }
+        }
+
+        return infoList;
+    }
+
+    public static void explode(Level world, double x, double y, double z, float power, JExplosionModifier modifier) {
+        explode(world, null, x, y, z, power, modifier);
+    }
+
+    public static void explode(Level world, @Nullable Entity entity, double x, double y, double z, float power, JExplosionModifier modifier) {
+        if (modifier == null) {
+            world.explode(entity, x, y, z, power, Level.ExplosionInteraction.MOB);
+            return;
+        }
+
+        if (world.isClientSide() || !(world instanceof ServerLevel _sl)) {
+            return;
+        }
+        final boolean fire = modifier.getCreateFire() != null && modifier.getCreateFire();
+        final Explosion.BlockInteraction blockInteraction = modifier.getBlockInteraction() != null ? modifier.getBlockInteraction() : Explosion.BlockInteraction.KEEP;
+        final ServerExplosion explosion = new ServerExplosion(_sl, entity, null, null, new Vec3(x, y, z), power, fire, blockInteraction);
+        explosion.explode();
+
+        // set gasoline on fire (always, independent of fire modifier)
+        /*JSplatterManager splatterManager = JSplatterManager.get(world);
+        Set<Splatter> gasSplatters = new HashSet<>();
+        for (int i = -Math.round(power)-2; i <= Math.round(power)+2; i++) {
+            for (int j = -Math.round(power)-2; j <= Math.round(power)+2; j++) {
+                for (int k = -1; k <= 1; k++)
+                    gasSplatters.addAll(splatterManager.getHit(new Vec3(x+i, y+k, z+j), s -> s instanceof GasolineSplatter));
+            }
+        }
+        gasSplatters.forEach(s -> ((GasolineSplatter) s).lightOnFire());*/
+
+        for (ServerPlayer player : around((ServerLevel) world, new Vec3(x, y, z), 64)) {
+            JExplosionPacket.send(player, x, y, z, power, explosion, modifier);
+        }
+    }
+
+    /**
+     * Supposed to be used in a stream.
+     * Turns every object in the stream into a pair of its index in the stream and the object.
+     *
+     * @param <T> The type of the object
+     * @return A function that turns every object into an enumerated pair.
+     */
+    public static <T> Function<T, IntObjectPair<T>> enumerate() {
+        AtomicInteger index = new AtomicInteger();
+        return t -> IntObjectPair.of(index.getAndIncrement(), t);
+    }
+
+    public static JSplatterManager getSplatterManager(Level world) {
+        return ((IJSplatterManagerHolder) world).jcraft$getSplatterManager();
+    }
+
+    @Nullable
+    public static StandEntity<?, ?> getStand(LivingEntity entity) {
+        return entity == null ? null : entity instanceof StandEntity<?, ?> stand ? stand : JComponentPlatformUtils.getStandComponent(entity).getStand();
+    }
+
+    public static boolean isAffectedByTimeStop(Entity entity) {
+        final var data = JComponentPlatformUtils.getTimeStopData(entity);
+
+        if (data.isEmpty())
+            return false;
+
+        return data.get().getTicks() > 0;
+    }
+
+    public static boolean canDamage(DamageSource damageSource, Entity ent) {
+        return ent != null && ent.isAlive() && ent.isAttackable() && !(ent.level() instanceof ServerLevel _sl && ent instanceof LivingEntity _le && _le.isInvulnerableTo(_sl, damageSource)) && !ent.isInvulnerable() &&
+                !(ent instanceof ArmorStand armorStand && armorStand.isMarker());
+    }
+
+    /**
+     * Cancels the Spec and Stand moves for a specified {@link LivingEntity}
+     *
+     * @param livingEntity Entity to cancel the moves of
+     */
+    public static void cancelMoves(LivingEntity livingEntity) {
+        if (livingEntity instanceof Player player) {
+            JSpec<?, ?> spec = JUtils.getSpec(player);
+            if (spec != null) {
+                spec.cancelMove();
+            }
+        }
+
+        StandEntity<?, ?> stand = JUtils.getStand(livingEntity);
+        if (stand != null) {
+            stand.cancelMove();
+        }
+    }
+
+    /**
+     * Converts a rotation vector to polar coordinates.
+     *
+     * @param rotationVector The rotation vector to convert
+     * @return A Vec2f containing the theta and phi angles
+     * @see Vec3#directionFromRotation(Vec2)
+     */
+    public static Vec2 rotationVectorToPolar(Vec3 rotationVector) {
+        double x = rotationVector.x;
+        double y = rotationVector.y;
+        double z = rotationVector.z;
+
+        // Calculate yaw (horizontal rotation)
+        double yaw = Math.atan2(x, z) * (180 / Math.PI);
+
+        // Calculate pitch (vertical rotation)
+        double pitch = Math.atan2(rotationVector.horizontalDistance(), -y) * (180 / Math.PI);
+
+        return new Vec2(90f - (float) pitch, (float) -yaw);
+    }
+
+    public static Mob mobCloneOf(Mob original) {
+        EntityType<?> entityType = original.getType();
+        Mob newMob = (Mob) entityType.create(original.level(), EntitySpawnReason.CONVERSION);
+
+        if (newMob == null) {
+            JCraft.LOGGER.error("Failed to create clone mob of type " + entityType + " in world " + original.level());
+            return null;
+        }
+
+        // Copy properties
+        newMob.setBaby(original.isBaby());
+        if (original.hasCustomName()) {
+            newMob.setCustomName(original.getCustomName());
+            newMob.setCustomNameVisible(original.isCustomNameVisible());
+        }
+
+        newMob.tickCount = original.tickCount;
+
+        // No duping
+        newMob.setDropChance(EquipmentSlot.MAINHAND, 0);
+        newMob.setDropChance(EquipmentSlot.OFFHAND, 0);
+
+        newMob.setDropChance(EquipmentSlot.HEAD, 0);
+        newMob.setDropChance(EquipmentSlot.CHEST, 0);
+        newMob.setDropChance(EquipmentSlot.LEGS, 0);
+        newMob.setDropChance(EquipmentSlot.FEET, 0);
+
+        return newMob;
+    }
+
+    private static final Map<EntityType<?>, Float> uniqueBloodMults = Map.ofEntries(
+            Map.entry(EntityTypes.ZOMBIE, 1.0f),
+            Map.entry(EntityTypes.ZOMBIE_VILLAGER, 1.0f),
+            Map.entry(EntityTypes.ZOMBIE_HORSE, 1.0f),
+
+            Map.entry(EntityTypes.ZOGLIN, 0.5f),
+            Map.entry(EntityTypes.ZOMBIFIED_PIGLIN, 0.5f),
+
+            Map.entry(EntityTypes.HUSK, 0.1f),
+
+            Map.entry(EntityTypes.VILLAGER, 1.5f),
+            Map.entry(EntityTypes.PLAYER, 1.5f)
+    );
+
+    public static float getBloodMult(LivingEntity entity) {
+        EntityType<?> type = entity.getType();
+
+        if (type.builtInRegistryHolder().is(JTagRegistry.BLOODLESS_ENTITIES)) {
+            return 0;
+        }
+
+        if (type.builtInRegistryHolder().is(EntityTypeTags.RAIDERS)) {
+            return 1.5f;
+        }
+
+        if (type.builtInRegistryHolder().is(EntityTypeTags.AXOLOTL_HUNT_TARGETS)) // Fishes
+        {
+            return 0.25f;
+        }
+
+        if (entity instanceof Animal) {
+            return 0.5f;
+        }
+
+        if (uniqueBloodMults.containsKey(type)) {
+            return uniqueBloodMults.get(type);
+        }
+
+        if (!entity.isInvertedHealAndHarm()) {
+            return entity.getMaxHealth() / 20.0f;
+        }
+
+        return 0;
+    }
+
+    public static boolean canHoldMove(ServerPlayer player, MoveInputType type) {
+        StandEntity<?, ?> stand = JUtils.getStand(player);
+        if (stand != null && stand.allowMoveHandling()) {
+            if (!stand.canHoldMove(type) && !type.isHoldable()) {
+                return false;
+            }
+            // If the stand forwards this input to the spec, only treat it as
+            // holdable if the spec also considers it holdable. Otherwise, the
+            // held-tick loop would call spec.initMove() every tick even for
+            // discrete (non-hold) spec actions.
+            if (stand.forwardInputToSpec(type)) {
+                JSpec<?, ?> spec = JUtils.getSpec(player);
+                if (spec != null && !spec.canHoldMove(type)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        JSpec<?, ?> spec = JUtils.getSpec(player);
+        if (spec != null && spec.canHoldMove(type)) {
+            return true;
+        }
+        return type.isHoldable();
+    }
+
+    /**
+     * Shoots a projectile without interference from GravityAPI.
+     *
+     * @param projectile
+     * @param shooter    Entity this projectile inherits velocity from
+     * @param pitch      in degrees
+     * @param yaw        in degrees
+     * @param roll       in degrees
+     * @param speed      in meters per tick
+     * @param divergence Spread, done via a {@link Vec3} of {@link net.minecraft.util.RandomSource#triangle(double, double)} calls
+     */
+    public static void shoot(@NonNull Projectile projectile, @Nullable Entity shooter, float pitch, float yaw, float roll, float speed, float divergence) {
+        float f = -Mth.sin(yaw * Mth.DEG_TO_RAD) * Mth.cos(pitch * Mth.DEG_TO_RAD);
+        float g = -Mth.sin((pitch + roll) * Mth.DEG_TO_RAD);
+        float h = Mth.cos(yaw * Mth.DEG_TO_RAD) * Mth.cos(pitch * Mth.DEG_TO_RAD);
+        projectile.shoot(f, g, h, speed, divergence);
+        if (shooter != null) {
+            Vec3 vec3d = shooter.getDeltaMovement();
+            projectile.setDeltaMovement(projectile.getDeltaMovement().add(vec3d.x, shooter.onGround() ? 0.0 : vec3d.y, vec3d.z));
+        }
+    }
+
+    public static int PLAYER_ANIMATION_DIST = 256;
+
+    /**
+     * Plays an animation for the entity if their spec is currently not doing a move.
+     * Higher priority than the dash animation.
+     * @return Whether the animation was played.
+     */
+    public static boolean playAnimIfUnoccupied(LivingEntity living, String animation) {
+        JSpec<?, ?> spec = JComponentPlatformUtils.getSpecData(living).getSpec();
+        if (spec != null && spec.moveStun > 0) return false;
+        playAnim(living, animation);
+        return true;
+    }
+
+    public static void playAnim(LivingEntity living, String animation) {
+        if (living instanceof ServerPlayer player) {
+            around(player.level(), player.position(), PLAYER_ANIMATION_DIST).forEach(p -> PlayerAnimPacket.send(player, p, animation));
+        } else if (living instanceof JSpecHolder specHolder) { specHolder.setAnimation(animation, 1.0f); }
+    }
+
+    public static Collection<ServerPlayer> around(ServerLevel world, Vec3 pos, double radius) {
+        double radiusSq = radius * radius;
+        return world.getPlayers(p -> p.distanceToSqr(pos) <= radiusSq);
+    }
+
+    public static Collection<ServerPlayer> all(@NonNull MinecraftServer server) {
+        // return an immutable collection to guard against accidental removals.
+        return Collections.unmodifiableCollection(server.getPlayerList().getPlayers());
+    }
+
+    /**
+     * @return All {@link ServerPlayer}s tracking the specified {@code entity}.
+     * If the {@code entity} is a Player, there is <u>NO GUARANTEE</u> that the returned {@code Collection<ServerPlayer>} contains them.
+     */
+    public static @NonNull Collection<ServerPlayer> tracking(@NonNull final Entity entity) {
+        if (entity.level().getChunkSource() instanceof ServerChunkCache serverChunkCache) { // Is serverside?
+            final ChunkMap storage = serverChunkCache.chunkMap;
+            final ChunkMap.TrackedEntity tracker = storage.entityMap.get(entity.getId());
+
+            // return an immutable collection to guard against accidental removals.
+            if (tracker != null) {
+                return tracker.seenBy
+                        .stream()
+                        .map(ServerPlayerConnection::getPlayer)
+                        .collect(Collectors.toUnmodifiableSet());
+            }
+
+            return Collections.emptySet();
+        }
+
+        throw new IllegalArgumentException("Only supported on server worlds!");
+    }
+
+    public static Vector2f getLookPY(Vec3 origin, Vec3 target) {
+        final double d = target.x - origin.x, e = target.y - origin.y, f = target.z - origin.z;
+        final double g = Math.sqrt(d * d + f * f);
+
+        final float yaw = Mth.wrapDegrees((float) (Mth.atan2(-f, -d) * 57.2957763671875) - 90.0F); // deg; X, Z
+        final float pitch = Mth.wrapDegrees((float) (Mth.atan2(-e, -g) * 57.2957763671875)); // deg; Y, len
+
+        return new Vector2f(pitch, yaw);
+    }
+
+    public static Vec3 getLookVector(Vec3 origin, Vec3 target) {
+        Vector2f pitchYaw = getLookPY(origin, target);
+        final float pitch = pitchYaw.x, yaw = pitchYaw.y;
+
+        return new Vec3(
+                -Mth.sin(yaw * 0.017453292F) * Mth.cos(pitch * 0.017453292F),
+                -Mth.sin((pitch) * 0.017453292F),
+                Mth.cos(yaw * 0.017453292F) * Mth.cos(pitch * 0.017453292F)
+        );
+    }
+
+    public static boolean isFerrous(@Nullable Entity entity) {
+        if (entity == null) return false;
+
+        if (entity.getType().builtInRegistryHolder().is(JTagRegistry.FERROUS_ENTITIES)) {
+            return true;
+        }
+
+        if (entity instanceof ItemTossProjectile toss && toss.isFerrous()) {
+            return true;
+        }
+
+        final String stringName = entity.getName().toString().toLowerCase(Locale.ROOT);
+        return stringName.contains("iron") || stringName.contains("ferro"); // Cross-mod compatibility :D
+    }
+
+    public static boolean shouldRenderStandsFor(Player player) {
+        // Don't render stands if stand user sight is enabled and the player doesn't have a stand.
+        if (JServerConfig.STAND_USER_SIGHT.getValue()) {
+            StandType standType = JComponentPlatformUtils.getStandComponent(player).getType();
+            return !StandTypeUtil.isNone(standType);
+        }
+
+        return true;
+    }
+
+    /**
+     * Tosses or shoots the specified item.
+     * @return The spawned projectile entity, or <code>null</code> if nothing was or several entities were spawned.
+     */
+    public static @Nullable Entity tossItem(final LivingEntity shooter, final Level level, final ItemStack itemStack, float velocity, float inaccurancy, boolean decrement) {
+        return tossItem(shooter, level, itemStack, velocity, inaccurancy, decrement, null);
+    }
+
+    public static @Nullable Entity tossItem(final LivingEntity shooter, final Level level, final ItemStack itemStack, float velocity, float inaccurancy, boolean decrement, @Nullable Vec3 spawnPos) {
+        if (level.isClientSide() || itemStack.isEmpty()) {
+            return null;
+        }
+        final Vec3 resolvedSpawnPos = spawnPos != null ? spawnPos : shooter.position().add(getEyePos(shooter));
+        // knife bundle needs extra care
+        if (itemStack.getItem() instanceof KnifeBundleItem) {
+            final LivingEntity bundleOwner = getUserIfStand(shooter);
+            for (int i = 0; i < 9; i++) {
+                KnifeProjectile knife = new KnifeProjectile(level, bundleOwner);
+                knife.setPos(resolvedSpawnPos.add(
+                        level.random.triangle(0, 0.5),
+                        level.random.triangle(0, 0.5),
+                        level.random.triangle(0, 0.5)
+                ));
+                knife.shootFromRotation(shooter, shooter.getXRot(), shooter.getYRot(), 0f, velocity, 5f * inaccurancy);
+                level.addFreshEntity(knife);
+            }
+            if (decrement) {
+                itemStack.shrink(1);
+            }
+            return null;
+        }
+        // other cases
+        final Projectile spawned;
+        if (itemStack.getItem() instanceof final ArrowItem arrow) {
+            final Entity arrowOwner = getUserIfStand(shooter);
+            spawned = arrow.createArrow(level, itemStack, arrowOwner instanceof LivingEntity le ? le : shooter, null);
+        }
+        else if (itemStack.getItem() instanceof SnowballItem) {
+            final Snowball snowballEntity = new Snowball(level, shooter, itemStack.copy());
+            snowballEntity.setItem(itemStack);
+            spawned = snowballEntity;
+        }
+        else if (itemStack.getItem() instanceof TridentItem) {
+            spawned = new ThrownTrident(level, getUserIfStand(shooter), itemStack);
+        }
+        else if (itemStack.getItem() instanceof ThrowablePotionItem) {
+            final ThrownSplashPotion thrownPotion = new ThrownSplashPotion(level, shooter, itemStack.copy());
+            thrownPotion.setItem(itemStack);
+            spawned = thrownPotion;
+        }
+        else if (itemStack.getItem() instanceof EggItem) {
+            final ThrownEgg thrownEgg = new ThrownEgg(level, shooter, itemStack.copy());
+            thrownEgg.setItem(itemStack);
+            spawned = thrownEgg;
+        }
+        else if (itemStack.getItem() instanceof ScalpelItem) {
+            spawned = new ScalpelProjectile(level, getUserIfStand(shooter));
+        }
+        else if (itemStack.getItem() instanceof KnifeItem) {
+            spawned = new KnifeProjectile(level, getUserIfStand(shooter));
+        }
+        else if (itemStack.getItem() instanceof EnderpearlItem) {
+            final ThrownEnderpearl enderpearlProjectile = new ThrownEnderpearl(level, JUtils.getUserIfStand(shooter), itemStack.copy());
+            enderpearlProjectile.setItem(itemStack);
+            spawned = enderpearlProjectile;
+        }
+        else if (itemStack.getItem() instanceof GasCanItem) {
+            spawned = new GasCanProjectile(JUtils.getUserIfStand(shooter), level);
+        }
+        else {
+            spawned = new ItemTossProjectile(shooter, level, itemStack);
+        }
+        spawned.setPos(resolvedSpawnPos);
+        spawned.shootFromRotation(shooter, shooter.getXRot(), shooter.getYRot(), 0f, velocity, inaccurancy);
+        level.addFreshEntity(spawned);
+        if (decrement) {
+            itemStack.shrink(1);
+        }
+        return spawned;
+    }
+
+    public static void tossItem(final Player player) {
+        tossItem(player, player.level(), player.getItemInHand(InteractionHand.MAIN_HAND), 1f, 1f, !player.getAbilities().instabuild);
+    }
+
+    public static double nullSafeDistanceSqr(@Nullable Entity a, @Nullable Entity b) {
+        if (a == null || b == null) return Double.POSITIVE_INFINITY;
+        return a.distanceToSqr(b);
+    }
+
+    /**
+     * Returns the minimum of any number of {@code double}s
+     */
+    public static double min(double... arr) {
+        double min = Double.POSITIVE_INFINITY;
+        for (double v : arr) {
+            if (v < min) min = v;
+        }
+        return min;
+    }
+
+    /**
+     * Selects a random element from the given varargs using the provided {@link RandomSource}.
+     *
+     * @throws IllegalArgumentException If no items are provided.
+     */
+    @SafeVarargs
+    public static <T> @NonNull T chooseRandom(@NonNull RandomSource rng, T... items) {
+        if (items == null || items.length == 0) {
+            throw new IllegalArgumentException("At least one item must be provided.");
+        }
+        return items[rng.nextInt(items.length)];
+    }
+
+    /**
+     * Selects a random element from the given collection using the provided {@link RandomSource}.
+     *
+     * @throws IllegalArgumentException If no items are provided.
+     */
+    public static <T> @NonNull T chooseRandom(@NonNull RandomSource rng, Collection<T> items) {
+        if (items == null || items.isEmpty()) {
+            throw new IllegalArgumentException("At least one item must be provided.");
+        }
+        final Iterator<T> it = items.iterator();
+        int selection = rng.nextInt(items.size());
+        while (selection > 0) {
+            it.next();
+            selection--;
+        }
+        return it.next();
+    }
+
+    public static void awardAdvancement(final ServerPlayer player, final Identifier advancementLoc) {
+        final MinecraftServer server = player.level().getServer();
+        if (server == null) {
+            return;
+        }
+        final AdvancementHolder advancement = server.getAdvancements().get(advancementLoc);
+        if (advancement == null) {
+            return;
+        }
+        for (final String criterion : advancement.value().criteria().keySet()) {
+            player.getAdvancements().award(advancement, criterion);
+        }
+    }
+
+    public static boolean hasAdvancement(final ServerPlayer player, final Identifier advancementLoc) {
+        final MinecraftServer server = player.level().getServer();
+        if (server == null) {
+            return false;
+        }
+        final AdvancementHolder advancement = server.getAdvancements().get(advancementLoc);
+        if (advancement == null) {
+            return false;
+        }
+        return player.getAdvancements().getOrStartProgress(advancement).isDone();
+    }
+
+    public static void revokeAdvancement(final ServerPlayer player, final Identifier advancementLoc) {
+        if (player.level().getServer() == null) {
+            return;
+        }
+        final AdvancementHolder advancement = player.level().getServer().getAdvancements().get(advancementLoc);
+        if (advancement == null) {
+            return;
+        }
+        final AdvancementProgress progress = player.getAdvancements().getOrStartProgress(advancement);
+        if (progress.hasProgress()) {
+            for (final String crit : progress.getCompletedCriteria()) {
+                player.getAdvancements().revoke(advancement, crit);
+            }
+        }
+    }
+
+    private static final Style runStandAboutStyle = Style.EMPTY
+            .withColor(ChatFormatting.AQUA)
+            .withUnderlined(true)
+            .withClickEvent(new ClickEvent.RunCommand("/stand about"));
+
+    public static void maySendStandAboutInfo(final ServerPlayer player) {
+        if (!hasAdvancement(player, JCraft.id("obtain_stand"))) {
+            player.sendSystemMessage(Component.translatable("info.jcraft.first_stand").withStyle(runStandAboutStyle));
+        }
+    }
+
+    private static final Style runSpecAboutStyle = Style.EMPTY
+            .withColor(ChatFormatting.AQUA)
+            .withUnderlined(true)
+            .withClickEvent(new ClickEvent.RunCommand("/spec about"));
+
+    public static void maySendSpecAboutInfo(final ServerPlayer player) {
+        if (!hasAdvancement(player, JCraft.id("obtain_any_spec"))) {
+            player.sendSystemMessage(Component.translatable("info.jcraft.first_spec").withStyle(runSpecAboutStyle));
+        }
+    }
+
+    /**
+     * @return Whether the player is 'mortal', i.e. vulnerable, not in creative or spectator.
+     */
+    public static boolean isMortal(@Nullable final ServerPlayer player) {
+        if (player == null) return false;
+        return !player.isSpectator() && !player.isCreative() && !player.isInvulnerable();
+    }
+
+    @NonNull
+    public static Vec3 getEyePos(@NonNull final LivingEntity ent) {
+        return RotationUtil.vecPlayerToWorld(0, (double)ent.getEyeHeight(), 0, GravityChangerAPI.getGravityDirection(ent));
+    }
+
+    @NonNull
+    public static Vec3 getLocalUp(@NonNull final LivingEntity ent) {
+        return RotationUtil.vecPlayerToWorld(0, 1.0d, 0, GravityChangerAPI.getGravityDirection(ent));
+    }
+
+    @NonNull
+    public static Vec3 getLocalDown(@NonNull final LivingEntity ent) {
+        return RotationUtil.vecPlayerToWorld(0, -1.0d, 0, GravityChangerAPI.getGravityDirection(ent));
+    }
+
+    public static boolean mayAlter(final @NonNull Level level, @Nullable final LivingEntity user, @Nullable final BlockPos pos,
+                                   @Nullable Predicate<BlockState> pred) {
+        return mayAlter(level, user, pos, pred, true);
+    }
+
+    public static boolean mayAlter(final @NonNull Level level, @Nullable final LivingEntity user, @Nullable final BlockPos pos,
+                                   @Nullable Predicate<BlockState> pred, boolean checkMayBuild) {
+        ServerLevel serverLevel = level instanceof ServerLevel sl ? sl : null;
+        ServerPlayer player = user instanceof ServerPlayer p ? p : null;
+
+        boolean isPlayer = player != null;
+        boolean mobGriefing = ((net.minecraft.server.level.ServerLevel) level).getGameRules().get(GameRules.MOB_GRIEFING);
+        boolean isSpawnProtected = serverLevel != null && player != null && pos != null &&
+                serverLevel.getServer().isUnderSpawnProtection(serverLevel, pos, player);
+        boolean mayBuild = !isPlayer || pos == null || (!checkMayBuild || player.mayBuild()) &&
+                FtbChunksCompat.get().mayEdit(player, serverLevel, pos);
+
+        boolean mayAttempt = (isPlayer || mobGriefing) && !isSpawnProtected && mayBuild;
+        if (!mayAttempt || pos == null || pred == null) return mayAttempt;
+
+        // The move may attempt to destroy this block, check if it should be possible to.
+        BlockState state = level.getBlockState(pos);
+        return pred.test(state);
+    }
+
+    public static boolean isHoldingSomethingThrowable(LivingEntity user) {
+        if (user == null) return false;
+
+        final ItemStack mainHandStack = user.getItemInHand(InteractionHand.MAIN_HAND);
+        if (!mainHandStack.isEmpty() && !mainHandStack.is(JTagRegistry.UNTHROWABLE)) {
+            return true;
+        }
+
+        final ItemStack offHandStack = user.getItemInHand(InteractionHand.OFF_HAND);
+        return !offHandStack.isEmpty() && !offHandStack.is(JTagRegistry.UNTHROWABLE);
+    }
+
+    /**
+     * Checks if the given entity is currently using KC for Time Erase
+     * @param entity the entity to check, can be <code>null</code>
+     * @return <code>true</code> if the entity is using KC and in Time Erase, else <code>false</code>
+     */
+    public static boolean inTimeErase(Entity entity) {
+        if (!(entity instanceof LivingEntity living)) {
+            return false;
+        }
+        if (!(getStand(living) instanceof KingCrimsonEntity kc)) {
+            return false;
+        }
+        return kc.getTETime() > 0;
+    }
+
+    /**
+     * Resolves the concrete class bound to the base class's second type parameter ({@code A})
+     * for the given object instance.
+     * <p>
+     * Walks the class hierarchy from the object's concrete class up to the base class, collecting
+     * each {@code extends} clause. Resolution then flows <b>bottom-up</b>: the concrete subclass supplies
+     * the actual types that resolve its superclass's type variables, and each step rebinds the next
+     * superclass's type parameters in terms of those. This correctly handles intermediate classes that
+     * add, remove, or reorder type parameters, and {@code A} being introduced at any level. If {@code A}
+     * cannot be resolved to a concrete type (e.g. the object's class is itself still generic), the type
+     * variable's upper bound is returned instead (usually StandEntity, JSpec or IAttacker).
+     * <p>
+     * In all cases where the implementation hierarchy is correct, this method should return a non-null value.
+     * A null value may be returned if any class in the hierarchy extends an unparameterized version of
+     * an otherwise generic class.
+     *
+     * @param baseClass The base class to walk up to. Should have two generic type parameters where the second one is the attacker.
+     * @param object The object whose attacker class should be resolved.
+     * @return The class of the {@code A} type argument (or its upper bound), or {@code null} if it can't be determined.
+     */
+    public static Class<?> resolveAttackerClass(Class<?> baseClass, Object object) {
+        // Collect each generic superclass edge from the concrete class up to (and including) the base class,
+        // in bottom-up order. Each entry's type arguments are expressed in terms of the class below it.
+        List<ParameterizedType> chain = new ArrayList<>();
+        Class<?> clazz = object.getClass();
+
+        while (clazz != null && clazz != baseClass) {
+            Type genericSuper = clazz.getGenericSuperclass();
+            if (genericSuper instanceof ParameterizedType pt) {
+                chain.add(pt);
+                if (pt.getRawType() == baseClass) {
+                    break;
+                }
+            }
+            clazz = clazz.getSuperclass();
+        }
+
+        if (chain.isEmpty()) return null;
+
+        // Walk the edges bottom-up. After each edge, `substitutions` maps the (super)class's own type
+        // variables to their resolved types. The next edge's arguments reference those variables, so we
+        // can rebind them as we climb. Type variables (not positions) are used as keys, so intermediate
+        // classes shifting the position of A are handled transparently.
+        Map<TypeVariable<?>, Type> substitutions = new HashMap<>();
+        Type attackerType = null;
+
+        for (ParameterizedType pt : chain) {
+            Class<?> rawClass = (Class<?>) pt.getRawType();
+            TypeVariable<?>[] params = rawClass.getTypeParameters();
+            Type[] args = pt.getActualTypeArguments();
+
+            Map<TypeVariable<?>, Type> next = new HashMap<>();
+            for (int i = 0; i < params.length; i++) {
+                Type arg = args[i];
+                if (arg instanceof TypeVariable<?> tv) {
+                    // Argument is a type variable of the class below, resolve it through what we know so far.
+                    next.put(params[i], substitutions.getOrDefault(tv, tv));
+                } else {
+                    // Concrete type (Class or ParameterizedType), store directly.
+                    next.put(params[i], arg);
+                }
+            }
+            substitutions = next;
+
+            if (rawClass == baseClass) {
+                // A is always the second type parameter.
+                attackerType = substitutions.get(params[1]);
+                break;
+            }
+        }
+
+        return toClass(attackerType);
+    }
+
+    /**
+     * Reduces a resolved {@link Type} to a concrete {@link Class}.
+     * Parameterized types yield their raw class, and unresolved type variables fall back to their
+     * (recursively reduced) first upper bound.
+     */
+    private static Class<?> toClass(@Nullable Type type) {
+        if (type instanceof Class<?> clazz) {
+            return clazz;
+        } else if (type instanceof ParameterizedType pt) {
+            return toClass(pt.getRawType());
+        } else if (type instanceof TypeVariable<?> tv) {
+            Type[] bounds = tv.getBounds();
+            return bounds.length > 0 ? toClass(bounds[0]) : null;
+        }
+        return null;
+    }
+
+    /**
+     * Turns an item entity into another by applying a (single input, single output) recipe.
+     * @param itemEntity the item entity to transform
+     * @param recipe the recipe to apply
+     * @param <R> the recipe type
+     */
+    public static <R extends Recipe<net.minecraft.world.item.crafting.SingleRecipeInput>> void externalRecipeApplication(final @NonNull ItemEntity itemEntity, final @NonNull R recipe) {
+        final Level level = itemEntity.level();
+        final ItemStack result = recipe.assemble(new net.minecraft.world.item.crafting.SingleRecipeInput(itemEntity.getItem()));
+        if (result.isEmpty()) {
+            return;
+        }
+        final int amount = itemEntity.getItem().getCount();
+        // make as few resulting stacks as possible
+        final List<ItemStack> resultStacks = new ArrayList<>();
+        int index = 0;
+        for (int i = 0; i < amount; i++) {
+            if (resultStacks.size() == index) {
+                resultStacks.add(result.copy());
+            }
+            else {
+                final ItemStack currentResult = resultStacks.get(index);
+                final ItemStack newStack = result.copy();
+                final int overflow = Math.max(0, result.getCount() - (currentResult.getMaxStackSize() - currentResult.getCount()));
+                final ItemStack newResult = newStack.copy();
+                resultStacks.set(index, newResult);
+                if (newResult.getCount() == newResult.getMaxStackSize()) {
+                    index++;
+                }
+                else if (overflow > 0) {
+                    resultStacks.add(result.copyWithCount(overflow));
+                    index++;
+                }
+            }
+        }
+        // drop the stacks into the world
+        for (final ItemStack resultStack : resultStacks) {
+            level.addFreshEntity(new ItemEntity(level, itemEntity.getX(), itemEntity.getY(), itemEntity.getZ(), resultStack));
+        }
+        itemEntity.discard();
+    }
+
+
+    public static void setMaxUpStep(final LivingEntity entity, final float stepHeight) {
+        if (entity == null) return;
+        var attr = entity.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.STEP_HEIGHT);
+        if (attr != null) {
+            attr.setBaseValue(stepHeight);
+        }
+    }
+
+    public static long getDayTime(final Level level) {
+        return level.getOverworldClockTime();
+    }
+
+    public static void setDayTime(final ServerLevel level, final long ticks) {
+        var clockOpt = level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK)
+                .get(net.minecraft.world.clock.WorldClocks.OVERWORLD);
+        clockOpt.ifPresent(clock -> level.getServer().clockManager().setTotalTicks(clock, ticks));
+    }
+}

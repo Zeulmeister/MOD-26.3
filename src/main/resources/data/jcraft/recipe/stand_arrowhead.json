@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": "minecraft:gold_ingot",
+    "I": "jcraft:stellar_iron_ingot",
+    "N": "minecraft:gold_nugget"
+  },
+  "pattern": [
+    "NGI",
+    "GIG",
+    " GN"
+  ],
+  "result": {
+    "id": "jcraft:stand_arrowhead",
+    "count": 3
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "D": "minecraft:diamond",
+    "G": "minecraft:gold_block",
+    "I": "minecraft:iron_block",
+    "L": "minecraft:leather",
+    "S": "jcraft:soul_block"
+  },
+  "pattern": [
+    "LSI",
+    "SDS",
+    "GSL"
+  ],
+  "result": {
+    "id": "jcraft:anubis_sheathed"
+  }
+}

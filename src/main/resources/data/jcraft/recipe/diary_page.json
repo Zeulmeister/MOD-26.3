@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:waxed_oxidized_cut_copper_slab",
+    "minecraft:gold_ingot",
+    "minecraft:netherite_ingot",
+    "minecraft:experience_bottle",
+    "minecraft:paper",
+    "minecraft:nautilus_shell",
+    "minecraft:ender_eye",
+    "minecraft:ink_sac",
+    "minecraft:emerald"
+  ],
+  "result": {
+    "id": "jcraft:diary_page"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "pack": {
+    "description": "JCraft: JoJo's Bizarre Adventure \u2014 Superior 26.3 Edition",
+    "pack_format": 97,
+    "min_format": [
+      97,
+      0
+    ],
+    "max_format": [
+      121,
+      99
+    ]
+  }
+}

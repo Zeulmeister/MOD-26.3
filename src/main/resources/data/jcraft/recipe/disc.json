@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smelting",
+  "category": "misc",
+  "cookingtime": 200,
+  "experience": 0.3,
+  "ingredient": "minecraft:light_blue_stained_glass_pane",
+  "result": {
+    "id": "jcraft:disc"
+  }
+}

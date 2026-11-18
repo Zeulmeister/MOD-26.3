@@ -1,0 +1,8 @@
+package net.arna.jcraft.fabric.common.component.world;
+
+import org.ladysnake.cca.api.v3.component.Component;
+import org.ladysnake.cca.api.v3.component.sync.AutoSyncedComponent;
+import net.arna.jcraft.api.component.world.CommonTexasHoldEmComponent;
+
+public interface TexasHoldEmComponent extends Component, CommonTexasHoldEmComponent, AutoSyncedComponent {
+}

@@ -1,0 +1,39 @@
+{
+  "required": true,
+  "package": "net.arna.jcraft.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "minVersion": "0.8",
+  "mixinextras": {
+    "minVersion": "0.5.0"
+  },
+  "mixins": [
+    "AbilitiesMixin",
+    "EntityMixin",
+    "EntitySelectorOptionsMixin",
+    "LevelMixin",
+    "LivingEntityMixin",
+    "MobMixin",
+    "PersistentEntitySectionManagerMixin",
+    "PlayerMixin",
+    "ServerExplosionMixin",
+    "ServerLevelMixin",
+    "ServerPlayerMixin"
+  ],
+  "client": [
+    "client.CameraMixin",
+    "client.ClientLevelMixin",
+    "client.EntityClientTurnMixin",
+    "client.GameRendererMixin",
+    "client.GuiMixin",
+    "client.HumanoidMobRendererMixin",
+    "client.HumanoidModelMixin",
+    "client.HumanoidRenderStateMixin",
+    "client.KeyMappingMixin",
+    "client.LocalPlayerMixin",
+    "client.RenderTargetMixin",
+    "client.SoundEngineMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

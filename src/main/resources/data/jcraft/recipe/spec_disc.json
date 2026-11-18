@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": "minecraft:experience_bottle",
+    "D": "jcraft:disc"
+  },
+  "pattern": [
+    "DA"
+  ],
+  "result": {
+    "id": "jcraft:spec_disc"
+  }
+}

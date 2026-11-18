@@ -1,0 +1,30 @@
+{
+  "parent": "jcraft:hamon2",
+  "criteria": {
+    "punched": {
+      "conditions": {},
+      "trigger": "jcraft:hamon3"
+    }
+  },
+  "display": {
+    "announce_to_chat": true,
+    "description": {
+      "translate": "advancements.jcraft.hamon3.description"
+    },
+    "frame": "task",
+    "hidden": false,
+    "icon": {
+      "id": "jcraft:spec_disc"
+    },
+    "show_toast": true,
+    "title": {
+      "translate": "advancements.jcraft.hamon3.title"
+    }
+  },
+  "requirements": [
+    [
+      "punched"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

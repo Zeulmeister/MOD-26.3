@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "B": "minecraft:bamboo",
+    "L": "minecraft:lime_terracotta",
+    "Y": "minecraft:yellow_dye"
+  },
+  "pattern": [
+    " B ",
+    "YLY",
+    " B "
+  ],
+  "result": {
+    "id": "jcraft:cinderella_green_block"
+  }
+}

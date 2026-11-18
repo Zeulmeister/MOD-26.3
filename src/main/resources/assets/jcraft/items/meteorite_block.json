@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "jcraft:item/meteorite_block"
+  }
+}

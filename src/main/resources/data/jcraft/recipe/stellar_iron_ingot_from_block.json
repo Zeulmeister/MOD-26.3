@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "jcraft:stellar_iron_block"
+  ],
+  "result": {
+    "id": "jcraft:stellar_iron_ingot",
+    "count": 9
+  }
+}
