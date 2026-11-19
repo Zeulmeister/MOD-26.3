@@ -2,7 +2,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:crazy_diamond/dark_oak_log"
+        "recipes": "jcraft:crazy_diamond/dark_oak_log"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

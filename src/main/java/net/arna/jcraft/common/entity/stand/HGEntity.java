@@ -334,7 +334,9 @@ public class HGEntity extends StandEntity<HGEntity, HGEntity.State> {
         } else {
             final double f = getRemoteForwardInput(), s = getRemoteSideInput();
 
-            tickRemoteMovement(f, s, getRemoteJumpInput(), getRemoteSneakInput());
+            if (tickCount - lastClientRemoteSyncTick > 2) {
+                tickRemoteMovement(f, s, getRemoteJumpInput(), getRemoteSneakInput());
+            }
 
             if (getMoveStun() <= 0) {
                 if (f == 0) {
@@ -362,7 +364,7 @@ public class HGEntity extends StandEntity<HGEntity, HGEntity.State> {
 
         final Vec3 pos = position();
         // 1 tick of inertia, helping movement be fluid as well as dealing with packet drops
-        if (lastRemoteInputTime - tickCount > 2) {
+        if (tickCount - lastRemoteInputTime > 4) {
             updateRemoteInputs(0, 0, false, false);
         }
         final Vec3 rotVec = new Vec3(getLookAngle().x, 0, getLookAngle().z).normalize();

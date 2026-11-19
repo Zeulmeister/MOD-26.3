@@ -23,7 +23,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:requiem_ruby"
+        "recipes": "jcraft:requiem_ruby"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

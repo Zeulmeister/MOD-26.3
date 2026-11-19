@@ -63,13 +63,23 @@ public abstract class CommonGunslingerComponentImpl implements CommonGunslingerC
 
     @Override
     public void readFromNbt(@NonNull CompoundTag tag) {
-        holsteredItem = tag.contains("HolsteredItem") ? ItemStack.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE, tag.get("HolsteredItem")).result().orElse(ItemStack.EMPTY) : ItemStack.EMPTY;
+        if (tag.contains("HolsteredItem")) {
+            var ops = entity != null && entity.level() != null
+                    ? entity.registryAccess().createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE)
+                    : net.minecraft.nbt.NbtOps.INSTANCE;
+            holsteredItem = ItemStack.CODEC.parse(ops, tag.get("HolsteredItem")).result().orElse(ItemStack.EMPTY);
+        } else {
+            holsteredItem = ItemStack.EMPTY;
+        }
     }
 
     @Override
     public void writeToNbt(@NonNull CompoundTag tag) {
         if (!holsteredItem.isEmpty()) {
-            ItemStack.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, holsteredItem).result().ifPresent(t -> tag.put("HolsteredItem", t));
+            var ops = entity != null && entity.level() != null
+                    ? entity.registryAccess().createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE)
+                    : net.minecraft.nbt.NbtOps.INSTANCE;
+            ItemStack.CODEC.encodeStart(ops, holsteredItem).result().ifPresent(t -> tag.put("HolsteredItem", t));
         }
     }
 

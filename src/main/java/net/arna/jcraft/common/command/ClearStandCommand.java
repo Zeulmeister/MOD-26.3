@@ -32,15 +32,19 @@ public class ClearStandCommand {
             if (entity instanceof LivingEntity livingEntity) {
                 CommonStandComponent standData = JComponentPlatformUtils.getStandComponent(livingEntity);
 
-                if (standData.getType() == null) {
-                    continue;
-                }
-                standData.setType(null);
-
                 StandEntity<?, ?> stand = standData.getStand();
                 if (stand != null) {
-                    stand.unRide();
+                    stand.desummon();
+                    if (!stand.isRemoved()) {
+                        stand.discard();
+                    }
+                    standData.setStand(null);
                 }
+
+                if (net.arna.jcraft.api.stand.StandTypeUtil.isNone(standData.getType())) {
+                    continue;
+                }
+                standData.setType(net.arna.jcraft.api.registry.JStandTypeRegistry.NONE.get());
             }
         }
         return 1;

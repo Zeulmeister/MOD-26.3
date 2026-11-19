@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:polished_meteorite_block"
+        "recipes": "jcraft:polished_meteorite_block"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

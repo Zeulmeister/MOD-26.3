@@ -32,31 +32,6 @@
           "type": "empty"
         }
       ]
-    },
-    {
-      "type": "group",
-      "conditions": [
-        "RIGHT_ARM_EMPTY"
-      ],
-      "modifiers": [
-        {
-          "type": "custom",
-          "operation": "SET",
-          "part": "rightArm",
-          "property": "Z_ROT",
-          "value": 0.2617994
-        },
-        {
-          "type": "custom",
-          "operation": "MULTIPLY",
-          "part": "rightArm",
-          "property": "X_ROT",
-          "value": 0.5
-        },
-        {
-          "type": "empty"
-        }
-      ]
     }
   ]
 }

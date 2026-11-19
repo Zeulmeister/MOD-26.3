@@ -1,11 +1,5 @@
 package net.arna.jcraft.common.item;
 
-import dev.architectury.event.events.client.ClientTickEvent;
-import dev.architectury.platform.Platform;
-import it.unimi.dsi.fastutil.ints.Int2IntMap;
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.ints.IntSet;
 import mod.azure.azurelib.animation.dispatch.command.AzCommand;
 import mod.azure.azurelib.animation.play_behavior.AzPlayBehaviors;
 import net.arna.jcraft.JCraft;
@@ -13,7 +7,6 @@ import net.arna.jcraft.api.component.player.CommonSpecComponent;
 import net.arna.jcraft.api.registry.JSoundRegistry;
 import net.arna.jcraft.api.registry.JSpecTypeRegistry;
 import net.arna.jcraft.platform.JComponentPlatformUtils;
-import net.fabricmc.api.EnvType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -29,6 +22,8 @@ import net.minecraft.world.item.equipment.ArmorType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public class StoneMaskItem extends Item {
@@ -37,23 +32,14 @@ public class StoneMaskItem extends Item {
     protected static final AzCommand CLENCH_CMD = AzCommand.create(JCraft.BASE_CONTROLLER, "animation.stone_mask.clench", AzPlayBehaviors.PLAY_ONCE);
 
     protected static final int CLENCH_DURATION = 100;
-    protected static final Int2IntMap CLENCH = new Int2IntOpenHashMap();
+    private static final Map<Integer, Long> CLENCH_UNTIL = new ConcurrentHashMap<>();
 
-    static {
-        if (Platform.getEnv() == EnvType.CLIENT) {
-            ClientTickEvent.CLIENT_POST.register(client -> {
-                IntSet toRemove = new IntOpenHashSet();
-                for (int i : CLENCH.keySet()) {
-                    int newTime = CLENCH.get(i) - 1;
-                    if (newTime <= 0) {
-                        toRemove.add(i);
-                        continue;
-                    }
-                    CLENCH.put(i, newTime);
-                }
-                toRemove.forEach(CLENCH::remove);
-            });
-        }
+    public static void clearAll() {
+        CLENCH_UNTIL.clear();
+    }
+
+    public static void clearForEntity(int entityId) {
+        CLENCH_UNTIL.remove(entityId);
     }
 
     public StoneMaskItem(ArmorMaterial materialIn, ArmorType slot, Properties builder) {
@@ -66,16 +52,21 @@ public class StoneMaskItem extends Item {
         if (slot != EquipmentSlot.HEAD) {
             return;
         }
+        long now = level.getGameTime();
         if (entity instanceof ServerPlayer player && JCraft.wasRecentlyAttacked(player.getCombatTracker())) {
             CommonSpecComponent specComponent = JComponentPlatformUtils.getSpecData(player);
             if (specComponent.getType() != JSpecTypeRegistry.VAMPIRE.get()) {
                 specComponent.setType(JSpecTypeRegistry.VAMPIRE.get());
                 level.playSound(null, entity.blockPosition(), JSoundRegistry.VAMPIRE_SPEC_CHANGE.get(), SoundSource.PLAYERS, 1f, 1f);
-                CLENCH.put(entity.getId(), CLENCH_DURATION);
+                CLENCH_UNTIL.put(entity.getId(), now + CLENCH_DURATION);
                 CLENCH_CMD.sendForItem(entity, stack);
             }
         }
-        if (!CLENCH.containsKey(entity.getId())) {
+        Long expiry = CLENCH_UNTIL.get(entity.getId());
+        if (expiry == null || now >= expiry) {
+            if (expiry != null) {
+                CLENCH_UNTIL.remove(entity.getId());
+            }
             DORMANT_CMD.sendForItem(entity, stack);
         }
     }

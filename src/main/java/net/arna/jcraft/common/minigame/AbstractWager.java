@@ -43,9 +43,13 @@ public abstract class AbstractWager {
     }
 
     public void writeToNbt(@NonNull CompoundTag tag) {
+        writeToNbt(tag, net.minecraft.nbt.NbtOps.INSTANCE);
+    }
+
+    public void writeToNbt(@NonNull CompoundTag tag, @NonNull com.mojang.serialization.DynamicOps<net.minecraft.nbt.Tag> ops) {
         final ListTag itemsTag = new ListTag();
         for (final ItemStack stack : items) {
-            ItemStack.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, stack).result().ifPresent(itemsTag::add);
+            ItemStack.CODEC.encodeStart(ops, stack).result().ifPresent(itemsTag::add);
         }
         tag.put("wager_items", itemsTag);
     }

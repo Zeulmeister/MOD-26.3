@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:stellar_iron_ingot_from_smelting"
+        "recipes": "jcraft:stellar_iron_ingot_from_smelting"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

@@ -40,14 +40,17 @@ public final class StandRotationPacket {
             StandEntity<?, ?> stand = JUtils.getStand(player);
             if (stand != null && stand.isRemoteAndControllable()) {
                 double maxRange = stand.getMaxRemoteRange();
-                if (player.distanceToSqr(x, y, z) <= maxRange * maxRange) {
-                    stand.setPos(x, y, z);
-                } else {
-                    Vec3 userPos = player.position();
-                    Vec3 dir = new Vec3(x - userPos.x, y - userPos.y, z - userPos.z).normalize();
-                    Vec3 clamped = userPos.add(dir.scale(maxRange));
-                    stand.setPos(clamped.x, clamped.y, clamped.z);
+                Vec3 targetPos = new Vec3(x, y, z);
+                Vec3 userPos = player.position();
+                if (userPos.distanceToSqr(targetPos) > maxRange * maxRange) {
+                    Vec3 diff = targetPos.subtract(userPos);
+                    Vec3 dir = diff.lengthSqr() > 1.0E-6 ? diff.normalize() : Vec3.ZERO;
+                    targetPos = userPos.add(dir.scale(maxRange));
                 }
+
+                stand.lastClientRemoteSyncTick = stand.tickCount;
+                stand.setDeltaMovement(Vec3.ZERO);
+                stand.setPos(targetPos.x, targetPos.y, targetPos.z);
 
                 stand.setYRot(yRot);
                 stand.setXRot(xRot);

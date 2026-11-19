@@ -141,6 +141,7 @@ public interface JEntityRendererRegister {
             new RendererData<>(JEntityTypeRegistry.DARBY_OLDER, DarbyOlderRenderer::new),
             new RendererData<>(JEntityTypeRegistry.DARBY_YOUNGER, DarbyYoungerRenderer::new),
             new RendererData<>(JEntityTypeRegistry.TONPETTY, TonpettyRenderer::new),
+            new RendererData<>(JEntityTypeRegistry.PLAYER_CLONE, ctx -> new PlayerCloneRenderer(ctx, false)),
 
             new RendererData<>(JEntityTypeRegistry.METALLICA, MetallicaRenderer::new),
             new RendererData<>(JEntityTypeRegistry.THE_HAND, TheHandRenderer::new),

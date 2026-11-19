@@ -143,6 +143,7 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
 
     // Player Movement Input
     public int lastRemoteInputTime;
+    public int lastClientRemoteSyncTick = -100;
     public Vec3 remoteSpeed = Vec3.ZERO;
     @Getter
     private double remoteForwardInput = 0;
@@ -497,6 +498,12 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
         return isRemote() && remoteControllable();
     }
 
+    protected boolean usesUniversalRemoteMovement() {
+        return !(this instanceof net.arna.jcraft.common.entity.stand.WhiteSnakeEntity)
+                && !(this instanceof net.arna.jcraft.common.entity.stand.HGEntity)
+                && !(this instanceof net.arna.jcraft.common.entity.stand.AbstractPurpleHazeEntity<?, ?>);
+    }
+
     @Override
     public float getViewYRot(float tickDelta) {
         return isRemoteAndControllable() ? getYRot() : super.getViewYRot(tickDelta);
@@ -509,7 +516,17 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
 
     @Override
     public boolean isEffectiveAi() {
-        return (level().isClientSide() && isRemoteAndControllable()) || super.isEffectiveAi();
+        return super.isEffectiveAi();
+    }
+
+    @Override
+    protected boolean isLocalClientAuthoritative() {
+        return (isRemoteAndControllable() && user instanceof Player p && p.isLocalPlayer()) || super.isLocalClientAuthoritative();
+    }
+
+    @Override
+    public boolean isClientAuthoritative() {
+        return (isRemoteAndControllable() && user instanceof Player) || super.isClientAuthoritative();
     }
 
     public void setRemote(boolean r) {
@@ -526,7 +543,7 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
     }
 
     protected void tickUniversalRemoteMovement() {
-        Vec3 look = Vec3.directionFromRotation(getXRot(), getYRot());
+        Vec3 look = Vec3.directionFromRotation(0.0F, getYRot());
         float yawRad = getYRot() * Mth.DEG_TO_RAD;
         Vec3 side = new Vec3(Math.cos(yawRad), 0.0, Math.sin(yawRad));
         double speed = 0.38;
@@ -590,13 +607,13 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
         remoteSpeed = user.getDeltaMovement().scale(1.5); // Inertia
         setDeltaMovement(remoteSpeed);
 
-        setAlphaOverride(0.1f);
+        resetAlphaOverride();
 
         unRide();
 
         noPhysics = false;
         needsSync = true;
-        setPosRaw(fPos.x, user.getY() + 0.5, fPos.z);
+        setPos(fPos.x, user.getY() + 0.5, fPos.z);
     }
 
     /**
@@ -605,9 +622,11 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
     protected void endRemote() {
         setFree(false);
         resetAlphaOverride();
+        remoteSpeed = Vec3.ZERO;
+        setDeltaMovement(Vec3.ZERO);
         if (user != null) {
             user.resetFallDistance();
-            startRiding(user);
+            startRiding(user, true, false);
         }
         resetFallDistance();
         noPhysics = true;
@@ -688,7 +707,10 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
      */
     @SuppressWarnings("unchecked")
     public boolean tryFollowUp(final MoveClass in, final MoveClass followupType) {
-        if (in == followupType && curMove != null && curMove.getMoveClass() == followupType && getMoveStun() < curMove.getWindupPoint()) {
+        if (in == followupType && curMove != null && curMove.getMoveClass() == followupType && getMoveStun() <= curMove.getWindupPoint()) {
+            if (moveMap.tryInitiateFollowup(getThis(), curMove, false, 0)) {
+                return true;
+            }
             final AbstractMove<?, ? super E> followup = curMove.getFollowup();
             if (followup != null) {
                 setMove(followup, (S) followup.getAnimation());
@@ -791,8 +813,9 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
      * @return whether the stand should be able to attack
      */
     public boolean canAttack() {
-        // If we have no user or the user is affected by time stop or dazed, we can't attack.
-        if (user == null || JUtils.isAffectedByTimeStop(user) || user.hasEffect(JStatusRegistry.DAZED.asHolder()))
+        // If we have no user or the user is affected by time stop or truly stunned, we can't attack.
+        // Guard slowdown uses DAZED amplifier 2 where JUtils.canAct(user) remains true.
+        if (user == null || JUtils.isAffectedByTimeStop(user) || !JUtils.canAct(user))
             return false;
 
         // If we're remote and dazed, we can't attack.
@@ -899,6 +922,7 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
      */
     public boolean initMove(MoveClass moveClass) {
         if ((tsTime > 0 || (user != null && net.arna.jcraft.common.tickable.Timestops.isUserOfActiveTimestop(user)))
+                && !(getCurrentMove() instanceof net.arna.jcraft.api.attack.moves.AbstractTimeStopMove<?, ?>)
                 && (moveClass == MoveClass.ULTIMATE
                 || (getFirstValidEntry(moveClass) != null && getFirstValidEntry(moveClass).getMove() instanceof net.arna.jcraft.api.attack.moves.AbstractTimeStopMove<?, ?>))) {
             resumeTimeEarly();
@@ -911,7 +935,9 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
 
             if (getCurrentMove().getFollowup() != null && getCurrentMove().getFollowupFrame().isPresent() &&
                     getCurrentMove().getMoveClass() == moveClass && getMoveStun() <= getCurrentMove().getFollowupFrame().getAsInt()) {
-                moveMap.initiateFollowup(getThis(), getCurrentMove(), false, 0);
+                if (moveMap.tryInitiateFollowup(getThis(), getCurrentMove(), false, 0)) {
+                    return true;
+                }
             }
         }
 
@@ -947,7 +973,8 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
         final List<Projectile> toDeflect = level().getEntitiesOfClass(Projectile.class, getBoundingBox().inflate(0.75f), EntitySelector.ENTITY_STILL_ALIVE);
 
         for (Projectile projectile : toDeflect) {
-            if (projectile.getOwner() == user) continue;
+            if (projectile.getOwner() == user || JUtils.getUserIfStand(projectile.getOwner()) == user) continue;
+            if (JUtils.isAffectedByTimeStop(projectile)) continue;
             projectile.setDeltaMovement(projectile.getDeltaMovement().scale(-0.5).add(0, -0.1, 0));
             projectile.syncVelocity = true;
         }
@@ -1039,7 +1066,7 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
 
     @Override
     public boolean isNoGravity() {
-        if (isFree() && !isRemote()) {
+        if ((isFree() && !isRemote()) || (isRemoteAndControllable() && usesUniversalRemoteMovement())) {
             return true;
         }
         return super.isNoGravity();
@@ -1062,12 +1089,20 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
             user = vehicle;
         }
 
+        final boolean client = level().isClientSide();
+        this.noPhysics = !isRemote();
+
+        if (!isDeadOrDying() && hasUser() && isRemoteAndControllable() && usesUniversalRemoteMovement()) {
+            if (client || tickCount - lastClientRemoteSyncTick > 2) {
+                tickUniversalRemoteMovement();
+            }
+        }
+
         super.tick();
         if (isDeadOrDying()) {
             return;
         }
 
-        final boolean client = level().isClientSide();
         if (tickCount == 1 && !client) {
             playSummonSound();
             if (getUser() instanceof Player player) {
@@ -1119,10 +1154,13 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
             startRiding(Objects.requireNonNull(user), true, false);
         }
 
+        // Rotate with user (provided user controls the stand in non-remote mode)
+        if (!isFree && !isRemote) {
+            setYHeadRot(user.getYHeadRot());
+            setRot(user.getYRot(), user.getXRot());
+        }
+
         if (client) {
-            if (isRemoteAndControllable() && !(this instanceof net.arna.jcraft.common.entity.stand.AbstractPurpleHazeEntity<?, ?>)) {
-                tickUniversalRemoteMovement();
-            }
             JCraft.getClientEntityHandler().standEntityClientTick(this);
             return;
         }
@@ -1168,21 +1206,12 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
 
         final boolean isRemoteAndControllable = isRemote && remoteControllable();
 
-        // Rotate with user (provided user controls the stand in non-remote mode)
-        if (!isFree && !isRemote) {
-            setYHeadRot(user.getYHeadRot());
-            setRot(user.getYRot(), user.getXRot());
-        }
-
         // Remote mode users cannot move while controlling and are protected from fall/ambient hazards
         if (isRemoteAndControllable) {
             user.resetFallDistance();
             resetFallDistance();
             user.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 5, 9, true, false));
             user.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 5, 4, true, false));
-            if (!(this instanceof net.arna.jcraft.common.entity.stand.AbstractPurpleHazeEntity<?, ?>)) {
-                tickUniversalRemoteMovement();
-            }
         }
 
         // Attack logic
@@ -1257,7 +1286,9 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
             }
         }
 
-        tsTime--;
+        if (tsTime > 0) {
+            tsTime--;
+        }
 
         // JCraft.LOGGER.info( "State: " + this.getState() + " Movestun: " + curMoveStun + " Currently attacking: " + (this.curAttack != null)); // Massive debug log
 
@@ -1266,6 +1297,15 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
         {
             prevMove = getCurrentMove();
         }
+    }
+
+    @Override
+    public void remove(final RemovalReason reason) {
+        if (!level().isClientSide() && user != null && (tsTime > 0 || net.arna.jcraft.common.tickable.Timestops.isUserOfActiveTimestop(user))) {
+            setTsTime(0);
+            JCraft.stopTimestop(user);
+        }
+        super.remove(reason);
     }
 
     public boolean canBlock() {

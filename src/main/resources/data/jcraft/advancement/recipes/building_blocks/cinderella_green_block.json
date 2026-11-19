@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:cinderella_green_block"
+        "recipes": "jcraft:cinderella_green_block"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

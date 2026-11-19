@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:matchbox"
+        "recipes": "jcraft:matchbox"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

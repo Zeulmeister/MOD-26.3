@@ -27,7 +27,9 @@ public abstract class CommonShockwaveHandlerComponentImpl implements CommonShock
     public void addShockwave(final double x, final double y, final double z, final float pitch, final float yaw, final float scale, final Shockwave.Type type) {
         Shockwave shockwave = new Shockwave(x, y, z, pitch, yaw, scale, type);
         shockwaves.add(shockwave);
-        sync(shockwave);
+        if (!world.isClientSide()) {
+            sync(shockwave);
+        }
     }
 
     public void sync(final Shockwave shockwave) {

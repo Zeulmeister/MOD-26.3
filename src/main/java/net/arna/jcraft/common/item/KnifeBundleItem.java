@@ -34,7 +34,7 @@ public class KnifeBundleItem extends KnifeItem {
 
     @Override
     public boolean releaseUsing(@org.jetbrains.annotations.NotNull ItemStack stack, @org.jetbrains.annotations.NotNull Level world, LivingEntity user, int remainingUseTicks) {
-        if (user.hasEffect(JStatusRegistry.DAZED.asHolder())) {
+        if (user.hasEffect(JStatusRegistry.DAZED.asHolder()) || user.getItemInHand(user.getUsedItemHand()) != stack) {
             return false;
         }
 
@@ -60,8 +60,7 @@ public class KnifeBundleItem extends KnifeItem {
                 knife.shootFromRotation(user, user.getXRot(), user.getYRot(), 0.0F, 1.5F * speedMult, 5F);
                 world.addFreshEntity(knife);
             }
-        } else {
-            world.playSound(null, user.getX(), user.getY(), user.getZ(), SoundEvents.ENDER_PEARL_THROW, SoundSource.NEUTRAL, 0.5F, 1F); // plays a globalSoundEvent
+            world.playSound(null, user.getX(), user.getY(), user.getZ(), SoundEvents.ENDER_PEARL_THROW, SoundSource.NEUTRAL, 0.5F, 1F);
         }
         return true;
     }

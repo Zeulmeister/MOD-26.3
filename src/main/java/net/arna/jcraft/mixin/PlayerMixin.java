@@ -35,6 +35,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.lang.ref.WeakReference;
+
 @Mixin(Player.class)
 public abstract class PlayerMixin implements IComboCounter, IFoodData {
 
@@ -49,16 +51,21 @@ public abstract class PlayerMixin implements IComboCounter, IFoodData {
     private int jcraft$comboCount = 1;
 
     @Unique
-    private LivingEntity jcraft$lastAttacked;
+    private WeakReference<LivingEntity> jcraft$lastAttacked = new WeakReference<>(null);
 
     @Override
     public LivingEntity jcraft$getLastAttacked() {
-        return jcraft$lastAttacked;
+        LivingEntity target = jcraft$lastAttacked.get();
+        if (target != null && (!target.isAlive() || target.isRemoved())) {
+            jcraft$lastAttacked.clear();
+            return null;
+        }
+        return target;
     }
 
     @Override
     public void jcraft$setLastAttacked(LivingEntity target) {
-        this.jcraft$lastAttacked = target;
+        this.jcraft$lastAttacked = new WeakReference<>(target);
     }
 
     @Override
@@ -106,25 +113,36 @@ public abstract class PlayerMixin implements IComboCounter, IFoodData {
             spec.tickSpec();
         }
 
-        if (jcraft$lastAttacked == null || !jcraft$lastAttacked.isAlive()) {
+        LivingEntity lastAttacked = jcraft$lastAttacked.get();
+        if (lastAttacked == null) {
+            return;
+        }
+        if (!lastAttacked.isAlive() || lastAttacked.isRemoved() || lastAttacked.level() != self.level()) {
+            jcraft$lastAttacked.clear();
+            if (jcraft$comboCount != 0) {
+                jcraft$comboCount = 0;
+                if (self instanceof ServerPlayer serverPlayer) {
+                    ComboCounterPacket.send(serverPlayer, 0, 1.0f);
+                }
+            }
             return;
         }
 
-        LivingEntity lastHurtBy = jcraft$lastAttacked.getLastHurtByMob();
+        LivingEntity lastHurtBy = lastAttacked.getLastHurtByMob();
         if (lastHurtBy != null) {
             if (lastHurtBy == self) {
-                if (jcraft$lastAttacked.hasEffect(JStatusRegistry.DAZED.asHolder())) {
+                if (lastAttacked.hasEffect(JStatusRegistry.DAZED.asHolder())) {
                     return;
                 }
             } else if (lastHurtBy instanceof IOwnable ownable && ownable.getMaster() == self) {
-                if (jcraft$lastAttacked.hasEffect(JStatusRegistry.DAZED.asHolder())) {
+                if (lastAttacked.hasEffect(JStatusRegistry.DAZED.asHolder())) {
                     return;
                 }
             }
         }
 
-        if (!jcraft$lastAttacked.hasEffect(JStatusRegistry.DAZED.asHolder())) {
-            jcraft$lastAttacked = null;
+        if (!lastAttacked.hasEffect(JStatusRegistry.DAZED.asHolder())) {
+            jcraft$lastAttacked.clear();
             jcraft$comboCount = 0;
             if (self instanceof ServerPlayer serverPlayer) {
                 ComboCounterPacket.send(serverPlayer, 0, 1.0f);

@@ -67,16 +67,23 @@ public class TimeAccelStatePacket {
 
     public static void sendStart(@NonNull final MadeInHeavenEntity mih, int duration) {
         final long time = System.currentTimeMillis();
+        final var server = Objects.requireNonNull(mih.getEntityWorld().getServer());
 
-        // On singleplayer, the accelerations map is used for client stuff too.
-        if (Objects.requireNonNull(mih.getEntityWorld().getServer()).isDedicatedServer()) {
+        // Dedicated server sends to all players; published LAN host sends only to remote LAN guests
+        // (the local host shares this static accelerations map in singleplayer/LAN).
+        if (server.isDedicatedServer() || server.isPublished()) {
             final FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
             buf.writeEnum(State.START);
             buf.writeVarInt(mih.getId());
             buf.writeVarInt(duration);
             buf.writeLong(time); // for time syncing
 
-            net.arna.jcraft.common.network.JNetwork.sendToPlayers(((ServerLevel) mih.level()).players(), JPacketRegistry.S2C_TIME_ACCELERATION_STATE, buf);
+            var recipients = ((ServerLevel) mih.level()).players().stream()
+                    .filter(p -> server.isDedicatedServer() || !server.isSingleplayerOwner(p.nameAndId()))
+                    .toList();
+            if (!recipients.isEmpty()) {
+                net.arna.jcraft.common.network.JNetwork.sendToPlayers(recipients, JPacketRegistry.S2C_TIME_ACCELERATION_STATE, buf);
+            }
         }
 
         synchronized (lock) {
@@ -85,12 +92,18 @@ public class TimeAccelStatePacket {
     }
 
     public static void sendStop(@NonNull final MadeInHeavenEntity mih) {
-        if (Objects.requireNonNull(mih.level().getServer()).isDedicatedServer()) {
+        final var server = Objects.requireNonNull(mih.level().getServer());
+        if (server.isDedicatedServer() || server.isPublished()) {
             final FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
             buf.writeEnum(State.STOP);
             buf.writeVarInt(mih.getId());
 
-            net.arna.jcraft.common.network.JNetwork.sendToPlayers(((ServerLevel) mih.level()).players(), JPacketRegistry.S2C_TIME_ACCELERATION_STATE, buf);
+            var recipients = ((ServerLevel) mih.level()).players().stream()
+                    .filter(p -> server.isDedicatedServer() || !server.isSingleplayerOwner(p.nameAndId()))
+                    .toList();
+            if (!recipients.isEmpty()) {
+                net.arna.jcraft.common.network.JNetwork.sendToPlayers(recipients, JPacketRegistry.S2C_TIME_ACCELERATION_STATE, buf);
+            }
         }
 
         synchronized (lock) {

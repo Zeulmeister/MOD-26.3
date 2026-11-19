@@ -532,6 +532,7 @@ public final class JUtils {
         final boolean fire = modifier.getCreateFire() != null && modifier.getCreateFire();
         final Explosion.BlockInteraction blockInteraction = modifier.getBlockInteraction() != null ? modifier.getBlockInteraction() : Explosion.BlockInteraction.KEEP;
         final ServerExplosion explosion = new ServerExplosion(_sl, entity, null, null, new Vec3(x, y, z), power, fire, blockInteraction);
+        ((IJExplosion) explosion).jcraft$setModifier(modifier);
         explosion.explode();
 
         // set gasoline on fire (always, independent of fire modifier)
@@ -580,9 +581,41 @@ public final class JUtils {
         return data.get().getTicks() > 0;
     }
 
+    public static boolean canBeAttackedByJCraft(@Nullable final LivingEntity victim) {
+        if (victim == null || !victim.isAlive() || victim.isRemoved()) {
+            return false;
+        }
+        if (victim instanceof net.arna.jcraft.common.entity.TrainingDummyEntity) {
+            return true;
+        }
+        // In MC 26.3, LivingEntity.canBeSeenAsEnemy() checks !isInvulnerable(), which now includes temporary hurt i-frames
+        // (invulnerableTime > 0). JCraft combos, barrages, grabs, and Time Stop followups must ignore temporary hurt i-frames.
+        return !victim.isPermanentlyInvulnerable()
+                && !net.arna.jcraft.common.entity.stand.CreamEntity.isCreaming(victim)
+                && victim.canBeSeenByAnyone();
+    }
+
     public static boolean canDamage(DamageSource damageSource, Entity ent) {
-        return ent != null && ent.isAlive() && ent.isAttackable() && !(ent.level() instanceof ServerLevel _sl && ent instanceof LivingEntity _le && _le.isInvulnerableTo(_sl, damageSource)) && !ent.isInvulnerable() &&
-                !(ent instanceof ArmorStand armorStand && armorStand.isMarker());
+        if (ent == null || !ent.isAlive() || !ent.isAttackable()
+                || ent.isPermanentlyInvulnerable()
+                || net.arna.jcraft.common.entity.stand.CreamEntity.isCreaming(ent)
+                || (ent instanceof ArmorStand armorStand && armorStand.isMarker())) {
+            return false;
+        }
+        if (ent.level() instanceof ServerLevel _sl && ent instanceof LivingEntity _le) {
+            // Temporarily mask hurt i-frames while evaluating isInvulnerableTo so MC 26.3's isTemporarilyInvulnerable()
+            // does not block rapid stand barrages, combos, grabs, or Time Stop multi-hits.
+            final int savedInvuln = _le.invulnerableTime;
+            _le.invulnerableTime = 0;
+            try {
+                if (_le.isInvulnerableTo(_sl, damageSource)) {
+                    return false;
+                }
+            } finally {
+                _le.invulnerableTime = savedInvuln;
+            }
+        }
+        return true;
     }
 
     /**
@@ -884,7 +917,8 @@ public final class JUtils {
             spawned = arrow.createArrow(level, itemStack, arrowOwner instanceof LivingEntity le ? le : shooter, null);
         }
         else if (itemStack.getItem() instanceof SnowballItem) {
-            final Snowball snowballEntity = new Snowball(level, shooter, itemStack.copy());
+            final LivingEntity owner = getUserIfStand(shooter) instanceof LivingEntity le ? le : shooter;
+            final Snowball snowballEntity = new Snowball(level, owner, itemStack.copy());
             snowballEntity.setItem(itemStack);
             spawned = snowballEntity;
         }
@@ -892,12 +926,14 @@ public final class JUtils {
             spawned = new ThrownTrident(level, getUserIfStand(shooter), itemStack);
         }
         else if (itemStack.getItem() instanceof ThrowablePotionItem) {
-            final ThrownSplashPotion thrownPotion = new ThrownSplashPotion(level, shooter, itemStack.copy());
+            final LivingEntity owner = getUserIfStand(shooter) instanceof LivingEntity le ? le : shooter;
+            final ThrownSplashPotion thrownPotion = new ThrownSplashPotion(level, owner, itemStack.copy());
             thrownPotion.setItem(itemStack);
             spawned = thrownPotion;
         }
         else if (itemStack.getItem() instanceof EggItem) {
-            final ThrownEgg thrownEgg = new ThrownEgg(level, shooter, itemStack.copy());
+            final LivingEntity owner = getUserIfStand(shooter) instanceof LivingEntity le ? le : shooter;
+            final ThrownEgg thrownEgg = new ThrownEgg(level, owner, itemStack.copy());
             thrownEgg.setItem(itemStack);
             spawned = thrownEgg;
         }
@@ -1047,7 +1083,7 @@ public final class JUtils {
      */
     public static boolean isMortal(@Nullable final ServerPlayer player) {
         if (player == null) return false;
-        return !player.isSpectator() && !player.isCreative() && !player.isInvulnerable();
+        return !player.isSpectator() && !player.isCreative() && !player.isPermanentlyInvulnerable();
     }
 
     @NonNull
@@ -1076,7 +1112,7 @@ public final class JUtils {
         ServerPlayer player = user instanceof ServerPlayer p ? p : null;
 
         boolean isPlayer = player != null;
-        boolean mobGriefing = ((net.minecraft.server.level.ServerLevel) level).getGameRules().get(GameRules.MOB_GRIEFING);
+        boolean mobGriefing = serverLevel != null && serverLevel.getGameRules().get(GameRules.MOB_GRIEFING);
         boolean isSpawnProtected = serverLevel != null && player != null && pos != null &&
                 serverLevel.getServer().isUnderSpawnProtection(serverLevel, pos, player);
         boolean mayBuild = !isPlayer || pos == null || (!checkMayBuild || player.mayBuild()) &&

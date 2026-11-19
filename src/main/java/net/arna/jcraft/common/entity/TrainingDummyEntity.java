@@ -137,9 +137,11 @@ public class TrainingDummyEntity extends Mob implements ICustomDamageHandler {
 
         // ONLY pick up if BOTH hands are completely empty
         if (mainHand.isEmpty() && offHand.isEmpty()) {
-            if (!player.level().isClientSide()) {
+            if (player.level() instanceof ServerLevel sl) {
                 ItemStack dummyItem = new ItemStack(JItemRegistry.TRAINING_DUMMY.get());
-                player.getInventory().add(dummyItem);
+                if (!player.getInventory().add(dummyItem)) {
+                    this.spawnAtLocation(sl, dummyItem);
+                }
                 if (isLeashed()) {
                     dropLeash();
                 }
@@ -175,7 +177,6 @@ public class TrainingDummyEntity extends Mob implements ICustomDamageHandler {
             return false;
         }
 
-        // Send damage number packet
         if (damage > 0) {
             sendDamageNumberPacket(this, damage);
         }
@@ -256,9 +257,13 @@ public class TrainingDummyEntity extends Mob implements ICustomDamageHandler {
             return;
         }
 
+        int range = net.arna.jcraft.common.config.JServerConfig.DUMMY_DAMAGE_INDICATOR_RANGE.getValue();
+        if (range <= 0) {
+            return;
+        }
         Vec3 pos = entity.position();
         List<ServerPlayer> nearbyPlayers = serverLevel.getEntitiesOfClass(ServerPlayer.class,
-                new AABB(pos.add(64, 64, 64), pos.subtract(64, 64, 64)));
+                new AABB(pos.add(range, range, range), pos.subtract(range, range, range)));
 
         if (!nearbyPlayers.isEmpty()) {
             FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());

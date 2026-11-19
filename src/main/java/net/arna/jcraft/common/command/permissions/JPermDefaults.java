@@ -23,8 +23,9 @@ public final class JPermDefaults {
     /** Held by nobody until a permission manager grants it. */
     public static final Predicate<CommandSourceStack> NONE = source -> false;
 
-    /** {@link #OP}, plus anybody hosting their own singleplayer world. */
+    /** {@link #OP}, plus the host of a singleplayer world (not LAN guests). */
     @SuppressWarnings("ConstantValue") // lies
     public static final Predicate<CommandSourceStack> OP_OR_SINGLEPLAYER = source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER)
-            || (source.getServer() != null && source.getServer().isSingleplayer());
+            || (source.getServer() != null && source.getServer().isSingleplayer()
+                && source.getPlayer() != null && source.getServer().isSingleplayerOwner(source.getPlayer().nameAndId()));
 }

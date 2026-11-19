@@ -3,6 +3,7 @@ package net.arna.jcraft.common.item;
 import net.minecraft.world.InteractionResult;
 
 import net.arna.jcraft.api.registry.JSoundRegistry;
+import net.arna.jcraft.api.registry.JStatusRegistry;
 import net.arna.jcraft.common.entity.projectile.MatchProjectile;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.stats.Stats;
@@ -25,6 +26,9 @@ public class MatchboxItem extends Item {
     public @NotNull InteractionResult use(@NotNull Level level, @NotNull Player player,
                                                            @NotNull InteractionHand usedHand) {
         ItemStack itemStack = player.getItemInHand(usedHand);
+        if (player.hasEffect(JStatusRegistry.DAZED.asHolder())) {
+            return InteractionResult.FAIL;
+        }
 
         level.playSound(
                 null,

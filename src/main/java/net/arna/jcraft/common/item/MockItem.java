@@ -11,7 +11,14 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 public class MockItem extends Item {
-    private static final ItemStack FALLBACK = new ItemStack(Items.DIRT);
+    private static ItemStack fallback;
+
+    private static ItemStack getFallback() {
+        if (fallback == null) {
+            fallback = new ItemStack(Items.DIRT);
+        }
+        return fallback;
+    }
 
     protected MockItem() {
         super(JItemRegistry.settings());
@@ -20,13 +27,17 @@ public class MockItem extends Item {
     public static ItemStack getMockedStack(ItemStack mockItemStack) {
         CompoundTag nbt = JItemData.getTag(mockItemStack);
         if (nbt == null || !nbt.contains("MockItem")) {
-            return FALLBACK;
+            return getFallback();
         }
 
         String mockItemId = nbt.getStringOr("MockItem", "");
-        Item mockItem = BuiltInRegistries.ITEM.getValue(Identifier.parse(mockItemId));
+        Identifier parsedId = Identifier.tryParse(mockItemId);
+        if (parsedId == null) {
+            return getFallback();
+        }
+        Item mockItem = BuiltInRegistries.ITEM.getValue(parsedId);
         if (mockItem == Items.AIR) {
-            return FALLBACK;
+            return getFallback();
         }
 
         CompoundTag mockData = nbt.contains("MockData") ? nbt.getCompoundOrEmpty("MockData") : null;

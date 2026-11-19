@@ -58,18 +58,68 @@
       ],
       "modifiers": [
         {
-          "type": "custom",
-          "operation": "ADD",
-          "part": "leftArm",
-          "property": "X_ROT",
-          "value": -0.17453292
+          "type": "group",
+          "conditions": [
+            "LEFT_ARM_EMPTY"
+          ],
+          "modifiers": [
+            {
+              "type": "custom",
+              "operation": "ADD",
+              "part": "leftArm",
+              "property": "X_ROT",
+              "value": -0.17453292
+            },
+            {
+              "type": "custom",
+              "operation": "ADD",
+              "part": "leftArm",
+              "property": "Z",
+              "value": 0.25
+            },
+            {
+              "type": "custom",
+              "operation": "ADD",
+              "part": "leftArm",
+              "property": "X",
+              "value": 0.5
+            },
+            {
+              "type": "empty"
+            }
+          ]
         },
         {
-          "type": "custom",
-          "operation": "ADD",
-          "part": "rightArm",
-          "property": "X_ROT",
-          "value": -0.17453292
+          "type": "group",
+          "conditions": [
+            "RIGHT_ARM_EMPTY"
+          ],
+          "modifiers": [
+            {
+              "type": "custom",
+              "operation": "ADD",
+              "part": "rightArm",
+              "property": "X_ROT",
+              "value": -0.17453292
+            },
+            {
+              "type": "custom",
+              "operation": "ADD",
+              "part": "rightArm",
+              "property": "Z",
+              "value": 0.25
+            },
+            {
+              "type": "custom",
+              "operation": "ADD",
+              "part": "rightArm",
+              "property": "X",
+              "value": -0.5
+            },
+            {
+              "type": "empty"
+            }
+          ]
         },
         {
           "type": "custom",
@@ -91,34 +141,6 @@
           "part": "rightLeg",
           "property": "Z",
           "value": -2.0
-        },
-        {
-          "type": "custom",
-          "operation": "ADD",
-          "part": "leftArm",
-          "property": "Z",
-          "value": 0.25
-        },
-        {
-          "type": "custom",
-          "operation": "ADD",
-          "part": "rightArm",
-          "property": "Z",
-          "value": 0.25
-        },
-        {
-          "type": "custom",
-          "operation": "ADD",
-          "part": "leftArm",
-          "property": "X",
-          "value": 0.5
-        },
-        {
-          "type": "custom",
-          "operation": "ADD",
-          "part": "rightArm",
-          "property": "X",
-          "value": -0.5
         },
         {
           "type": "empty"

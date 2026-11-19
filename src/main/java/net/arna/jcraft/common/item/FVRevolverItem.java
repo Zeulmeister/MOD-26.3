@@ -31,12 +31,17 @@ public class FVRevolverItem extends Item {
         super(settings);
     }
 
+    public static int getShots(ItemStack stack) {
+        CompoundTag data = JItemData.getTag(stack);
+        if (data == null || !data.contains("Shots")) {
+            return 6;
+        }
+        return data.getIntOr("Shots", 0);
+    }
+
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext tooltipCtx, TooltipDisplay tooltipDisplay, Consumer<Component> tooltipAdder, TooltipFlag context) {
-        CompoundTag itemData = JItemData.getTag(stack);
-        if (itemData != null && itemData.contains("Shots")) {
-            tooltipAdder.accept(Component.translatable("jcraft.revolver.shots").append(" §e" + itemData.getIntOr("Shots", 0)));
-        }
+        tooltipAdder.accept(Component.translatable("jcraft.revolver.shots").append(" §e" + getShots(stack)));
     }
 
     @Override
@@ -45,8 +50,7 @@ public class FVRevolverItem extends Item {
         if (user.hasEffect(JStatusRegistry.DAZED.asHolder()) || user.isSpectator()) {
             return InteractionResult.FAIL;
         }
-        CompoundTag data = JItemData.getOrCreateTag(itemStack);
-        int shots = data.getIntOr("Shots", 0);
+        int shots = getShots(itemStack);
         if (shots < 1) {
             return InteractionResult.FAIL;
         }
@@ -59,8 +63,7 @@ public class FVRevolverItem extends Item {
     }
 
     public static void fire(ItemStack itemStack, Level world, LivingEntity user) {
-        CompoundTag data = JItemData.getOrCreateTag(itemStack);
-        int shots = data.getIntOr("Shots", 0);
+        int shots = getShots(itemStack);
         if (shots < 1) {
             return;
         }

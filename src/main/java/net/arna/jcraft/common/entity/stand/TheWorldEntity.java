@@ -75,19 +75,24 @@ public final class TheWorldEntity extends AbstractTheWorldEntity<TheWorldEntity,
                     rightArm.yRot = -15deg;
                     rightArm.zRot = -2deg;
                     """, ModifierCondition.RIGHT_ARM_EMPTY))
-            .modifier(PoseModifiers.parse("""
-                    leftArm.xRot -= 10deg;
-                    rightArm.xRot -= 10deg;
-                    body.xRot -= 10deg;
-                    
-                    leftLeg.z -= 2;
-                    rightLeg.z -= 2;
-                    
-                    leftArm.z += 0.25;
-                    rightArm.z += 0.25;
-                    leftArm.x += 0.5;
-                    rightArm.x -= 0.5;
-                    """, ModifierCondition.USER_NOT_SPRINTING))
+            .modifier(PoseModifierGroup.builder()
+                    .condition(ModifierCondition.USER_NOT_SPRINTING)
+                    .modifier(PoseModifiers.parse("""
+                            leftArm.xRot -= 10deg;
+                            leftArm.z += 0.25;
+                            leftArm.x += 0.5;
+                            """, ModifierCondition.LEFT_ARM_EMPTY))
+                    .modifier(PoseModifiers.parse("""
+                            rightArm.xRot -= 10deg;
+                            rightArm.z += 0.25;
+                            rightArm.x -= 0.5;
+                            """, ModifierCondition.RIGHT_ARM_EMPTY))
+                    .modifier(PoseModifiers.parse("""
+                            body.xRot -= 10deg;
+                            leftLeg.z -= 2;
+                            rightLeg.z -= 2;
+                            """))
+                    .build())
             .build();
 
     public static final SimpleAttack<TheWorldEntity> LOW_KICK = new SimpleAttack<TheWorldEntity>(0, 8, 14, 0.75f,

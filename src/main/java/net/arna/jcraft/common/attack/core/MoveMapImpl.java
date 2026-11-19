@@ -175,6 +175,9 @@ public class MoveMapImpl<A extends IAttacker<? extends A, S>, S extends Enum<?>>
         public EntryImpl(final MoveClass moveClass, final AbstractMove<?, ? super A> move, final CooldownType cooldownType, final @Nullable S animState) {
             this.moveClass = moveClass;
             this.move = move;
+            if (animState != null) {
+                this.move.withAnim(animState);
+            }
             this.cooldownType = cooldownType;
             this.animState = animState;
 
@@ -225,6 +228,7 @@ public class MoveMapImpl<A extends IAttacker<? extends A, S>, S extends Enum<?>>
                 throw new IllegalArgumentException("The move of this entry has " +
                         "no crouching variant.");
             }
+            move.getCrouchingVariant().withAnim(animState);
             crouchingVariant = new EntryImpl<A, S>(moveClass, move.getCrouchingVariant(), cooldownType, animState);
             return crouchingVariant;
         }
@@ -235,6 +239,7 @@ public class MoveMapImpl<A extends IAttacker<? extends A, S>, S extends Enum<?>>
                 throw new IllegalArgumentException("The move of this entry has " +
                         "no aerial variant.");
             }
+            move.getAerialVariant().withAnim(animState);
             aerialVariant = new EntryImpl<A, S>(moveClass, move.getAerialVariant(), cooldownType, animState);
             return aerialVariant;
         }
@@ -245,6 +250,7 @@ public class MoveMapImpl<A extends IAttacker<? extends A, S>, S extends Enum<?>>
                 throw new IllegalArgumentException("The move of this entry has " +
                         "no follow-up.");
             }
+            move.getFollowup().withAnim(animState);
             followup = new EntryImpl<A, S>(moveClass, move.getFollowup(), cooldownType, animState);
             return followup;
         }

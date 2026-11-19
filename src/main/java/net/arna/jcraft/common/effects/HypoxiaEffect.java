@@ -35,8 +35,30 @@ public class HypoxiaEffect extends MobEffect {
         if (airSupply <= 0) {
             livingEntity.hurtServer(level, livingEntity.damageSources().drown(), 2.0F);
         }
-        livingEntity.setAirSupply(airSupply - 20);
+        livingEntity.setAirSupply(Math.max(-20, airSupply - 20));
         return true;
+    }
+
+    @Override
+    public void addAttributeModifiers(final net.minecraft.world.entity.ai.attributes.AttributeMap attributeMap, final int amplifier) {
+        this.removeAttributeModifiers(attributeMap);
+        this.createModifiers(amplifier, (attribute, modifier) -> {
+            var inst = attributeMap.getInstance(attribute);
+            if (inst != null) {
+                inst.removeModifier(modifier.id());
+                inst.addPermanentModifier(modifier);
+            }
+        });
+    }
+
+    @Override
+    public void removeAttributeModifiers(final net.minecraft.world.entity.ai.attributes.AttributeMap attributeMap) {
+        var dmg = attributeMap.getInstance(Attributes.ATTACK_DAMAGE);
+        if (dmg != null) dmg.removeModifier(DMG_ID);
+        var spd = attributeMap.getInstance(Attributes.MOVEMENT_SPEED);
+        if (spd != null) spd.removeModifier(SPD_ID);
+        var aspd = attributeMap.getInstance(Attributes.ATTACK_SPEED);
+        if (aspd != null) aspd.removeModifier(ASPD_ID);
     }
 
     @Override

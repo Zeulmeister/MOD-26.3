@@ -214,6 +214,15 @@ public final class SPTWEntity extends AbstractStarPlatinumEntity<SPTWEntity, SPT
     }
 
     @Override
+    public @org.jetbrains.annotations.NotNull net.minecraft.resources.Identifier getUserPose() {
+        final net.minecraft.resources.Identifier pose = super.getUserPose();
+        if (pose.equals(JStandTypeRegistry.STAR_PLATINUM_THE_WORLD.getId())) {
+            return JStandTypeRegistry.STAR_PLATINUM.getId();
+        }
+        return pose;
+    }
+
+    @Override
     public void desummon() {
         if (tsTime > 0) {
             return;

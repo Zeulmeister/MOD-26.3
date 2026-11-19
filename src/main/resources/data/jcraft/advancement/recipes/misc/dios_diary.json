@@ -23,7 +23,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:dios_diary"
+        "recipes": "jcraft:dios_diary"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

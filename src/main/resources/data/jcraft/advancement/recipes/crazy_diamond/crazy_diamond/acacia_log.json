@@ -2,7 +2,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:crazy_diamond/acacia_log"
+        "recipes": "jcraft:crazy_diamond/acacia_log"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

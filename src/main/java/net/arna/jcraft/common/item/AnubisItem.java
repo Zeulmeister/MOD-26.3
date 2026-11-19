@@ -72,9 +72,10 @@ public class AnubisItem extends Item {
         }
 
         JUtils.serverPlaySound(JSoundRegistry.ANUBIS_SHEATHE.get(), (ServerLevel) world, user.position());
-        user.setItemInHand(hand, new ItemStack(JItemRegistry.ANUBIS_SHEATHED.get()));
+        ItemStack sheathed = new ItemStack(JItemRegistry.ANUBIS_SHEATHED.get());
+        user.setItemInHand(hand, sheathed);
 
-        return InteractionResult.SUCCESS.heldItemTransformedTo(item);
+        return InteractionResult.SUCCESS.heldItemTransformedTo(sheathed);
     }
 
     public static void handleAnubisEffects(int timeSinceAttack, Player player) {

@@ -144,7 +144,7 @@ public class ClientEntityHandlerImpl implements IClientEntityHandler {
                         auraColor
                 );
             }
-            if (!isOwnerAndFP && random.nextBoolean() && !JClientUtils.shouldNotRender(user)) {
+            if ((!isOwnerAndFP || stand.isRemoteAndControllable()) && random.nextBoolean() && !JClientUtils.shouldNotRender(user)) {
                 displayAuraParticles(clientWorld,
                         random,
                         user,
@@ -284,13 +284,13 @@ public class ClientEntityHandlerImpl implements IClientEntityHandler {
             f += 1.0f;
         }
         if (options.keyDown.isDown()) {
-            f += 1.0f;
+            f -= 1.0f;
         }
         if (options.keyLeft.isDown()) {
-            s -= 1.0f;
+            s += 1.0f;
         }
         if (options.keyRight.isDown()) {
-            s += 1.0f;
+            s -= 1.0f;
         }
 
         //JCraft.LOGGER.info("Handling remote movement for: " + whiteSnakeEntity + " with " + f + " " + s + " " + jump);
@@ -311,13 +311,13 @@ public class ClientEntityHandlerImpl implements IClientEntityHandler {
             f += 1.0f;
         }
         if (options.keyDown.isDown()) {
-            f += 1.0f;
+            f -= 1.0f;
         }
         if (options.keyLeft.isDown()) {
-            s -= 1.0f;
+            s += 1.0f;
         }
         if (options.keyRight.isDown()) {
-            s += 1.0f;
+            s -= 1.0f;
         }
 
         //JCraft.LOGGER.info("Handling remote movement for: " + purpleHazeEntity + " with " + f + " " + s + " " + jump);
@@ -339,13 +339,13 @@ public class ClientEntityHandlerImpl implements IClientEntityHandler {
             f += 1.0f;
         }
         if (options.keyDown.isDown()) {
-            f += 1.0f;
+            f -= 1.0f;
         }
         if (options.keyLeft.isDown()) {
-            s -= 1.0f;
+            s += 1.0f;
         }
         if (options.keyRight.isDown()) {
-            s += 1.0f;
+            s -= 1.0f;
         }
 
         hgEntity.tickRemoteMovement(f, s, jump, sneak);

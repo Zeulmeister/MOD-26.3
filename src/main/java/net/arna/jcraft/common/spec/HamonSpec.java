@@ -327,7 +327,7 @@ public class HamonSpec extends JSpec<HamonSpec, HamonSpec.State> {
                     add *= healthRatio;
                 }
 
-                charge += add;
+                charge = Math.min(MAX_CHARGE, charge + add);
             }
 
             hamon.setHamonCharge(charge);
@@ -421,7 +421,10 @@ public class HamonSpec extends JSpec<HamonSpec, HamonSpec.State> {
     @Override
     public void reset() {
         super.reset();
+        this.charge = 0.0f;
+        this.useHamonNext = false;
         hamon.resetHamonCharge();
+        hamon.setHamonizeReady(false);
         hamon.resetLastZoomPunched();
         hamon.resetLastSendoed();
         hamon.resetLastSendoAired();

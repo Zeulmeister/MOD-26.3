@@ -21,8 +21,9 @@ public class SummonData {
      */
     public static final SummonData EMPTY = SummonData.of(() -> null);
     public static final Codec<SummonData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            SoundEvent.CODEC.<Supplier<SoundEvent>>xmap(h -> h::value, s -> BuiltInRegistries.SOUND_EVENT.wrapAsHolder(s.get()))
-                    .fieldOf("sound").forGetter(d -> d.sound),
+            SoundEvent.DIRECT_CODEC.optionalFieldOf("sound")
+                    .<Supplier<@Nullable SoundEvent>>xmap(opt -> () -> opt.orElse(null), s -> java.util.Optional.ofNullable(s.get()))
+                    .forGetter(d -> d.sound),
             Codec.BOOL.optionalFieldOf("play_generic_sound", false).forGetter(SummonData::isPlayGenericSound),
             Codec.INT.optionalFieldOf("anim_duration", 19).forGetter(SummonData::getAnimDuration)
     ).apply(instance, SummonData::new));

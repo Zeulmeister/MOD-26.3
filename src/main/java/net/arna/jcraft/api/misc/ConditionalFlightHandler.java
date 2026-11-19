@@ -3,6 +3,7 @@ package net.arna.jcraft.api.misc;
 import dev.architectury.event.events.client.ClientTickEvent;
 import dev.architectury.event.events.common.TickEvent;
 import dev.architectury.platform.Platform;
+import net.arna.jcraft.common.entity.stand.CreamEntity;
 import net.arna.jcraft.common.entity.stand.GEREntity;
 import net.arna.jcraft.common.util.JUtils;
 import net.fabricmc.api.EnvType;
@@ -42,13 +43,42 @@ public class ConditionalFlightHandler {
                 p -> JUtils.getStand(p) instanceof GEREntity ger && ger.getFlightTime() > 0
         );
         addCondition(
-                p -> p instanceof ServerPlayer ? net.arna.jcraft.common.tickable.Timestops.isUserOfActiveTimestop(p) : net.arna.jcraft.client.util.JClientUtils.isUserOfActiveTimestop(p),
-                p -> p instanceof ServerPlayer ? net.arna.jcraft.common.tickable.Timestops.isUserOfActiveTimestop(p) : net.arna.jcraft.client.util.JClientUtils.isUserOfActiveTimestop(p)
+                ConditionalFlightHandler::isActiveTimestopUser,
+                ConditionalFlightHandler::isActiveTimestopUser
         );
-        addCondition(
-                p -> JUtils.getStand(p) != null && JUtils.getStand(p).isAlive() && !JUtils.getStand(p).isRemoteAndControllable(),
-                p -> JUtils.getStand(p) != null && JUtils.getStand(p).isAlive() && !JUtils.getStand(p).isRemoteAndControllable()
-        );
+    }
+
+    private static boolean isActiveTimestopUser(Player player) {
+        return player instanceof ServerPlayer
+                ? net.arna.jcraft.common.tickable.Timestops.isUserOfActiveTimestop(player)
+                : net.arna.jcraft.client.util.JClientUtils.isUserOfActiveTimestop(player);
+    }
+
+    public static boolean isAllowedJCraftFlight(Player player) {
+        return isActiveTimestopUser(player)
+                || (JUtils.getStand(player) instanceof GEREntity ger && ger.getFlightTime() > 0)
+                || CreamEntity.isCreaming(player);
+    }
+
+    /**
+     * Immediately revokes temporary JCraft flight (e.g. when Time Stop ends or when loading a save
+     * that still had lingering survival flight enabled). Never strips Creative or Spectator flight.
+     */
+    public static void revokeStaleFlightIfNotAllowed(Player player) {
+        if (player == null || player.isCreative() || player.isSpectator() || isAllowedJCraftFlight(player)) {
+            return;
+        }
+        for (FlightTracker tracker : TRACKERS) {
+            tracker.markInactive(player);
+        }
+        if (player.getAbilities().mayfly || player.getAbilities().flying) {
+            player.getAbilities().mayfly = false;
+            player.getAbilities().flying = false;
+            player.resetFallDistance();
+            if (player instanceof ServerPlayer sp) {
+                sp.onUpdateAbilities();
+            }
+        }
     }
 
     /**
@@ -66,9 +96,7 @@ public class ConditionalFlightHandler {
         for (Player player : players) {
             boolean foundPositiveTracker = false;
             boolean anyChangedToInactive = false;
-            boolean forceHoverNow = (player instanceof ServerPlayer
-                    ? net.arna.jcraft.common.tickable.Timestops.isUserOfActiveTimestop(player)
-                    : net.arna.jcraft.client.util.JClientUtils.isUserOfActiveTimestop(player))
+            boolean forceHoverNow = isActiveTimestopUser(player)
                     || (JUtils.getStand(player) instanceof GEREntity ger && ger.getFlightTime() > 0);
 
             for (FlightTracker tracker : TRACKERS) {
@@ -87,15 +115,16 @@ public class ConditionalFlightHandler {
 
             if (foundPositiveTracker) {
                 boolean wasAllowed = player.getAbilities().mayfly;
+                boolean wasFlying = player.getAbilities().flying;
                 player.getAbilities().mayfly = true;
                 if (forceHoverNow && !player.onGround()) {
                     player.getAbilities().flying = true;
                 }
                 player.resetFallDistance();
-                if (!wasAllowed && player instanceof ServerPlayer sp) {
+                if ((!wasAllowed || player.getAbilities().flying != wasFlying) && player instanceof ServerPlayer sp) {
                     sp.onUpdateAbilities();
                 }
-            } else if (anyChangedToInactive && !player.isCreative() && !player.isSpectator()) {
+            } else if (anyChangedToInactive && !player.isCreative() && !player.isSpectator() && !CreamEntity.isCreaming(player)) {
                 player.getAbilities().mayfly = false;
                 player.getAbilities().flying = false;
                 player.resetFallDistance();

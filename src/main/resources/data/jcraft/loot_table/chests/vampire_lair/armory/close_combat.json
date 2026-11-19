@@ -39,10 +39,11 @@
           "modifier": [
             {
               "levels": {
+                "type": "minecraft:uniform",
                 "min": 10,
                 "max": 25
               },
-              "treasure": false,
+              "options": "#minecraft:on_random_loot",
               "type": "minecraft:enchant_with_levels"
             }
           ]
@@ -54,10 +55,11 @@
           "modifier": [
             {
               "levels": {
+                "type": "minecraft:uniform",
                 "min": 10,
                 "max": 25
               },
-              "treasure": false,
+              "options": "#minecraft:on_random_loot",
               "type": "minecraft:enchant_with_levels"
             }
           ]
@@ -69,10 +71,11 @@
           "modifier": [
             {
               "levels": {
+                "type": "minecraft:uniform",
                 "min": 10,
                 "max": 25
               },
-              "treasure": false,
+              "options": "#minecraft:on_random_loot",
               "type": "minecraft:enchant_with_levels"
             }
           ]
@@ -83,8 +86,7 @@
       "rolls": 1,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "minecraft:air",
+          "type": "minecraft:empty",
           "weight": 99
         },
         {
@@ -95,6 +97,7 @@
             {
               "enchantments": {
                 "minecraft:riptide": {
+                  "type": "minecraft:uniform",
                   "min": 1,
                   "max": 3
                 }

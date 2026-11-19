@@ -6,7 +6,7 @@
       "entries": [
         {
           "type": "minecraft:tag",
-          "name": "minecraft:wool_carpets",
+          "items": "#minecraft:wool_carpets",
           "expand": true,
           "weight": 2,
           "modifier": [
@@ -22,7 +22,7 @@
         },
         {
           "type": "minecraft:tag",
-          "name": "minecraft:wool",
+          "items": "#minecraft:wool",
           "expand": true,
           "weight": 6,
           "modifier": [

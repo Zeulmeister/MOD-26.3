@@ -23,7 +23,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:anubis_sheathed"
+        "recipes": "jcraft:anubis_sheathed"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

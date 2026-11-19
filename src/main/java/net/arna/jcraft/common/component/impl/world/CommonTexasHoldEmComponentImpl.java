@@ -22,18 +22,20 @@ public abstract class CommonTexasHoldEmComponentImpl implements CommonTexasHoldE
     }
 
     public void readFromNbt(final CompoundTag tag) {
+        final var ops = world.registryAccess().createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE);
         for (final Tag gameTag : tag.getListOrEmpty("texas_hold_em")) {
             final TexasHoldEm game = new TexasHoldEm();
-            game.readFromNbt((CompoundTag)gameTag);
+            game.readFromNbt((CompoundTag) gameTag, ops);
             addGame(game);
         }
     }
 
     public void writeToNbt(final CompoundTag tag) {
+        final var ops = world.registryAccess().createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE);
         final ListTag gamesTag = new ListTag();
         for (final TexasHoldEm game : games) {
             final CompoundTag gameTag = new CompoundTag();
-            game.writeToNbt(gameTag);
+            game.writeToNbt(gameTag, ops);
             gamesTag.add(gameTag);
         }
         tag.put("texas_hold_em", gamesTag);

@@ -13,14 +13,17 @@ import me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder;
 import net.arna.jcraft.JCraft;
 import net.arna.jcraft.api.serverconfig.ConfigOption;
 import net.arna.jcraft.common.config.JServerConfig;
+import net.arna.jcraft.common.network.JNetwork;
 import net.arna.jcraft.common.network.c2s.ConfigUpdatePacket;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -32,7 +35,17 @@ public class ServerConfigUI {
     private static final String ADDONS_CATEGORY = "jcraft.serverconfig.category.addons";
 
     public static void show(final boolean editable) {
-        final ConfigBuilder builder = ConfigBuilder.create();
+        Minecraft mc = Minecraft.getInstance();
+        mc.gui.setScreen(buildScreen(mc.gui.screen(), editable));
+    }
+
+    public static Screen buildScreen(@Nullable final Screen parent, final boolean editable) {
+        JServerConfig.init();
+        final ConfigBuilder builder = ConfigBuilder.create()
+                .setTitle(Component.translatable("text.autoconfig.jcraft.title"));
+        if (parent != null) {
+            builder.setParentScreen(parent);
+        }
         final Set<ConfigOption> changedOptions = new HashSet<>();
 
         Multimap<Identifier, ConfigOption> byCategory = ConfigOption.getOptions().values().stream()
@@ -111,9 +124,22 @@ public class ServerConfigUI {
         }
 
         builder.setEditable(editable);
-        builder.setSavingRunnable(() -> net.arna.jcraft.common.network.JNetwork.sendToServer(ConfigUpdatePacket.ID,
-                JServerConfig.writeOptions(new FriendlyByteBuf(Unpooled.buffer()), changedOptions)));
-        Minecraft.getInstance().gui.setScreen(builder.build());
+        builder.setSavingRunnable(() -> syncAndSaveOptions(changedOptions));
+        return builder.build();
+    }
+
+    public static void syncAndSaveOptions(final Collection<ConfigOption> options) {
+        JServerConfig.saveGlobalDefault();
+        final Minecraft mc = Minecraft.getInstance();
+        if (mc.getSingleplayerServer() != null) {
+            JServerConfig.save(mc.getSingleplayerServer());
+        }
+        if (mc.getConnection() != null && options != null && !options.isEmpty()
+                && (mc.getSingleplayerServer() != null || (mc.player != null && mc.player.permissions().hasPermission(
+                        net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER)))) {
+            JNetwork.sendToServer(ConfigUpdatePacket.ID,
+                    JServerConfig.writeOptions(new FriendlyByteBuf(Unpooled.buffer()), options));
+        }
     }
 
     private static AbstractConfigListEntry<?> createEntryForOption(final ConfigOption option, final ConfigBuilder builder,

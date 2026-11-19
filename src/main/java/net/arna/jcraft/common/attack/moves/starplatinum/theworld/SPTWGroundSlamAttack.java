@@ -28,14 +28,26 @@ public final class SPTWGroundSlamAttack<A extends IAttacker<? extends A, ?>> ext
     public @NonNull Set<LivingEntity> perform(final A attacker, final LivingEntity user) {
         Set<LivingEntity> targets = super.perform(attacker, user);
 
-        Vec3 pos = user.position();
+        final LivingEntity originEntity = attacker.isRemote() ? attacker.getBaseEntity() : user;
+        final Vec3 pos = originEntity.position();
         for (LivingEntity target : targets) {
-            Vec3 launchVec = target.position().subtract(pos).normalize().scale(1.3);
-            target.push(launchVec.x, launchVec.y + 0.4, launchVec.z);
+            if (net.arna.jcraft.common.util.JUtils.isBlocking(target)) {
+                continue;
+            }
+            final Vec3 delta = target.position().subtract(pos);
+            final Vec3 dir = delta.lengthSqr() > 1.0E-4 ? delta.normalize() : originEntity.getLookAngle();
+            final Vec3 launchVec = dir.scale(1.3);
+            final Vec3 impulse = new Vec3(launchVec.x, launchVec.y + 0.4, launchVec.z);
 
-            target.syncVelocity = true;
-            if (target instanceof ServerPlayer serverPlayer) {
-                serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(serverPlayer));
+            if (net.arna.jcraft.common.util.JUtils.isAffectedByTimeStop(target)) {
+                net.arna.jcraft.platform.JComponentPlatformUtils.getTimeStopData(target)
+                        .ifPresent(ts -> ts.addTotalVelocity(impulse));
+            } else {
+                target.push(impulse.x, impulse.y, impulse.z);
+                target.syncVelocity = true;
+                if (target instanceof ServerPlayer serverPlayer) {
+                    serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(serverPlayer));
+                }
             }
         }
 

@@ -2,7 +2,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:crazy_diamond/crimson_hyphae"
+        "recipes": "jcraft:crazy_diamond/crimson_hyphae"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

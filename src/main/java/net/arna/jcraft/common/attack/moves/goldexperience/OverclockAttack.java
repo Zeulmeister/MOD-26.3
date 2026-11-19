@@ -78,7 +78,7 @@ public final class OverclockAttack<A extends IAttacker<? extends A, ?>> extends 
         public static final Type INSTANCE = new Type();
 
         protected RecordCodecBuilder<OverclockAttack<?>, Integer> effectDuration() {
-            return Codec.INT.fieldOf("effectDuration").forGetter(OverclockAttack::getEffectDuration);
+            return Codec.INT.optionalFieldOf("effectDuration", 60).forGetter(OverclockAttack::getEffectDuration);
         }
 
         @Override

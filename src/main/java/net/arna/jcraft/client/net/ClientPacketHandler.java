@@ -220,10 +220,14 @@ public class ClientPacketHandler {
             int time = buf.readInt();
 
             client.execute(() -> {
+                if (client.level == null) {
+                    return;
+                }
                 final Entity ent = client.level.getEntity(entID);
                 if (!(ent instanceof LivingEntity livingEntity)) {
                     return;
                 }
+                JClientUtils.activeTimestops.removeIf(d -> d == null || d.getUser() == null || d.getUser().getId() == entID);
                 JClientUtils.activeTimestops.add(new DimensionData(livingEntity, position, registryKey, time));
                 net.arna.jcraft.client.rendering.JoJoOnomatopoeiaRenderer.triggerBurst(true, 35);
             });
@@ -232,6 +236,7 @@ public class ClientPacketHandler {
                 JClientUtils.removeTimestop(entID);
                 if (client.player != null && client.player.getId() == entID) {
                     net.arna.jcraft.client.gui.hud.JoJoAnimeHudRenderer.setClientSuspendedProjectiles(0);
+                    net.arna.jcraft.api.misc.ConditionalFlightHandler.revokeStaleFlightIfNotAllowed(client.player);
                 }
             });
         }
@@ -537,14 +542,18 @@ public class ClientPacketHandler {
             case ZA_WARUDO -> {
                 final int id = buf.readInt();
                 client.execute(() -> {
-                    final Entity sourceShader = world.getEntity(id);
+                    if (client.level == null) {
+                        return;
+                    }
+                    final Entity sourceShader = client.level.getEntity(id);
                     if (sourceShader instanceof final LivingEntity livingEntity) {
-
                         ZaWarudoShaderHandler zaWarudoShaderHandler = ZaWarudoShaderHandler.INSTANCE;
-                        zaWarudoShaderHandler.shaderSourceEntity = Optional.of(livingEntity).orElse(client.player);
+                        zaWarudoShaderHandler.shaderSourceEntity = livingEntity;
                         zaWarudoShaderHandler.effectLength = duration;
+                        zaWarudoShaderHandler.ticks = 0;
+                        zaWarudoShaderHandler.radius = 0f;
+                        zaWarudoShaderHandler.prevRadius = 0f;
                         zaWarudoShaderHandler.shouldRender = true;
-
                     }
                 });
             }
@@ -575,26 +584,15 @@ public class ClientPacketHandler {
 
     public static void handleShaderDeactivation(final @NonNull Minecraft client, final FriendlyByteBuf buf) {
         final ShaderActivationPacket.Type type = ShaderActivationPacket.Type.byName(buf.readUtf());
-        final Level world = client.level;
-        if (world != null) {
-            switch (type) {
-                case NONE -> {
-                }
-                case ZA_WARUDO -> client.execute(() -> {
-
-                    ZaWarudoShaderHandler zaWarudoShaderHandler = ZaWarudoShaderHandler.INSTANCE;
-                    zaWarudoShaderHandler.shouldRender = false;
-                    zaWarudoShaderHandler.renderingEffect = false;
-
-                });
-                case CRIMSON -> client.execute(() -> {
-
-                    CrimsonShaderHandler crimsonShaderHandler = CrimsonShaderHandler.INSTANCE;
-                    crimsonShaderHandler.shouldRender = false;
-                    crimsonShaderHandler.renderingEffect = false;
-
-                });
+        switch (type) {
+            case NONE -> {
             }
+            case ZA_WARUDO -> client.execute(() -> ZaWarudoShaderHandler.INSTANCE.reset());
+            case CRIMSON -> client.execute(() -> {
+                CrimsonShaderHandler crimsonShaderHandler = CrimsonShaderHandler.INSTANCE;
+                crimsonShaderHandler.shouldRender = false;
+                crimsonShaderHandler.renderingEffect = false;
+            });
         }
     }
 
@@ -602,17 +600,13 @@ public class ClientPacketHandler {
         final TimeAccelStatePacket.State state = buf.readEnum(TimeAccelStatePacket.State.class);
         final int entityId = buf.readVarInt();
 
-//        if (!(e instanceof final MadeInHeavenEntity mih) || !mih.isAlive()) {
-//            return;
-//        }
-
         switch (state) {
             case START -> {
                 final int duration = buf.readVarInt();
                 final long startTime = buf.readLong();
-                TimeAccelStatePacket.addAcceleration(entityId, (int) (duration - (System.currentTimeMillis() - startTime) / 50), startTime);
+                client.execute(() -> TimeAccelStatePacket.addAcceleration(entityId, (int) (duration - (System.currentTimeMillis() - startTime) / 50), startTime));
             }
-            case STOP -> TimeAccelStatePacket.removeAcceleration(entityId);
+            case STOP -> client.execute(() -> TimeAccelStatePacket.removeAcceleration(entityId));
         }
     }
 
@@ -643,12 +637,15 @@ public class ClientPacketHandler {
     public static void handleServerConfig(final @NonNull Minecraft client, final FriendlyByteBuf buf) {
         final boolean editable = buf.readBoolean();
         final boolean show = buf.readBoolean();
+        final byte[] remaining = new byte[buf.readableBytes()];
+        buf.readBytes(remaining);
 
-        JServerConfig.readOptions(buf);
-
-        if (show) {
-            client.execute(() -> ServerConfigUI.show(editable));
-        }
+        client.execute(() -> {
+            JServerConfig.readOptions(new FriendlyByteBuf(io.netty.buffer.Unpooled.wrappedBuffer(remaining)));
+            if (show) {
+                ServerConfigUI.show(editable);
+            }
+        });
     }
 
     private static void handleJExplosion(final @NonNull Minecraft client, final FriendlyByteBuf buf) {
@@ -656,9 +653,29 @@ public class ClientPacketHandler {
         final float power = buf.readFloat();
         final boolean hasKb = buf.readBoolean();
         final double kbx = hasKb ? buf.readDouble() : 0, kby = hasKb ? buf.readDouble() : 0, kbz = hasKb ? buf.readDouble() : 0;
+        final JExplosionModifier modifier = JExplosionModifier.read(buf);
         client.execute(() -> {
             if (client.level != null) {
-                client.level.addParticle(net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER, ex, ey, ez, 1.0, 0.0, 0.0);
+                var particle = modifier.getParticle() != null
+                        ? modifier.getParticle()
+                        : net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER;
+                Vec3 vel = modifier.getParticleVelocity() != null
+                        ? modifier.getParticleVelocity()
+                        : new Vec3(1.0, 0.0, 0.0);
+                client.level.addParticle(particle, ex, ey, ez, vel.x, vel.y, vel.z);
+
+                if (modifier.getSound() != null) {
+                    var soundCategory = modifier.getSoundCategory() != null
+                            ? modifier.getSoundCategory()
+                            : net.minecraft.sounds.SoundSource.BLOCKS;
+                    float volume = modifier.getVolumeGetter() != null
+                            ? modifier.getVolumeGetter().apply(client.level.random)
+                            : 4.0f;
+                    float pitch = modifier.getPitchGetter() != null
+                            ? modifier.getPitchGetter().apply(client.level.random)
+                            : (1.0f + (client.level.random.nextFloat() - client.level.random.nextFloat()) * 0.2f) * 0.7f;
+                    client.level.playLocalSound(ex, ey, ez, modifier.getSound(), soundCategory, volume, pitch, false);
+                }
             }
             if (hasKb && client.player != null) {
                 client.player.setDeltaMovement(client.player.getDeltaMovement().add(kbx, kby, kbz));
@@ -666,30 +683,40 @@ public class ClientPacketHandler {
         });
     }
 
-    private static void handleComboCounter(final @NonNull Minecraft minecraftClient, final FriendlyByteBuf buf) {
-        JCraftClient.comboCounter = buf.readInt();
-        if (JCraftClient.comboCounter == 1) {
-            JCraftClient.markComboStarted();
-        }
+    private static void handleComboCounter(final @NonNull Minecraft client, final FriendlyByteBuf buf) {
+        final int counter = buf.readInt();
+        final float scaling = buf.readFloat();
 
-        JCraftClient.damageScaling = buf.readFloat();
+        client.execute(() -> {
+            JCraftClient.comboCounter = counter;
+            if (JCraftClient.comboCounter == 1) {
+                JCraftClient.markComboStarted();
+            }
 
-        JCraftClient.framesSinceCounted = 0;
+            JCraftClient.damageScaling = scaling;
+            JCraftClient.framesSinceCounted = 0;
+        });
     }
 
     private static void handleSplatter(final Minecraft client, final FriendlyByteBuf buf) {
-        final ClientLevel world = client.level;
-        if (world == null) {
-            return;
-        }
+        final byte[] data = new byte[buf.readableBytes()];
+        buf.readBytes(data);
 
-        final Splatter splatter = JUtils.getSplatterManager(world).readSplatter(buf);
+        client.execute(() -> {
+            final ClientLevel world = client.level;
+            if (world == null) {
+                return;
+            }
 
-        long ageMs = splatter.getMaxAge() * 50L;
-        AttackHitboxEffectRenderer.addHitbox(splatter.getMainBox(), ageMs, true);
-        splatter.getSections().stream()
-                .filter(section -> !section.isRemoved())
-                .forEach(section -> AttackHitboxEffectRenderer.addHitbox(section.getHitBox(), ageMs, true));
+            final Splatter splatter = JUtils.getSplatterManager(world)
+                    .readSplatter(new FriendlyByteBuf(io.netty.buffer.Unpooled.wrappedBuffer(data)));
+
+            long ageMs = splatter.getMaxAge() * 50L;
+            AttackHitboxEffectRenderer.addHitbox(splatter.getMainBox(), ageMs, true);
+            splatter.getSections().stream()
+                    .filter(section -> !section.isRemoved())
+                    .forEach(section -> AttackHitboxEffectRenderer.addHitbox(section.getHitBox(), ageMs, true));
+        });
     }
 
     private static void handleStandHurt(final Minecraft client, final FriendlyByteBuf buf) {

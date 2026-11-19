@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:bullet"
+        "recipes": "jcraft:bullet"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

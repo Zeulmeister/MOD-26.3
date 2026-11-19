@@ -53,7 +53,7 @@ public interface Extractors {
         } else if (id.equals(GROUNDED)) {
             compoundTag.putBoolean(GROUNDED.toString(), entity.onGround());
         } else if (id.equals(INVULNERABLE)) {
-            compoundTag.putBoolean(INVULNERABLE.toString(), entity.isInvulnerable());
+            compoundTag.putBoolean(INVULNERABLE.toString(), entity.isPermanentlyInvulnerable());
         } else if (id.equals(PORTAL_COOLDOWN)) {
             compoundTag.putInt(PORTAL_COOLDOWN.toString(), entity.getPortalCooldown());
         } else if (id.equals(UUID)) {

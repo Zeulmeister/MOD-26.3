@@ -23,7 +23,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:living_arrow"
+        "recipes": "jcraft:living_arrow"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

@@ -1,3 +1,14 @@
 {
-  "layers": {}
+  "layers": {
+    "humanoid": [
+      {
+        "texture": "jcraft:red_hat"
+      }
+    ],
+    "humanoid_baby": [
+      {
+        "texture": "jcraft:red_hat"
+      }
+    ]
+  }
 }

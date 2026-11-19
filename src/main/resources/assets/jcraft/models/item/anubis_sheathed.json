@@ -5,7 +5,8 @@
     32
   ],
   "textures": {
-    "2": "jcraft:item/anubis_sheathed"
+    "2": "jcraft:item/anubis_sheathed",
+    "particle": "jcraft:item/anubis_sheathed"
   },
   "elements": [
     {

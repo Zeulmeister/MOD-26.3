@@ -51,7 +51,7 @@ public final class BlockBreakingAttack<A extends IAttacker<? extends A, ?>> exte
                 for (int z = -1; z < 2; z++) {
                     final BlockPos curPos = bPos.offset(x, y, z);
 
-                    if (!mayBreak(user, curPos, s -> s.getBlock().getExplosionResistance() <= 10 && !s.isAir())) {
+                    if (!mayBreak(user, curPos, s -> s.getBlock().getExplosionResistance() <= 10 && !s.isAir() && !s.hasBlockEntity())) {
                         continue;
                     }
 

@@ -67,6 +67,10 @@ public final class TexasHoldEm {
     }
 
     public void readFromNbt(CompoundTag tag) {
+        readFromNbt(tag, net.minecraft.nbt.NbtOps.INSTANCE);
+    }
+
+    public void readFromNbt(CompoundTag tag, com.mojang.serialization.DynamicOps<Tag> ops) {
         players.clear();
         playersUuid.clear();
         for (final Tag playerTag : tag.getListOrEmpty("players")) {
@@ -74,17 +78,21 @@ public final class TexasHoldEm {
         }
         final CompoundTag engineTag = tag.getCompoundOrEmpty("game");
         engine = new Engine(playersUuid.size());
-        engine.readFromNbt(engineTag);
+        engine.readFromNbt(engineTag, ops);
     }
 
     public void writeToNbt(CompoundTag tag) {
+        writeToNbt(tag, net.minecraft.nbt.NbtOps.INSTANCE);
+    }
+
+    public void writeToNbt(CompoundTag tag, com.mojang.serialization.DynamicOps<Tag> ops) {
         final ListTag playersTag = new ListTag();
         for (final LivingEntity player : players) {
             playersTag.add(StringTag.valueOf(player.getStringUUID()));
         }
         tag.put("players", playersTag);
         final CompoundTag engineTag = new CompoundTag();
-        engine.writeToNbt(engineTag);
+        engine.writeToNbt(engineTag, ops);
         tag.put("game", engineTag);
     }
 

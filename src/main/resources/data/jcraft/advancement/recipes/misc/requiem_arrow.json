@@ -23,7 +23,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:requiem_arrow"
+        "recipes": "jcraft:requiem_arrow"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

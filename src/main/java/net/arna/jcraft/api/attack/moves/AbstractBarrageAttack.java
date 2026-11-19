@@ -174,18 +174,32 @@ public abstract class AbstractBarrageAttack<T extends AbstractBarrageAttack<T, A
 
     @Override
     protected void createShockwaves(A attacker, LivingEntity user) {
+        final Vec3 fallbackDir = attacker.isRemote()
+                ? Vec3.directionFromRotation(attacker.getBaseEntity().getXRot(), attacker.getBaseEntity().getYRot())
+                : user.getLookAngle();
+        createShockwaves(attacker, user, fallbackDir, Set.of());
+    }
+
+    @Override
+    protected void createShockwaves(final A attacker, final LivingEntity user, final Vec3 rotVec, final Set<LivingEntity> targets) {
         final LivingEntity attackerEntity = attacker.getBaseEntity();
         final RandomSource random = attackerEntity.getRandom();
         Vec3 shockwavePos = attackerEntity.position().add(
-                random.nextGaussian() / 3.0,
-                random.nextGaussian() / 3.0,
-                random.nextGaussian() / 3.0
+                random.nextGaussian() / 3.2,
+                random.nextGaussian() / 3.2,
+                random.nextGaussian() / 3.2
         );
-        final Vec3 rotVec = user.getLookAngle();
-        shockwavePos = shockwavePos.add(rotVec);
-        shockwavePos = shockwavePos.add(RotationUtil.vecPlayerToWorld(new Vec3(0, attackerEntity.getBbHeight() / 1.8 - getOffset(), 0), GravityChangerAPI.getGravityDirection(user)));
+        final Vec3 dir = rotVec.lengthSqr() > 1.0e-4 ? rotVec.normalize() : user.getLookAngle();
+        shockwavePos = shockwavePos.add(dir.scale(1.05));
+        shockwavePos = shockwavePos.add(RotationUtil.vecPlayerToWorld(
+                new Vec3(0, attackerEntity.getBbHeight() / 1.8 - getOffset(), 0),
+                GravityChangerAPI.getGravityDirection(user)
+        ));
+        final float scale = targets.isEmpty()
+                ? Mth.clamp(getDamage() / 1.35f, 0.70f, 1.15f)
+                : Mth.clamp(getDamage() / 1.15f, 0.90f, 1.50f);
         JComponentPlatformUtils.getShockwaveHandler(attacker.getEntityWorld())
-                .addShockwave(shockwavePos, user.getLookAngle(), getDamage() / 1.5f);
+                .addShockwave(shockwavePos, dir, scale);
     }
 
     @Override

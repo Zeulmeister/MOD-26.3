@@ -35,6 +35,12 @@ public class DiscCaseContainer extends SimpleContainer {
         updateDiscCaseStackContent();
     }
 
+    @Override
+    public void setChanged() {
+        super.setChanged();
+        updateDiscCaseStackContent();
+    }
+
     protected void updateDiscCaseStackContent() {
         discCase.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(this.getItems()));
     }

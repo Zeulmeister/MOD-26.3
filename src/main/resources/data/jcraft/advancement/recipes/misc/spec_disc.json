@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:spec_disc"
+        "recipes": "jcraft:spec_disc"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

@@ -80,6 +80,13 @@ public abstract class AbstractGrabAttack<T extends AbstractGrabAttack<T, A, S>, 
 
             JComponentPlatformUtils.getGrab(target).startGrab(attacker.getBaseEntity(), grabDuration, grabOffset);
 
+            // Time Stop hits force DAZED amplifier 3 (StunType.LAUNCH), which would prematurely break the grab;
+            // restore UNBURSTABLE stun for the grab duration so grabs hold reliably during and right after Time Stop.
+            if (JUtils.isAffectedByTimeStop(target)) {
+                target.removeEffect(net.arna.jcraft.api.registry.JStatusRegistry.DAZED.asHolder());
+                net.arna.jcraft.JCraft.stun(target, Math.max(grabDuration + 4, 15), StunType.UNBURSTABLE.ordinal(), user);
+            }
+
             JUtils.setVelocity(target, 0, 0, 0);
 
             anyHit = true;

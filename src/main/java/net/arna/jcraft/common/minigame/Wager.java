@@ -39,9 +39,13 @@ public class Wager extends AbstractWager {
     }
 
     public void readFromNbt(@NonNull CompoundTag tag) {
+        readFromNbt(tag, net.minecraft.nbt.NbtOps.INSTANCE);
+    }
+
+    public void readFromNbt(@NonNull CompoundTag tag, @NonNull com.mojang.serialization.DynamicOps<Tag> ops) {
         items.clear();
         for (final Tag itemTag : tag.getListOrEmpty("wager_items")) {
-            ItemStack.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE, itemTag).result().ifPresent(items::add);
+            ItemStack.CODEC.parse(ops, itemTag).result().ifPresent(items::add);
         }
     }
 

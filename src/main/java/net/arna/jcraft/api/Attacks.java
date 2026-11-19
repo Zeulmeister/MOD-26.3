@@ -97,7 +97,7 @@ public interface Attacks {
                                    boolean overrideStun, float damage, boolean lift, int blockstun, DamageSource source,
                                    @Nullable Entity attacker, HitAnimation hitAnimation,
                                    boolean canBackstab, boolean unblockable) {
-        if (world == null || world.isClientSide() || ent == null || !ent.canBeSeenAsEnemy()) {
+        if (world == null || world.isClientSide() || !JUtils.canBeAttackedByJCraft(ent)) {
             return;
         }
         if (attacker instanceof ServerPlayer playerEntity) {
@@ -124,7 +124,7 @@ public interface Attacks {
                                    boolean overrideStun, float damage, boolean lift, int blockstun, DamageSource source,
                                    @Nullable Entity attacker, HitAnimation hitAnimation,
                                    boolean canBackstab) {
-        if (world == null || world.isClientSide() || ent == null || !ent.canBeSeenAsEnemy()) {
+        if (world == null || world.isClientSide() || !JUtils.canBeAttackedByJCraft(ent)) {
             return;
         }
         if (attacker instanceof ServerPlayer playerEntity) {
@@ -150,7 +150,7 @@ public interface Attacks {
     static void damageLogic(Level world, LivingEntity ent, Vec3 kbVec, int stunTicks, int stunLevel,
                                    boolean overrideStun, float damage, boolean lift, int blockstun, DamageSource source,
                                    @Nullable Entity attacker, HitAnimation hitAnimation) {
-        if (world == null || world.isClientSide() || ent == null || !ent.canBeSeenAsEnemy()) {
+        if (world == null || world.isClientSide() || !JUtils.canBeAttackedByJCraft(ent)) {
             return;
         }
         if (attacker instanceof ServerPlayer playerEntity) {
@@ -160,7 +160,7 @@ public interface Attacks {
     }
 
     static void damageLogic(Level world, LivingEntity victim, AttackData attackData) {
-        if (world == null || world.isClientSide() || victim == null || !victim.canBeSeenAsEnemy()) {
+        if (world == null || world.isClientSide() || !JUtils.canBeAttackedByJCraft(victim)) {
             return;
         }
 
@@ -304,12 +304,10 @@ public interface Attacks {
         // Stun application & overriding
         IJCraftComboTracker comboTracker = (IJCraftComboTracker) victim;
 
-        /*
         if (JServerConfig.ENABLE_IPS.getValue()) {
             float scaling = comboTracker.jcraft$getDamageScaling();
             stunTicks *= (int) (scaling * 0.2 + 0.8);
         }
-         */
 
         LivingEntity livingAttacker = null;
         if (attacker instanceof LivingEntity l) livingAttacker = l;
@@ -427,7 +425,9 @@ public interface Attacks {
         }
 
         if (tsHit) {
-            JComponentPlatformUtils.getTimeStopData(victim).ifPresent(ts -> ts.addTotalVelocity(kbVec));
+            if (hit) {
+                JComponentPlatformUtils.getTimeStopData(victim).ifPresent(ts -> ts.addTotalVelocity(kbVec));
+            }
         } else {
             JUtils.syncVelocityUpdate(victim);
         }
@@ -480,9 +480,13 @@ public interface Attacks {
             damage *= JServerConfig.VS_STANDLESS_DAMAGE_MULTIPLIER.getValue();
         }
 
+        damage *= JServerConfig.STAND_DAMAGE_MULTIPLIER.getValue();
+
         // All stands ignore 10% of armor & armor toughness
         // Armor and toughness considerations are also capped in here at netherite levels
-        damage = JUtils.getDamageThroughArmor(damage, armor * 0.9f, toughness * 0.9f);
+        if (!JServerConfig.IGNORE_ARMOR.getValue()) {
+            damage = JUtils.getDamageThroughArmor(damage, armor * 0.9f, toughness * 0.9f);
+        }
         damage = ent.getDamageAfterMagicAbsorb(damageSource, damage);
 
         // Functionally a callback invocation; we can't copy the nuances of all damage effects, so we do this instead.
@@ -594,7 +598,9 @@ public interface Attacks {
         ent.invulnerableTime = 20;
         ent.hurtDuration = ent.hurtTime = 10;
 
-        ent.setHealth(h - damage);
+        if (!(ent instanceof TrainingDummyEntity)) {
+            ent.setHealth(h - damage);
+        }
         ent.getCombatTracker().recordDamage(damageSource, damage);
         ent.gameEvent(GameEvent.ENTITY_DAMAGE);
 
@@ -610,7 +616,7 @@ public interface Attacks {
             }
         }
 
-        if (ent.isDeadOrDying()) {
+        if (!(ent instanceof TrainingDummyEntity) && ent.isDeadOrDying()) {
             ent.die(damageSource);
         }
     }

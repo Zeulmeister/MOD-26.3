@@ -1,11 +1,9 @@
 package net.arna.jcraft.client.gui.hud;
 
-import com.google.common.collect.ImmutableMap;
-import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.util.ARGB;
 import dev.architectury.event.events.client.ClientGuiEvent;
 import lombok.experimental.UtilityClass;
 import net.arna.jcraft.JCraft;
+import net.arna.jcraft.api.attack.enums.MoveClass;
 import net.arna.jcraft.api.component.living.CommonCooldownsComponent;
 import net.arna.jcraft.api.spec.JSpec;
 import net.arna.jcraft.api.stand.StandEntity;
@@ -13,7 +11,6 @@ import net.arna.jcraft.client.JClientConfig;
 import net.arna.jcraft.client.JCraftClient;
 import net.arna.jcraft.common.entity.stand.AerosmithEntity;
 import net.arna.jcraft.common.entity.stand.MandomEntity;
-import net.arna.jcraft.common.util.ColorUtils;
 import net.arna.jcraft.common.util.CooldownType;
 import net.arna.jcraft.common.util.JUtils;
 import net.arna.jcraft.platform.JComponentPlatformUtils;
@@ -21,107 +18,78 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static net.arna.jcraft.client.JCraftClient.*;
 
+/**
+ * Clean, unobtrusive Stand & Spec Ability Dock:
+ * - Hidden completely when Stand is inactive (except Spec moves on cooldown / ALWAYS mode)
+ * - When Stand is summoned, shows a compact translucent dock with each ability's icon logo,
+ *   short keybind badge, ready status strip (plus subtle ready pulse), and live cooldown sweep + timer.
+ */
 @UtilityClass
 public class JCraftAbilityHud {
-    /// ICON HUD
     public static final Identifier GUI_ICONS_TEXTURE = Identifier.parse("textures/gui/icons.png");
     private static final Identifier BORDER = JCraft.id("textures/gui/ability_icons/border.png");
     private static final Identifier OVERLAY = JCraft.id("textures/gui/ability_icons/overlay.png");
-
-    final IconPos ICON = new IconPos("icon", 10, 18 * 3 + 18);
-
-    private static final int iconSpacing = 8;
-
-    // Stand icons
-    private static final IconPos LIGHT = new IconPos("light", 0, iconSpacing * 2); // 2 + 3 * N
-    private static final IconPos HEAVY = new IconPos("heavy", 0, iconSpacing * 5);
-    private static final IconPos BARRAGE = new IconPos("barrage", 0, iconSpacing * 8);
-    private static final IconPos ULT = new IconPos("ult", 0, iconSpacing * 23);
-    private static final IconPos SPECIAL_1 = new IconPos("special1", 0, iconSpacing * 14);
-    private static final IconPos SPECIAL_2 = new IconPos("special2", 0, iconSpacing * 17);
-    private static final IconPos SPECIAL_3 = new IconPos("special3", 0, iconSpacing * 20);
-    private static final IconPos UTILITY = new IconPos("utility", 0, iconSpacing * 11);
-
-    private static final IconPos MID_SPECIAL_1 = new IconPos("special1", 24, iconSpacing * 11);
-    private static final IconPos MID_SPECIAL_2 = new IconPos("special2", 24, iconSpacing * 14);
-    private static final IconPos MID_SPECIAL_3 = new IconPos("special3", 24, iconSpacing * 17);
-    private static final IconPos MID_ULT = new IconPos("ult", 24, iconSpacing * 20);
-
-    // Universal icons
-    private static final IconPos COMBO_BREAKER = new IconPos("combobreaker", 24, iconSpacing * 2);
-    private static final IconPos COOLDOWN_CANCEL = new IconPos("cooldowncancel", 24, iconSpacing * 5);
-    private static final IconPos DASH = new IconPos("dash", 24, iconSpacing * 8);
-
-    // Mandom icons
-    private static final IconPos MANDOM_UTILITY = new IconPos("utility", 24, iconSpacing * 11);
-    private static final IconPos MANDOM_ULT = new IconPos("ult", 24, iconSpacing * 14);
-
-    // Spec-only icons
-    private static final IconPos SPEC_HEAVY = new IconPos("heavy", 0, iconSpacing * 5);
-    private static final IconPos SPEC_BARRAGE = new IconPos("barrage", 0, iconSpacing * 8);
-    private static final IconPos SPEC_SPECIAL_1 = new IconPos("special1", 0, iconSpacing * 11);
-    private static final IconPos SPEC_SPECIAL_2 = new IconPos("special2", 0, iconSpacing * 14);
-    private static final IconPos SPEC_SPECIAL_3 = new IconPos("special3", 0, iconSpacing * 17);
-    private static final IconPos SPEC_ULT = new IconPos("ult", 0, iconSpacing * 20);
-
-    private static final Map<CooldownType, IconPos> STAND_ICONS = ImmutableMap.<CooldownType, IconPos>builder()
-            .put(CooldownType.STAND_LIGHT, LIGHT)
-            .put(CooldownType.STAND_HEAVY, HEAVY)
-            .put(CooldownType.STAND_BARRAGE, BARRAGE)
-            .put(CooldownType.STAND_ULTIMATE, ULT)
-            .put(CooldownType.STAND_SP1, SPECIAL_1)
-            .put(CooldownType.STAND_SP2, SPECIAL_2)
-            .put(CooldownType.STAND_SP3, SPECIAL_3)
-            .put(CooldownType.UTILITY, UTILITY)
-            .build();
-    // Used for JConfig.UIPos.MIDDLE, to prevent overwhelming verticallity
-    private static final Map<CooldownType, IconPos> STAND_ICONS_MID = ImmutableMap.<CooldownType, IconPos>builder()
-            .put(CooldownType.STAND_LIGHT, LIGHT)
-            .put(CooldownType.STAND_HEAVY, HEAVY)
-            .put(CooldownType.STAND_BARRAGE, BARRAGE)
-            .put(CooldownType.STAND_ULTIMATE, MID_ULT)
-            .put(CooldownType.STAND_SP1, MID_SPECIAL_1)
-            .put(CooldownType.STAND_SP2, MID_SPECIAL_2)
-            .put(CooldownType.STAND_SP3, MID_SPECIAL_3)
-            .put(CooldownType.UTILITY, UTILITY)
-            .build();
-    private static final Map<CooldownType, IconPos> UNIVERSAL_ICONS = ImmutableMap.<CooldownType, IconPos>builder()
-            .put(CooldownType.COMBO_BREAKER, COMBO_BREAKER)
-            .put(CooldownType.COOLDOWN_CANCEL, COOLDOWN_CANCEL)
-            .put(CooldownType.DASH, DASH)
-            .build();
-    private static final Map<CooldownType, IconPos> SPEC_ICONS = ImmutableMap.<CooldownType, IconPos>builder()
-            .put(CooldownType.HEAVY, SPEC_HEAVY)
-            .put(CooldownType.BARRAGE, SPEC_BARRAGE)
-            //.put(CooldownType.ULTIMATE, SPEC_ULT)
-            .put(CooldownType.SPECIAL1, SPEC_SPECIAL_1)
-            .put(CooldownType.SPECIAL2, SPEC_SPECIAL_2)
-            .put(CooldownType.SPECIAL3, SPEC_SPECIAL_3)
-            .build();
-    private static final Map<CooldownType, IconPos> MANDOM_WITH_SPEC_ICONS = ImmutableMap.<CooldownType, IconPos>builder()
-            .put(CooldownType.HEAVY, SPEC_HEAVY)
-            .put(CooldownType.BARRAGE, SPEC_BARRAGE)
-            .put(CooldownType.SPECIAL1, SPEC_SPECIAL_1)
-            .put(CooldownType.SPECIAL2, SPEC_SPECIAL_2)
-            .put(CooldownType.SPECIAL3, SPEC_SPECIAL_3)
-            .put(CooldownType.STAND_ULTIMATE, MANDOM_ULT)
-            .put(CooldownType.UTILITY, MANDOM_UTILITY)
-            .build();
-
     private static final Identifier UNIVERSAL_ID = JCraft.id("universal");
+
+    private static final int TILE_SIZE = 20;
+    private static final int ICON_SIZE = 16;
+    private static final int TILE_GAP = 3;
+    private static final int UNIVERSAL_TILE = 16;
+    private static final int UNIVERSAL_ICON = 12;
+
+    private static final List<AbilitySlot> STAND_SLOTS = List.of(
+            new AbilitySlot(CooldownType.STAND_LIGHT, MoveClass.LIGHT, "light"),
+            new AbilitySlot(CooldownType.STAND_HEAVY, MoveClass.HEAVY, "heavy"),
+            new AbilitySlot(CooldownType.STAND_BARRAGE, MoveClass.BARRAGE, "barrage"),
+            new AbilitySlot(CooldownType.UTILITY, MoveClass.UTILITY, "utility"),
+            new AbilitySlot(CooldownType.STAND_SP1, MoveClass.SPECIAL1, "special1"),
+            new AbilitySlot(CooldownType.STAND_SP2, MoveClass.SPECIAL2, "special2"),
+            new AbilitySlot(CooldownType.STAND_SP3, MoveClass.SPECIAL3, "special3"),
+            new AbilitySlot(CooldownType.STAND_ULTIMATE, MoveClass.ULTIMATE, "ult")
+    );
+
+    private static final List<AbilitySlot> SPEC_SLOTS = List.of(
+            new AbilitySlot(CooldownType.HEAVY, null, "heavy"),
+            new AbilitySlot(CooldownType.BARRAGE, null, "barrage"),
+            new AbilitySlot(CooldownType.SPECIAL1, null, "special1"),
+            new AbilitySlot(CooldownType.SPECIAL2, null, "special2"),
+            new AbilitySlot(CooldownType.SPECIAL3, null, "special3")
+    );
+
+    private static final List<AbilitySlot> UNIVERSAL_SLOTS = List.of(
+            new AbilitySlot(CooldownType.DASH, null, "dash"),
+            new AbilitySlot(CooldownType.COOLDOWN_CANCEL, null, "cooldowncancel"),
+            new AbilitySlot(CooldownType.COMBO_BREAKER, null, "combobreaker")
+    );
+
+    private static final Map<Identifier, Boolean> TEXTURE_EXISTS_CACHE = new ConcurrentHashMap<>();
+    private static final Map<CooldownType, Boolean> WAS_COOLING_DOWN = new EnumMap<>(CooldownType.class);
+    private static final Map<CooldownType, Long> READY_PULSE_UNTIL_MS = new EnumMap<>(CooldownType.class);
+    private static final long READY_PULSE_DURATION_MS = 650L;
+
+    private record AbilitySlot(CooldownType cooldownType, @Nullable MoveClass moveClass, String iconName) {}
+
+    private record ResolvedSlot(CooldownType cooldownType, Identifier iconOwner, String iconName) {}
 
     public static int getHudX(final int scaledX, final int rightOffset) {
         return switch (JClientConfig.getInstance().getUiPosition()) {
-            case LEFT -> 2;
+            case LEFT -> 8;
             case RIGHT -> scaledX - rightOffset;
             case MIDDLE -> (int) (scaledX * 0.55f);
         };
@@ -131,42 +99,230 @@ public class JCraftAbilityHud {
         ClientGuiEvent.RENDER_HUD.register((ctx, tickDelta) -> render(ctx));
     }
 
+    public static void clearTextureCache() {
+        TEXTURE_EXISTS_CACHE.clear();
+    }
+
     public static void render(final GuiGraphicsExtractor ctx) {
         final Minecraft client = Minecraft.getInstance();
         final LocalPlayer player = client.player;
-        if (player == null) {
+        if (player == null || player.isSpectator()) {
             return;
         }
 
-        timeSinceNoCooldowns++;
+        final JClientConfig cfg = JClientConfig.getInstance();
+        if (!cfg.isIconHud() || cfg.getUiDuration() == JClientConfig.UIDuration.NEVER) {
+            return;
+        }
 
-        final boolean isMid = JClientConfig.getInstance().getUiPosition() == JClientConfig.UIPos.MIDDLE;
-        final boolean useIcons = JClientConfig.getInstance().isIconHud();
         final StandEntity<?, ?> stand = JUtils.getStand(player);
+        final JSpec<?, ?> spec = JUtils.getSpec(player);
+        final CommonCooldownsComponent cooldowns = JComponentPlatformUtils.getCooldowns(player);
 
-        if (useIcons) {
-            int selectedX = getHudX(client.getWindow().getGuiScaledWidth(), 48);
-            int selectedY = isMid ? iconSpacing * 11 : 0;
+        final boolean standActiveForMoves = stand != null
+                && !(stand instanceof AerosmithEntity as && !as.isAllowingMoveHandling());
 
-            final JSpec<?, ?> spec = JUtils.getSpec(player);
-            if (stand == null || (stand instanceof AerosmithEntity as && !as.isAllowingMoveHandling())
-            ) {
-                // Render cooldown HUD for specs
-                if (spec != null) {
-                    renderIcons(ctx, SPEC_ICONS, selectedX, selectedY, cooldown -> spec.getType().getId());
+        final List<ResolvedSlot> slots = new ArrayList<>();
+        if (standActiveForMoves) {
+            final Identifier standId = stand.getStandType().getId();
+            if (stand instanceof MandomEntity && spec != null) {
+                final Identifier specId = spec.getType().getId();
+                for (AbilitySlot s : SPEC_SLOTS) {
+                    slots.add(new ResolvedSlot(s.cooldownType(), specId, s.iconName()));
                 }
-            } else if (stand instanceof MandomEntity && spec != null) {
-                renderIcons(ctx, MANDOM_WITH_SPEC_ICONS, selectedX, selectedY, cooldown -> {
-                    if (cooldown == CooldownType.UTILITY || cooldown == CooldownType.STAND_ULTIMATE) {
-                        return stand.getStandType().getId();
-                    }
-                    return spec.getType().getId();
-                });
+                slots.add(new ResolvedSlot(CooldownType.UTILITY, standId, "utility"));
+                slots.add(new ResolvedSlot(CooldownType.STAND_ULTIMATE, standId, "ult"));
             } else {
-                // Render cooldown HUD for stands
-                renderIcons(ctx, isMid ? STAND_ICONS_MID : STAND_ICONS, selectedX, selectedY, cooldown -> stand.getStandType().getId());
+                final boolean hasMoveMapEntries = !stand.getMoveMap().getEntries().isEmpty();
+                for (AbilitySlot s : STAND_SLOTS) {
+                    if (hasMoveMapEntries && s.moveClass() != null
+                            && stand.getMoveMap().getEntries(s.moveClass()).isEmpty()) {
+                        continue;
+                    }
+                    slots.add(new ResolvedSlot(s.cooldownType(), standId, s.iconName()));
+                }
+                if (slots.isEmpty()) {
+                    for (AbilitySlot s : STAND_SLOTS) {
+                        slots.add(new ResolvedSlot(s.cooldownType(), standId, s.iconName()));
+                    }
+                }
             }
-            renderIcons(ctx, UNIVERSAL_ICONS, selectedX, selectedY, cooldown -> UNIVERSAL_ID);
+        } else if (spec != null) {
+            // When Stand is OFF, keep screen calm: show Spec dock only if ALWAYS or while any Spec skill is on cooldown
+            boolean anySpecCooldown = false;
+            for (AbilitySlot s : SPEC_SLOTS) {
+                if (cooldowns.getCooldown(s.cooldownType()) > 0) {
+                    anySpecCooldown = true;
+                    break;
+                }
+            }
+            if (cfg.getUiDuration() == JClientConfig.UIDuration.ALWAYS || anySpecCooldown) {
+                final Identifier specId = spec.getType().getId();
+                for (AbilitySlot s : SPEC_SLOTS) {
+                    slots.add(new ResolvedSlot(s.cooldownType(), specId, s.iconName()));
+                }
+            }
+        }
+
+        // Collect universal skills that are currently on cooldown (Dash / Cooldown Cancel / Combo Breaker)
+        final List<ResolvedSlot> activeUniversalCooldowns = new ArrayList<>();
+        for (AbilitySlot u : UNIVERSAL_SLOTS) {
+            if (cooldowns.getCooldown(u.cooldownType()) > 0) {
+                activeUniversalCooldowns.add(new ResolvedSlot(u.cooldownType(), UNIVERSAL_ID, u.iconName()));
+            }
+        }
+
+        if (slots.isEmpty() && activeUniversalCooldowns.isEmpty()) {
+            return;
+        }
+
+        final int sw = client.getWindow().getGuiScaledWidth();
+        final int sh = client.getWindow().getGuiScaledHeight();
+        final Font font = client.font;
+        final JClientConfig.UIPos uiPos = cfg.getUiPosition();
+        final boolean horizontalStrip = uiPos == JClientConfig.UIPos.MIDDLE;
+
+        final int cols = horizontalStrip ? Math.max(1, slots.size()) : Math.min(4, Math.max(1, slots.size()));
+        final int rows = slots.isEmpty() ? 0 : (int) Math.ceil(slots.size() / (double) cols);
+        final int gridW = cols * TILE_SIZE + Math.max(0, cols - 1) * TILE_GAP;
+        final int gridH = rows * TILE_SIZE + Math.max(0, rows - 1) * TILE_GAP;
+
+        final int baseX;
+        final int baseY;
+        if (horizontalStrip) {
+            baseX = (sw - gridW) / 2 + cfg.getHorizontalHudOffset();
+            baseY = sh - 66 - gridH + cfg.getVerticalHudOffset();
+        } else if (uiPos == JClientConfig.UIPos.LEFT) {
+            baseX = 8 + cfg.getHorizontalHudOffset();
+            baseY = sh - 8 - gridH + cfg.getVerticalHudOffset();
+        } else {
+            baseX = sw - gridW - 8 + cfg.getHorizontalHudOffset();
+            baseY = sh - 8 - gridH + cfg.getVerticalHudOffset();
+        }
+
+        // Subtle integrated Stand name + 3px Guard bar directly above the ability dock when Stand is summoned
+        if (standActiveForMoves && cfg.isAnimeHudEnabled() && !slots.isEmpty()) {
+            JoJoAnimeHudRenderer.drawMinimalStandHeader(ctx, font, stand, baseX, baseY - 14, gridW);
+        }
+
+        final long nowMs = System.currentTimeMillis();
+        for (int i = 0; i < slots.size(); i++) {
+            final ResolvedSlot slot = slots.get(i);
+            final int col = i % cols;
+            final int row = i / cols;
+            final int tx = baseX + col * (TILE_SIZE + TILE_GAP);
+            final int ty = baseY + row * (TILE_SIZE + TILE_GAP);
+            renderAbilityTile(ctx, font, cooldowns, slot, tx, ty, TILE_SIZE, ICON_SIZE, nowMs);
+        }
+
+        // Render active universal cooldown micro-chips neatly beside the dock so they never clutter idle gameplay
+        if (!activeUniversalCooldowns.isEmpty()) {
+            final int chipGap = 2;
+            final int stripW = activeUniversalCooldowns.size() * UNIVERSAL_TILE
+                    + Math.max(0, activeUniversalCooldowns.size() - 1) * chipGap;
+            final int chipY = (standActiveForMoves && cfg.isAnimeHudEnabled() && !slots.isEmpty())
+                    ? (baseY - 14 - UNIVERSAL_TILE - 4)
+                    : (slots.isEmpty() ? sh - 8 - UNIVERSAL_TILE + cfg.getVerticalHudOffset() : baseY - UNIVERSAL_TILE - 4);
+            final int chipStartX = uiPos == JClientConfig.UIPos.LEFT
+                    ? baseX
+                    : (baseX + Math.max(gridW, stripW) - stripW);
+            for (int i = 0; i < activeUniversalCooldowns.size(); i++) {
+                final ResolvedSlot u = activeUniversalCooldowns.get(i);
+                renderAbilityTile(ctx, font, cooldowns, u, chipStartX + i * (UNIVERSAL_TILE + chipGap), chipY,
+                        UNIVERSAL_TILE, UNIVERSAL_ICON, nowMs);
+            }
+        }
+    }
+
+    private static void renderAbilityTile(
+            final GuiGraphicsExtractor ctx,
+            final Font font,
+            final CommonCooldownsComponent cooldowns,
+            final ResolvedSlot slot,
+            final int x,
+            final int y,
+            final int tileSize,
+            final int iconSize,
+            final long nowMs
+    ) {
+        final CooldownType type = slot.cooldownType();
+        final int remainingTicks = cooldowns.getCooldown(type);
+        final int initialDuration = cooldowns.getInitialDuration(type);
+        final boolean coolingDown = remainingTicks > 0 && initialDuration > 0;
+        final double progress = coolingDown ? Mth.clamp(remainingTicks / (double) initialDuration, 0.0, 1.0) : 0.0;
+
+        final boolean wasCooling = WAS_COOLING_DOWN.getOrDefault(type, false);
+        if (wasCooling && !coolingDown) {
+            READY_PULSE_UNTIL_MS.put(type, nowMs + READY_PULSE_DURATION_MS);
+        }
+        WAS_COOLING_DOWN.put(type, coolingDown);
+
+        final long pulseUntil = READY_PULSE_UNTIL_MS.getOrDefault(type, 0L);
+        final float pulse = pulseUntil > nowMs
+                ? Mth.clamp((pulseUntil - nowMs) / (float) READY_PULSE_DURATION_MS, 0.0f, 1.0f)
+                : 0.0f;
+
+        // 1. Soft translucent dark tile background
+        ctx.fill(x, y, x + tileSize, y + tileSize, coolingDown ? 0x80090710 : 0x6E110E1B);
+
+        // 2. Crisp ability logo centered in tile
+        final int iconPad = (tileSize - iconSize) / 2;
+        final float iconAlpha = coolingDown ? 0.30f : 0.90f;
+        final int iconTint = ARGB.colorFromFloat(iconAlpha, 1.0f, 1.0f, 1.0f);
+        renderIconSized(ctx, x + iconPad, y + iconPad, iconSize, slot.iconOwner(), slot.iconName(), iconTint);
+
+        // 3. Cooldown vertical recharge sweep + thin bottom progress / ready strip
+        if (coolingDown) {
+            int veilH = Mth.clamp(Mth.ceil(tileSize * progress), 1, tileSize);
+            ctx.fill(x, y, x + tileSize, y + veilH, 0x7708060F);
+
+            int chargeW = Math.round(tileSize * (float) (1.0 - progress));
+            if (chargeW > 0) {
+                ctx.fill(x, y + tileSize - 1, x + chargeW, y + tileSize, 0xCCF59E0B);
+            }
+            ctx.outline(x, y, tileSize, tileSize, 0x449CA3AF);
+        } else {
+            // Ready indicator: subtle glass rim + 1px emerald ready bar at the bottom (flashes softly on recharge!)
+            int borderColor = pulse > 0.0f
+                    ? ARGB.colorFromFloat(0.45f + pulse * 0.50f, 0.99f, 0.90f, 0.54f)
+                    : 0x4DFFFFFF;
+            ctx.outline(x, y, tileSize, tileSize, borderColor);
+            int readyBarColor = pulse > 0.0f ? 0xEEFDE68A : 0xBB34D399;
+            ctx.fill(x + 1, y + tileSize - 1, x + tileSize - 1, y + tileSize, readyBarColor);
+        }
+
+        // 4. Compact keybind badge at top-left (scaled cleanly so it never crowds the logo)
+        final String keyLabel = cooldownTypeToKeybind(type, true);
+        if (!keyLabel.isEmpty() && !"-".equals(keyLabel)) {
+            final float keyScale = tileSize >= 20 ? 0.62f : 0.55f;
+            final int badgeW = Mth.ceil(font.width(keyLabel) * keyScale) + 2;
+            final int badgeH = Mth.ceil(7 * keyScale) + 2;
+            ctx.fill(x + 1, y + 1, x + 1 + badgeW, y + 1 + badgeH, 0x9907050D);
+
+            var pose = ctx.pose();
+            pose.pushMatrix();
+            pose.translate(x + 2, y + 2);
+            pose.scale(keyScale, keyScale);
+            ctx.text(font, keyLabel, 0, 0, coolingDown ? 0xAA9CA3AF : 0xF0F9FAFB, false);
+            pose.popMatrix();
+        }
+
+        // 5. Crisp remaining-seconds readout centered when on cooldown
+        if (coolingDown) {
+            final float sec = remainingTicks / 20.0f;
+            final String cdStr = sec >= 10.0f
+                    ? String.format(Locale.ROOT, "%d", Mth.ceil(sec))
+                    : String.format(Locale.ROOT, "%.1f", sec);
+            final float cdScale = tileSize >= 20 ? 0.72f : 0.62f;
+            final float textW = font.width(cdStr) * cdScale;
+            final float textH = 7.0f * cdScale;
+
+            var pose = ctx.pose();
+            pose.pushMatrix();
+            pose.translate(x + (tileSize - textW) * 0.5f, y + (tileSize - textH) * 0.5f + 2.0f);
+            pose.scale(cdScale, cdScale);
+            ctx.text(font, cdStr, 0, 0, 0xFFFDE68A, true);
+            pose.popMatrix();
         }
     }
 
@@ -179,68 +335,12 @@ public class JCraftAbilityHud {
             case SPECIAL1, STAND_SP1 ->         generateName(SPECIAL1_KEY.getParent(), makeShort);
             case SPECIAL2, STAND_SP2 ->         generateName(SPECIAL2_KEY.getParent(), makeShort);
             case SPECIAL3, STAND_SP3 ->         generateName(SPECIAL3_KEY.getParent(), makeShort);
-            case UTILITY, STAND_TOSS ->         generateName(JCraftClient.UTILITY_KEY.getParent(), makeShort);
+            case UTILITY ->                     generateName(JCraftClient.UTILITY_KEY.getParent(), makeShort);
+            case STAND_TOSS ->                  generateName(Minecraft.getInstance().options.keyPickItem, makeShort);
             case COMBO_BREAKER ->               makeShort ? "CB" : "Combo Breaker";
             case COOLDOWN_CANCEL ->             generateName(JCraftClient.COOLDOWN_CANCEL_KEY.getParent(), makeShort);
             case DASH ->                        generateName(DASH_KEY.getParent(), makeShort);
         };
-    }
-
-    static int timeSinceNoCooldowns = 100;
-    /**
-     * Renders specified list of icons.
-     *
-     * @param icons     list of icons to render
-     * @param selectedX x offset (in pixels) accounting for player's config choice
-     * @param selectedY y offset (in pixels) accounting for player's config choice
-     * @param type      decides which resource folder is loaded when rendering icons
-     */
-    private static void renderIcons(final GuiGraphicsExtractor ctx, final Map<CooldownType, IconPos> icons, final int selectedX,
-                                    final int selectedY, final Function<CooldownType, Identifier> type) {
-        final JClientConfig.UIDuration uiDuration = JClientConfig.getInstance().getUiDuration();
-        if (uiDuration == JClientConfig.UIDuration.NEVER) {
-            return;
-        }
-
-        final Font textRenderer = Minecraft.getInstance().font;
-
-        for (Map.Entry<CooldownType, IconPos> entry : icons.entrySet()) {
-            final CooldownType cooldownType = entry.getKey();
-            final IconPos iconPos = entry.getValue();
-            final int iconX = iconPos.x() + selectedX;
-            final int iconY = iconPos.y() + selectedY;
-
-            final double cd = getCooldownProgress(cooldownType);
-            final boolean coolingDown = cd > 0.0d;
-
-            float alpha = JClientConfig.getInstance().isIconHudPeekAllMoves() ? 0.1f : 0.0f;
-
-            if (coolingDown) {
-                timeSinceNoCooldowns = 0;
-                alpha = 1.0f;
-            }
-
-            if (timeSinceNoCooldowns >= 100 && uiDuration == JClientConfig.UIDuration.COOLDOWN) {
-                continue;
-            }
-
-            if (alpha <= 0.0f) continue;
-
-            int tint = ARGB.colorFromFloat(alpha, 1f, 1f, 1f);
-            renderBorder(ctx, iconX, iconY, tint);
-            renderIcon(ctx, iconX, iconY, type.apply(cooldownType), iconPos.name(), tint);
-            if (coolingDown) renderCooldown(ctx, cd, iconX, iconY);
-
-            final String finalText = cooldownTypeToKeybind(cooldownType, true);
-
-            ctx.text(
-                    textRenderer,
-                    finalText,
-                    iconX,
-                    iconY,
-                    ColorUtils.HSBAtoRGBA(0.3f - (float) cd * 10f / 720f, (cd < 1.6) ? 0.0f : 1.0f, 1.0f, alpha * 2.0f)
-            );
-        }
     }
 
     public static void renderIcon(final GuiGraphicsExtractor ctx, final int x, final int y, final Identifier type, final String icon) {
@@ -248,8 +348,16 @@ public class JCraftAbilityHud {
     }
 
     public static void renderIcon(final GuiGraphicsExtractor ctx, final int x, final int y, final Identifier type, final String icon, final int tint) {
-        final Identifier texture = type.withPath(p -> "textures/gui/ability_icons/" + p + "/" + icon + ".png");
-        renderAbsIcon(ctx, x, y, texture, icon, tint);
+        renderIconSized(ctx, x + 2, y + 2, 18, type, icon, tint);
+    }
+
+    private static void renderIconSized(final GuiGraphicsExtractor ctx, final int x, final int y, final int size,
+                                        final Identifier type, final String icon, final int tint) {
+        Identifier texture = type.withPath(p -> "textures/gui/ability_icons/" + p + "/" + icon + ".png");
+        if (!isTextureAvailable(texture)) {
+            texture = JCraft.id("textures/gui/ability_icons/fallback/" + icon + ".png");
+        }
+        ctx.blit(RenderPipelines.GUI_TEXTURED, texture, x, y, 0f, 0f, size, size, size, size, tint);
     }
 
     public static void renderAbsIcon(final GuiGraphicsExtractor ctx, final int x, final int y, Identifier texture, final String fallback) {
@@ -272,36 +380,18 @@ public class JCraftAbilityHud {
     }
 
     private static boolean isTextureAvailable(final Identifier textureLocation) {
-        final ResourceManager resourceManager = Minecraft.getInstance().getResourceManager();
-        try {
-            return resourceManager.getResource(textureLocation).isPresent();
-        } catch (Exception ex) {
-            return false;
-        }
-    }
-
-    /**
-     * @param type The type of the cooldown
-     * @return Progress value of cooldown between zero and one if it is present, otherwise defaults to -1
-     */
-    private static double getCooldownProgress(final CooldownType type) {
-        final CommonCooldownsComponent cooldowns = JComponentPlatformUtils.getCooldowns(Minecraft.getInstance().player);
-        final int cooldown = cooldowns.getCooldown(type);
-        final int initialDuration = cooldowns.getInitialDuration(type);
-
-        return cooldown > 0 && initialDuration != 0 ? normalize(cooldown, 0, initialDuration) : -1;
+        return TEXTURE_EXISTS_CACHE.computeIfAbsent(textureLocation, loc -> {
+            final ResourceManager resourceManager = Minecraft.getInstance().getResourceManager();
+            try {
+                return resourceManager.getResource(loc).isPresent();
+            } catch (Exception ex) {
+                return false;
+            }
+        });
     }
 
     public static void renderCooldown(final GuiGraphicsExtractor ctx, final double cd, final int x, final int y) {
         ctx.blit(RenderPipelines.GUI_TEXTURED, OVERLAY, x, y + Mth.floor(22.0 * (1.0 - cd)), 0f, (float) Math.floor((1.0 - cd) * 22),
                 22, Mth.ceil(22.0 * cd), 22, 22);
-    }
-
-    private static double normalize(final double value, final double min, final double max) {
-        return ((value - min) / (max - min));
-    }
-
-    private record IconPos(String name, int x, int y) {
-        // intentionally left empty
     }
 }

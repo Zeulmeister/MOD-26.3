@@ -20,6 +20,9 @@ public class PoseModifiers {
     private static final Map<String, Codec<? extends IPoseModifier>> MODIFIERS = new HashMap<>();
     @SuppressWarnings("unchecked")
     public static Codec<IPoseModifier> CODEC = Codec.STRING.dispatch(IPoseModifier::getId, id -> {
+        if ("empty".equals(id)) {
+            return com.mojang.serialization.MapCodec.unit(IPoseModifier.EMPTY);
+        }
         var c = MODIFIERS.get(id);
         return c instanceof com.mojang.serialization.MapCodec.MapCodecCodec<?> mcc ? (com.mojang.serialization.MapCodec<? extends IPoseModifier>) mcc.codec() : c.fieldOf("value");
     });

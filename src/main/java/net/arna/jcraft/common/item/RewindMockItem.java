@@ -55,15 +55,22 @@ public class RewindMockItem extends MockItem {
             return ItemStack.EMPTY;
         }
         UUID uuid = JValueIO.getUUID(nbt, "RewindUuid");
+        if (uuid == null) {
+            return ItemStack.EMPTY;
+        }
         int run = nbt.getIntOr("RewindRun", 0);
         Optional<BlockMarkerMove> move = BlockMarkerMoves.findFirst(m -> uuid.equals(m.getUuid()));
         // if in doubt, delete
         if (move.isEmpty()) {
             return ItemStack.EMPTY;
         }
-        if (move.get().getIteration().size() > run || !move.get().isRecording()) {
-            // if the rewind was successful executed
-            if (move.get().getIteration().get(run - 1)) {
+        var iterations = move.get().getIteration();
+        if (iterations.size() > run || !move.get().isRecording()) {
+            if (run <= 0 || run > iterations.size()) {
+                return ItemStack.EMPTY;
+            }
+            // if the rewind was successfully executed
+            if (iterations.get(run - 1)) {
                 return ItemStack.EMPTY;
             }
             else { // otherwise rewind didn't happen, make item real

@@ -45,7 +45,7 @@ public class ClearSpecCommand {
                 if (specType == JSpecTypeRegistry.HAMON.get()) {
                     JComponentPlatformUtils.getHamon(living).resetHamonCharge();
                 }
-                JComponentPlatformUtils.getSpecData(living).setType(null);
+                JComponentPlatformUtils.getSpecData(living).setType(JSpecTypeRegistry.NONE.get());
             }
         } catch (final Exception ex) {
             JCraft.LOGGER.error("Failed to clear spec!", ex);

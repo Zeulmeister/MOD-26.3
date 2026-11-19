@@ -88,11 +88,11 @@ public class JCraftClient {
     public static final TrackedKeyBinding SPECIAL3_KEY = TrackedKeyBinding.create("key.jcraft.special3",
             InputConstants.Type.KEYBOARD, InputConstants.KEY_M, JCRAFT_KEY_CAT);
     public static final TrackedKeyBinding COOLDOWN_CANCEL_KEY = TrackedKeyBinding.create("key.jcraft.cooldowncancel",
-            InputConstants.Type.KEYBOARD, InputConstants.KEY_RALT, JCRAFT_KEY_CAT);
+            InputConstants.Type.KEYBOARD, InputConstants.KEY_LALT, JCRAFT_KEY_CAT);
     public static final TrackedKeyBinding UTILITY_KEY = TrackedKeyBinding.create("key.jcraft.utility",
-            InputConstants.Type.MOUSE, 4, JCRAFT_KEY_CAT);
+            InputConstants.Type.KEYBOARD, InputConstants.KEY_J, JCRAFT_KEY_CAT);
     public static final TrackedKeyBinding DASH_KEY = TrackedKeyBinding.create("key.jcraft.dash",
-            InputConstants.Type.MOUSE, 3, JCRAFT_KEY_CAT);
+            InputConstants.Type.KEYBOARD, InputConstants.KEY_X, JCRAFT_KEY_CAT);
     public static final TrackedKeyBinding PRECISION_VISION_KEY = TrackedKeyBinding.create("key.jcraft.precision_vision",
             InputConstants.Type.KEYBOARD, InputConstants.KEY_Z, JCRAFT_KEY_CAT);
     public static final TrackedKeyBinding POSE_TAUNT_KEY = TrackedKeyBinding.create("key.jcraft.pose_taunt",
@@ -128,6 +128,7 @@ public class JCraftClient {
 
     public static void init() {
         JCraft.setClientEntityHandler(ClientEntityHandlerImpl.INSTANCE);
+        net.arna.jcraft.common.tickable.Timestops.setClientTsRangeChecker(net.arna.jcraft.client.util.JClientUtils::isInTSRange);
 
         AutoConfig.register(JClientConfig.class, JanksonConfigSerializer::new);
         JClientConfig.load();
@@ -171,13 +172,94 @@ public class JCraftClient {
         TimeErasePredictionEffectRenderer.init();
     }
     
+    private static boolean keyBindingsSanitized = false;
+
+    public static List<TrackedKeyBinding> getJCraftKeyBindings() {
+        return List.of(
+                STAND_SUMMON_KEY, HEAVY_KEY, BARRAGE_KEY,
+                SPECIAL1_KEY, SPECIAL2_KEY, SPECIAL3_KEY,
+                ULT_KEY, UTILITY_KEY, DASH_KEY,
+                COOLDOWN_CANCEL_KEY, PRECISION_VISION_KEY,
+                PILOT_MODE_KEY, POSE_TAUNT_KEY, RADIAL_MENU_KEY
+        );
+    }
+
     public static void registerKeyBindings(@Nullable Consumer<KeyMapping> register) {
         Consumer<KeyMapping> consumer = MoreObjects.firstNonNull(register, KeyMappingRegistry::register);
+        getJCraftKeyBindings().forEach(kb -> consumer.accept(kb.getParent()));
+    }
 
-        List<TrackedKeyBinding> bindings = List.of(STAND_SUMMON_KEY, HEAVY_KEY, BARRAGE_KEY, ULT_KEY, SPECIAL1_KEY, SPECIAL2_KEY,
-                SPECIAL3_KEY, COOLDOWN_CANCEL_KEY, UTILITY_KEY, DASH_KEY,
-                PRECISION_VISION_KEY, POSE_TAUNT_KEY, PILOT_MODE_KEY, RADIAL_MENU_KEY);
-        bindings.forEach(kb -> consumer.accept(kb.getParent()));
+    /**
+     * Resolves duplicate JCraft ability keybinds (e.g. from older options.txt saves)
+     * and unbinds non-combat Vanilla popup keys that collide with JCraft defaults.
+     */
+    public static void sanitizeKeyBindings(@Nullable Minecraft client) {
+        if (keyBindingsSanitized || client == null || client.options == null) {
+            return;
+        }
+        keyBindingsSanitized = true;
+        applyKeyBindingSanitization(client);
+    }
+
+    private static void applyKeyBindingSanitization(Minecraft client) {
+        boolean changed = false;
+        List<TrackedKeyBinding> all = getJCraftKeyBindings();
+
+        for (int i = 0; i < all.size(); i++) {
+            KeyMapping first = all.get(i).getParent();
+            if (first.isUnbound()) continue;
+            for (int j = i + 1; j < all.size(); j++) {
+                KeyMapping second = all.get(j).getParent();
+                if (!second.isUnbound() && first.same(second)) {
+                    second.setKey(second.getDefaultKey());
+                    changed = true;
+                }
+            }
+        }
+
+        changed |= unbindConflictingVanillaPopupKeys(client.options, all);
+
+        if (changed) {
+            KeyMapping.resetMapping();
+            client.options.save();
+        }
+    }
+
+    public static void resetKeyBindingsToDefaults(Minecraft client) {
+        List<TrackedKeyBinding> all = getJCraftKeyBindings();
+        for (TrackedKeyBinding tracked : all) {
+            KeyMapping kb = tracked.getParent();
+            kb.setKey(kb.getDefaultKey());
+        }
+        if (client != null && client.options != null) {
+            unbindConflictingVanillaPopupKeys(client.options, all);
+            KeyMapping.resetMapping();
+            client.options.save();
+        } else {
+            KeyMapping.resetMapping();
+        }
+    }
+
+    private static boolean unbindConflictingVanillaPopupKeys(Options options, List<TrackedKeyBinding> all) {
+        boolean changed = false;
+        List<KeyMapping> vanillaPopupKeys = List.of(
+                options.keyQuickActions,
+                options.keyFriends,
+                options.keySocialInteractions,
+                options.keyLoadHotbarActivator
+        );
+        for (KeyMapping vanilla : vanillaPopupKeys) {
+            if (vanilla == null || vanilla.isUnbound()) continue;
+            for (TrackedKeyBinding tracked : all) {
+                KeyMapping jcraftKey = tracked.getParent();
+                if (!jcraftKey.isUnbound() && vanilla.same(jcraftKey)) {
+                    vanilla.setKey(InputConstants.UNKNOWN);
+                    changed = true;
+                    break;
+                }
+            }
+        }
+        return changed;
     }
 
     /// TEXT HUD
@@ -217,8 +299,44 @@ public class JCraftClient {
      * @return a cleaned-up version of TranslatableText name of button
      */
     public static String generateName(final KeyMapping keyBinding, boolean makeShort) {
+        if (keyBinding.isUnbound()) {
+            return "-";
+        }
         final String str = keyBinding.saveString();
+        if (makeShort) {
+            switch (str) {
+                case "key.mouse.left" -> { return "M1"; }
+                case "key.mouse.right" -> { return "M2"; }
+                case "key.mouse.middle" -> { return "M3"; }
+                case "key.keyboard.left.alt", "key.keyboard.right.alt" -> { return "ALT"; }
+                case "key.keyboard.left.shift", "key.keyboard.right.shift" -> { return "SHF"; }
+                case "key.keyboard.left.control", "key.keyboard.right.control" -> { return "CTL"; }
+                case "key.keyboard.space" -> { return "SPC"; }
+                case "key.keyboard.tab" -> { return "TAB"; }
+                case "key.keyboard.caps.lock" -> { return "CAP"; }
+                case "key.keyboard.grave.accent" -> { return "`"; }
+                default -> {
+                    if (str.startsWith("key.mouse.")) {
+                        String btn = str.substring("key.mouse.".length());
+                        try {
+                            return "M" + (Integer.parseInt(btn) + 1);
+                        } catch (NumberFormatException ignored) {
+                            return "M" + btn.toUpperCase(Locale.ROOT);
+                        }
+                    }
+                    if (str.startsWith("key.keyboard.keypad.")) {
+                        return "N" + str.substring("key.keyboard.keypad.".length()).toUpperCase(Locale.ROOT);
+                    }
+                    if (str.startsWith("key.keyboard.f") && str.length() <= "key.keyboard.f12".length()) {
+                        return str.substring("key.keyboard.".length()).toUpperCase(Locale.ROOT);
+                    }
+                }
+            }
+        }
         final String[] components = str.split("\\.");
+        if (components.length < 2) {
+            return makeShort && !str.isEmpty() ? str.substring(0, 1).toUpperCase(Locale.ROOT) : str;
+        }
 
         String last = components[components.length - 1];
         String secondLast = components[components.length - 2] + " ";
@@ -304,8 +422,11 @@ public class JCraftClient {
         @Override
         public CompletableFuture<Void> reload(final SharedState sharedState, final Executor backgroundExecutor, final PreparationBarrier synchronizer, final Executor gameExecutor) {
             return synchronizer.wait(null).thenRunAsync(
-                    () -> decimalFormat.get().setDecimalFormatSymbols(DecimalFormatSymbols.getInstance(
-                            java.util.Locale.forLanguageTag(Minecraft.getInstance().getLanguageManager().getSelected().replace('_', '-')))), gameExecutor);
+                    () -> {
+                        JCraftAbilityHud.clearTextureCache();
+                        decimalFormat.get().setDecimalFormatSymbols(DecimalFormatSymbols.getInstance(
+                                java.util.Locale.forLanguageTag(Minecraft.getInstance().getLanguageManager().getSelected().replace('_', '-'))));
+                    }, gameExecutor);
         }
     }
 }

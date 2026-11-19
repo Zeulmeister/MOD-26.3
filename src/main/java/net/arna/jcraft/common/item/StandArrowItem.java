@@ -53,59 +53,71 @@ public class StandArrowItem extends ArrowItem {
         final StandEntity<?, ?> oldStand = standData.getStand();
         final ItemStack itemStack = user.getItemInHand(hand);
 
+        if (!(world instanceof net.minecraft.server.level.ServerLevel serverWorld)) {
+            return InteractionResult.PASS;
+        }
+
         if (!StandTypeUtil.isNone(standData.getType())) { // If the player already has a stand
             if (!warned.contains(user)) {
-                if (!world.isClientSide()) {
-                    user.sendSystemMessage(Component.translatable("warning.jcraft.stand.change"));
-                    warned.add(user);
-                }
+                user.sendSystemMessage(Component.translatable("warning.jcraft.stand.change"));
+                warned.add(user);
                 return InteractionResult.FAIL;
             }
         }
+
+        // Record cooldown using item template before shrinking in case count drops to 0.
+        user.getCooldowns().addCooldown(new net.minecraft.world.item.ItemStack(this), 20);
 
         // Remove 1 from item stack
         if (!user.isCreative()) {
             itemStack.shrink(1);
         }
 
-        // 1 second usage cooldown to prevent overuse
-        user.getCooldowns().addCooldown(new net.minecraft.world.item.ItemStack(this), 20);
-
-        // damage by arrow
-        int damage = Math.max(((net.minecraft.server.level.ServerLevel) world).getGameRules().get(JCraft.STAND_ARROW_BASE_DAMAGE), 0);
-        if (world.getDifficulty() == Difficulty.HARD) {
+        // Damage by arrow
+        int damage = Math.max(serverWorld.getGameRules().get(JCraft.STAND_ARROW_BASE_DAMAGE), 0);
+        if (serverWorld.getDifficulty() == Difficulty.HARD) {
             damage *= 2;
-        }
-        else if (world.getDifficulty() == Difficulty.EASY) {
+        } else if (serverWorld.getDifficulty() == Difficulty.EASY) {
             damage /= 2;
-        }
-        else if (world.getDifficulty() == Difficulty.PEACEFUL) {
+        } else if (serverWorld.getDifficulty() == Difficulty.PEACEFUL) {
             damage = 0;
         }
         if (damage > 0) {
-            user.hurt(JDamageSources.create(world, STAND_ARROW, user), damage);
+            user.hurtServer(serverWorld, JDamageSources.create(serverWorld, STAND_ARROW, user), damage);
         }
 
-        if (!world.isClientSide()) {
-            warned.remove(user);
-            if (oldStand != null) {
-                oldStand.desummon(); // Does any extra desummoning logic, like disabling flight
-                oldStand.discard(); // Actually removes the stand
-            }
-
-            // Roll for stand (can't roll the same one twice)
-            final RandomSource random = RandomSource.create();
-            final StandType oldType = standData.getType();
-            StandType newType;
-            do {
-                newType = StandTypeUtil.getRandomRegular(random, world.registryAccess(), true, false);
-            } while (newType == oldType);
-
-            standData.setType(newType);
-            JCraft.summon(world, user);
-
+        warned.remove(user);
+        if (!user.isAlive()) {
             user.awardStat(Stats.ITEM_USED.get(this));
+            return InteractionResult.CONSUME.heldItemTransformedTo(itemStack);
         }
+
+        if (oldStand != null) {
+            oldStand.desummon(); // Does any extra desummoning logic, like disabling flight
+            oldStand.discard(); // Actually removes the stand
+        }
+
+        // Roll for stand (can't roll the same one twice, bounded retries if only 1 regular stand is unblacklisted)
+        final RandomSource random = RandomSource.create();
+        final StandType oldType = standData.getType();
+        StandType newType = null;
+        for (int attempt = 0; attempt < 64; attempt++) {
+            StandType candidate = StandTypeUtil.getRandomRegular(random, serverWorld.registryAccess(), true, false);
+            if (!StandTypeUtil.isNone(candidate)) {
+                newType = candidate;
+                if (candidate != oldType) {
+                    break;
+                }
+            }
+        }
+        if (newType == null) {
+            newType = StandTypeUtil.getRandomRegular(random, serverWorld.registryAccess(), true, false);
+        }
+
+        standData.setType(newType);
+        JCraft.summon(serverWorld, user);
+
+        user.awardStat(Stats.ITEM_USED.get(this));
 
         return InteractionResult.CONSUME.heldItemTransformedTo(itemStack);
     }

@@ -2,7 +2,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:crazy_diamond/spruce_log"
+        "recipes": "jcraft:crazy_diamond/spruce_log"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

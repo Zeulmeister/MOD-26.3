@@ -132,7 +132,7 @@ public class JCraftChangesCommand {
     }
 
     private static boolean noChanges(final List<Pair<String, List<Pair<Component, MapDifference<String, Object>>>>> changes) {
-        return changes.stream().allMatch(p -> p.getSecond().stream()
+        return changes == null || changes.isEmpty() || changes.stream().allMatch(p -> p.getSecond().stream()
                 .allMatch(p1 -> p1.getSecond().areEqual()));
     }
 

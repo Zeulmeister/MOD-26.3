@@ -76,8 +76,13 @@ public abstract class AbstractTossMove<T extends AbstractTossMove<T, A>, A exten
     @Override
     public void onCancel(A attacker) {
         final LivingEntity base = attacker.getBaseEntity();
-        Containers.dropItemStack(base.level(), base.getX(), base.getY(), base.getZ(),
-                base.getItemInHand(InteractionHand.MAIN_HAND));
+        if (base.level().isClientSide()) return;
+        final ItemStack held = base.getItemInHand(InteractionHand.MAIN_HAND);
+        base.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        if (held.isEmpty()) return;
+        final LivingEntity user = attacker.getUser();
+        if (user instanceof net.minecraft.world.entity.player.Player player && player.isCreative()) return;
+        Containers.dropItemStack(base.level(), base.getX(), base.getY(), base.getZ(), held);
     }
 
     public abstract static class Type<T extends AbstractTossMove<? extends T, ?>> extends AbstractMove.Type<T> {

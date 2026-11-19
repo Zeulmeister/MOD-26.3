@@ -71,14 +71,15 @@ public final class TimeEraseMove extends AbstractMove<TimeEraseMove, KingCrimson
 
     @Override
     public @NonNull Set<LivingEntity> perform(final KingCrimsonEntity attacker, final LivingEntity user) {
-        attacker.setTETime(erasureDuration);
+        int duration = net.arna.jcraft.common.config.JServerConfig.KC_TIME_ERASURE_DURATION.getValue();
+        attacker.setTETime(duration);
 
         attacker.setCurrentMove(null);
         Mob doppelganger = null;
 
         if (user instanceof final ServerPlayer player) {
             // Shader handling
-            ShaderActivationPacket.send(player, attacker, 0, 120, ShaderActivationPacket.Type.CRIMSON);
+            ShaderActivationPacket.send(player, attacker, 0, duration, ShaderActivationPacket.Type.CRIMSON);
 
             PlayerCloneEntity clone = new PlayerCloneEntity(attacker.level());
             clone.setShouldRenderForMaster(false);

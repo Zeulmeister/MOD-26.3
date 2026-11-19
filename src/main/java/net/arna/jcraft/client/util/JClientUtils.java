@@ -35,8 +35,11 @@ public class JClientUtils {
     // Setting the timer to 0 will make the next tick remove it
     public static void removeTimestop(final int timestopperId) {
         for (DimensionData timestop : activeTimestops) {
+            if (timestop == null) {
+                continue;
+            }
             final Entity timestopper = timestop.getUser();
-            if (timestopper.getId() != timestopperId) {
+            if (timestopper == null || timestopper.getId() != timestopperId) {
                 continue;
             }
             timestop.setTimer(0);
@@ -44,12 +47,17 @@ public class JClientUtils {
         }
     }
 
+    public static void clearTimestops() {
+        activeTimestops.clear();
+        timestopTimestamps.clear();
+    }
+
     public static boolean isInTSRange(final Entity entity) {
-        if (entity == null) {
+        if (entity == null || entity.level() == null) {
             return false;
         }
 
-        return isInTSRange(entity.position());
+        return isInTSRange(entity.level().dimension(), entity.position());
     }
 
     public static boolean isUserOfActiveTimestop(@Nullable final Entity entity) {
@@ -59,6 +67,30 @@ public class JClientUtils {
         for (final DimensionData timeStop : activeTimestops) {
             if (timeStop != null && timeStop.getUser() == entity && timeStop.getTimer() > 0) {
                 return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean isInTSRange(final net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension, final Vec3 pos) {
+        for (final DimensionData timeStop : activeTimestops) {
+            if (timeStop != null && timeStop.getTimer() > 0 && dimension.equals(timeStop.getWorldKey())) {
+                Vec3 center = timeStop.getUser() != null ? timeStop.getUser().position() : timeStop.getPos();
+                if (center != null && center.distanceToSqr(pos.x(), pos.y(), pos.z()) <= 65536.0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static boolean isInTSRange(final net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension, final BlockPos pos) {
+        for (final DimensionData timeStop : activeTimestops) {
+            if (timeStop != null && timeStop.getTimer() > 0 && dimension.equals(timeStop.getWorldKey())) {
+                Vec3 center = timeStop.getUser() != null ? timeStop.getUser().position() : timeStop.getPos();
+                if (center != null && center.distanceToSqr(pos.getX(), pos.getY(), pos.getZ()) <= 65536.0) {
+                    return true;
+                }
             }
         }
         return false;
@@ -111,7 +143,7 @@ public class JClientUtils {
             return;
         }
         if (entity.getMoveStun() < 1) {
-            Vec3 playerVel = (entity.isRemote() && !entity.remoteControllable()) ? entity.getDeltaMovement() : deltaPos(user);
+            Vec3 playerVel = entity.isRemote() ? entity.getDeltaMovement() : deltaPos(user);
             overVel = Mth.clamp((float) playerVel.horizontalDistance() - 0.05f, -1f, 1f);
 
             // If going backwards
@@ -132,11 +164,12 @@ public class JClientUtils {
         }
 
         if (entity.isBlocking() || entity.isIdle()) {
-            // Look up/down, same as the stand user
+            // Look up/down, same as the stand user (or self when in remote pilot mode)
             final var head = model.getBoneOrNull("head");
             if (head != null) {
                 //model.prevHeadPitch = head.getRotX();
-                float headPitch = (user.getXRot() - overVel * velInfluence) * Mth.DEG_TO_RAD;
+                float lookPitch = entity.isRemote() ? entity.getXRot() : user.getXRot();
+                float headPitch = (lookPitch - overVel * velInfluence) * Mth.DEG_TO_RAD;
                 if (!flipHead) {
                     headPitch = -headPitch;
                 }

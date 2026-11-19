@@ -29,7 +29,7 @@ public final class CombatInputBuffer {
     private CombatInputBuffer() {}
 
     public static void recordInput(@Nullable MoveInputType moveInput) {
-        if (moveInput == null || moveInput == MoveInputType.STAND_SUMMON) {
+        if (moveInput == null || moveInput == MoveInputType.STAND_SUMMON || moveInput == MoveInputType.UTILITY) {
             return;
         }
         bufferedMove = moveInput;
@@ -86,18 +86,19 @@ public final class CombatInputBuffer {
         JSpec<?, ?> spec = JUtils.getSpec(player);
         MobEffectInstance dazed = player.getEffect(JStatusRegistry.DAZED.asHolder());
 
-        int recoveryTicks = 0;
+        // Amplifier 2 is guard slowdown where JUtils.canAct(player) is true, so ignore it here.
+        int stunTicks = (dazed != null && dazed.getAmplifier() != 2 && dazed.getDuration() > 0)
+                ? dazed.getDuration()
+                : 0;
+        int moveStunTicks = 0;
         if (stand != null && stand.getMoveStun() > 0) {
-            recoveryTicks = Math.max(recoveryTicks, stand.getMoveStun());
+            moveStunTicks = Math.max(moveStunTicks, stand.getMoveStun());
         } else if (spec != null && spec.moveStun > 0) {
-            recoveryTicks = Math.max(recoveryTicks, spec.moveStun);
-        }
-        if (dazed != null && dazed.getDuration() > 0) {
-            recoveryTicks = Math.max(recoveryTicks, dazed.getDuration());
+            moveStunTicks = Math.max(moveStunTicks, spec.moveStun);
         }
 
-        // Record newly pressed attack inputs when player is within [1..6] ticks of recovery
-        if (recoveryTicks >= 1 && recoveryTicks <= BUFFER_WINDOW_TICKS) {
+        // Only buffer on the client while stunned (PlayerInputPacket already queues moves during moveStun serverside).
+        if (stunTicks >= 1 && stunTicks <= BUFFER_WINDOW_TICKS) {
             for (Object2BooleanMap.Entry<MoveInputType> entry : freshPresses.object2BooleanEntrySet()) {
                 if (entry.getBooleanValue()) {
                     recordInput(entry.getKey());
@@ -105,7 +106,7 @@ public final class CombatInputBuffer {
             }
         }
 
-        boolean canActNow = recoveryTicks == 0;
+        boolean canActNow = stunTicks == 0 && moveStunTicks == 0;
         MoveInputType toFire = stepBuffer(canActNow);
         if (toFire != null) {
             Object2BooleanMap<MoveInputType> replay = new Object2BooleanOpenHashMap<>();

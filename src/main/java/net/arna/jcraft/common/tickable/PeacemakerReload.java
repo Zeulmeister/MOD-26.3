@@ -87,6 +87,11 @@ public class PeacemakerReload {
         return Stage.START.ticks + Math.max(rounds, 0) * perRound + Stage.END.ticks;
     }
 
+    public void clearAll() {
+        reloads.clear();
+        toAdd.clear();
+    }
+
     public void tick(MinecraftServer server) {
         if (!toAdd.isEmpty()) {
             reloads.addAll(toAdd);

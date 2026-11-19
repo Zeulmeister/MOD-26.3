@@ -57,9 +57,12 @@ public final class CoffinBlock extends BedBlock implements net.minecraft.world.l
         super(DyeColor.RED, settings);
     }
 
-    private static List<ItemStack> DROP_LIST;
     public static void init() {
-        DROP_LIST = List.of(new ItemStack(JItemRegistry.COFFIN_BLOCK.get()));
+        // Fresh ItemStack instances are created per drop in getDrops() so picking up one drop never mutates future drops.
+    }
+
+    private static List<ItemStack> createDropList() {
+        return List.of(new ItemStack(JItemRegistry.COFFIN_BLOCK.get()));
     }
 
     @NonNull
@@ -112,7 +115,7 @@ public final class CoffinBlock extends BedBlock implements net.minecraft.world.l
     @Override
     public BlockState getStateForPlacement(@NonNull final BlockPlaceContext context) {
         BlockState state = super.getStateForPlacement(context);
-        if (state != null) state.setValue(OCCUPIED, false);
+        if (state != null) state = state.setValue(OCCUPIED, false);
         return state;
     }
 
@@ -128,7 +131,7 @@ public final class CoffinBlock extends BedBlock implements net.minecraft.world.l
     @SuppressWarnings("deprecation")
     @Override
     public @NonNull List<ItemStack> getDrops(@NonNull final BlockState state, @NonNull final LootParams.Builder params) {
-        return state.getValue(PART) == BedPart.FOOT ? DROP_LIST : Collections.emptyList();
+        return state.getValue(PART) == BedPart.FOOT ? createDropList() : Collections.emptyList();
     }
 
     @Override

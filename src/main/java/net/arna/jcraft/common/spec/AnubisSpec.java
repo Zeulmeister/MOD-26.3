@@ -166,11 +166,10 @@ public class AnubisSpec extends JSpec<AnubisSpec, AnubisSpec.State> {
         }
 
         if (hit) {
-            AnubisSpec anubisSpec = (AnubisSpec) JUtils.getSpec(user);
-            anubisSpec.setTicksSinceLastHit(0);
-            if (anubisSpec.attackSpeedMult < BLOODLUST_MAX) {
-                anubisSpec.attackSpeedMult += BLOODLUST_HIT_INCREMENT;
-                JComponentPlatformUtils.getMiscData(user).setAttackSpeedMult(anubisSpec.attackSpeedMult);
+            this.setTicksSinceLastHit(0);
+            if (this.attackSpeedMult < BLOODLUST_MAX) {
+                this.attackSpeedMult = Math.min(BLOODLUST_MAX, this.attackSpeedMult + BLOODLUST_HIT_INCREMENT);
+                JComponentPlatformUtils.getMiscData(user).setAttackSpeedMult(this.attackSpeedMult);
             }
         }
     }
@@ -271,7 +270,9 @@ public class AnubisSpec extends JSpec<AnubisSpec, AnubisSpec.State> {
                     s = handleMove(REKKA3, CooldownType.SPECIAL2, State.REKKA3, attackSpeedMult);
                 } else {
                     s = handleMove(LOW_KICK, CooldownType.SPECIAL3, State.SWEEP, attackSpeedMult);
-                    user.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, LOW_KICK.getDuration(), 2, true, false));
+                    if (s) {
+                        user.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, LOW_KICK.getDuration(), 2, true, false));
+                    }
                 }
 
                 if (s) {
@@ -306,8 +307,8 @@ public class AnubisSpec extends JSpec<AnubisSpec, AnubisSpec.State> {
         }
 
         if (++ticksSinceLastHit > 80 && attackSpeedMult > 1f) {
-            ticksSinceLastHit = 0; // Technically untrue, but all this serves for is counting 5s since last hit then rolling over
-            attackSpeedMult -= 0.2f;
+            ticksSinceLastHit = 0; // Technically untrue, but all this serves for is counting 4s since last hit then rolling over
+            attackSpeedMult = Math.max(1f, attackSpeedMult - 0.2f);
             JComponentPlatformUtils.getMiscData(user).setAttackSpeedMult(attackSpeedMult);
         }
     }

@@ -29,6 +29,15 @@ public abstract class ServerPlayerMixin implements IJInputStateManagerHolder {
         return jcraft$inputStateManager;
     }
 
+    @Inject(method = "tick", at = @At("TAIL"))
+    private void jcraft$clearGunAimingWhenUnequipped(CallbackInfo ci) {
+        ServerPlayer self = (ServerPlayer) (Object) this;
+        if (net.arna.jcraft.common.system.GunAiming.isAiming(self)
+                && !net.arna.jcraft.common.system.GunAiming.isAimableGun(self.getMainHandItem())) {
+            net.arna.jcraft.common.system.GunAiming.set(self, false);
+        }
+    }
+
     @Inject(method = "restoreFrom", at = @At("TAIL"))
     private void jcraft$copyInputStateUponRestore(ServerPlayer oldPlayer, boolean keepEverything, CallbackInfo ci) {
         if (oldPlayer instanceof IJInputStateManagerHolder holder) {

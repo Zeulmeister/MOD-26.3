@@ -30,7 +30,8 @@ public class MainMenuScreen extends AbstractContainerScreen<MainMenu> {
         guiGraphics.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, JCraft.id("textures/gui/menu_screen.png"), leftPos, topPos, 0f, 0f, this.imageWidth, this.imageHeight, 256, 256);
     }
 
-    protected void renderLabels(final GuiGraphicsExtractor guiGraphics, final int mouseX, final int mouseY) {
+    @Override
+    protected void extractLabels(final GuiGraphicsExtractor guiGraphics, final int mouseX, final int mouseY) {
         int row = 0;
         drawText(guiGraphics, this.title, row++, 0);
         if (stand == null || StandTypeUtil.isNone(stand.getStandType())) {
@@ -39,24 +40,22 @@ public class MainMenuScreen extends AbstractContainerScreen<MainMenu> {
         else {
             StandInfo info = stand.getStandData().getInfo();
             drawText(guiGraphics, info.getName(), row++, 0);
-            final String desc = String.format("entity.%s.%s%s.info.desc", JCraft.MOD_ID, info.getName(),
+            final String desc = String.format("%s%s.info.desc", info.getNameKey(),
                     stand.getModeOrdinal() == 0 ? "" : Integer.toString(stand.getModeOrdinal()));
             drawText(guiGraphics, Component.translatable(desc), row++, 0);
             drawText(guiGraphics, Component.literal("PROS"), row++, 0);
             final int pros = info.getProCount();
-            final String proFormatted = "entity.%s.%s.info.pro%d";
             for (int p = 1; p <= pros; p++) {
                 final Component pro = Component.literal("● ").append(Component.translatable(
-                        String.format(proFormatted, JCraft.MOD_ID, info.getNameKey(), p)));
+                        String.format("%s.info.pro%d", info.getNameKey(), p)));
                 drawText(guiGraphics, pro, row++, 0);
             }
             drawText(guiGraphics, Component.literal("CONS"), row++, 0);
             final int cons = info.getConCount();
-            final String conFormatted = "entity.%s.%s.info.con%d";
             for (int c = 1; c <= cons; c++) {
-                final Component pro = Component.literal("● ").append(Component.translatable(
-                        String.format(conFormatted, JCraft.MOD_ID, info.getNameKey(), c)));
-                drawText(guiGraphics, pro, row++, 0);
+                final Component con = Component.literal("● ").append(Component.translatable(
+                        String.format("%s.info.con%d", info.getNameKey(), c)));
+                drawText(guiGraphics, con, row++, 0);
             }
         }
     }

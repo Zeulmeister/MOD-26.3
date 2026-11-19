@@ -193,6 +193,9 @@ public class StandEntityRenderer<T extends StandEntity<?, ?>> extends AbstractEn
     }
 
     public static boolean shouldApplyAlpha(final StandEntity<?, ?> stand) {
+        if (stand.isRemote()) {
+            return false;
+        }
         final Minecraft mcClient = Minecraft.getInstance();
         return mcClient.player != null && mcClient.options.getCameraType().isFirstPerson() && JUtils.getStand(mcClient.player) == stand;
     }

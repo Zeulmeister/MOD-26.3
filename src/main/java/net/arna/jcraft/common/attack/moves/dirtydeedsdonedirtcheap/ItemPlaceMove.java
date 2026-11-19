@@ -10,6 +10,7 @@ import net.arna.jcraft.common.item.AuMockItem;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.jetbrains.annotations.NotNull;
@@ -18,12 +19,12 @@ import java.util.List;
 import java.util.Set;
 
 public final class ItemPlaceMove<A extends IAttacker<? extends A, ?>> extends AbstractMove<ItemPlaceMove<A>, A> {
-    private static final List<ItemStack> placeableStacks = List.of(
-            Items.STICK.getDefaultInstance(),
-            Items.COBBLESTONE.getDefaultInstance(),
-            Items.DEAD_BUSH.getDefaultInstance(),
-            Items.APPLE.getDefaultInstance(),
-            Items.OAK_SAPLING.getDefaultInstance()
+    private static final List<Item> PLACEABLE_ITEMS = List.of(
+            Items.STICK,
+            Items.COBBLESTONE,
+            Items.DEAD_BUSH,
+            Items.APPLE,
+            Items.OAK_SAPLING
     );
     private boolean placingFirstStack = true;
     private ItemStack placing;
@@ -43,7 +44,7 @@ public final class ItemPlaceMove<A extends IAttacker<? extends A, ?>> extends Ab
 
         final LivingEntity baseEntity = attacker.getBaseEntity();
         if (placingFirstStack) {
-            placing = placeableStacks.get(baseEntity.getRandom().nextInt(placeableStacks.size()));
+            placing = PLACEABLE_ITEMS.get(baseEntity.getRandom().nextInt(PLACEABLE_ITEMS.size())).getDefaultInstance();
         }
 
         baseEntity.setItemSlot(EquipmentSlot.OFFHAND, placing.copy());

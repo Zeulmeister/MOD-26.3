@@ -25,7 +25,12 @@ public class HoldingAnubisCondition extends MoveCondition<HoldingAnubisCondition
 
         @Override
         public Codec<HoldingAnubisCondition> getCodec() {
-            return com.mojang.serialization.MapCodec.unit(HoldingAnubisCondition::new).codec();
+            return getMapCodec().codec();
+        }
+
+        @Override
+        public com.mojang.serialization.MapCodec<HoldingAnubisCondition> getMapCodec() {
+            return com.mojang.serialization.MapCodec.unit(HoldingAnubisCondition::new);
         }
     }
 }

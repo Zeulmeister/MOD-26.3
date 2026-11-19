@@ -117,9 +117,11 @@ public class BloodBottleItem extends Item {
             return InteractionResult.PASS;
         }
 
-        user.getCooldowns().addCooldown(stack, 15);
         if (!user.level().isClientSide() && user.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
-            entity.hurtServer(serverLevel, user.level().damageSources().playerAttack(user), 2);
+            if (!entity.hurtServer(serverLevel, user.level().damageSources().playerAttack(user), 2)) {
+                return InteractionResult.PASS;
+            }
+            user.getCooldowns().addCooldown(stack, 15);
             CompoundTag nbtCompound = JItemData.getOrCreateTag(stack);
             float blood = nbtCompound.getFloatOr("Blood", 0f);
             float newBlood = blood + bloodMult;
@@ -130,6 +132,8 @@ public class BloodBottleItem extends Item {
             JItemData.edit(stack, t -> t.putFloat("Blood", finalBlood));
             syncBottleModel(stack, finalBlood);
             user.setItemInHand(hand, stack);
+        } else {
+            user.getCooldowns().addCooldown(stack, 15);
         }
         return InteractionResult.SUCCESS;
     }

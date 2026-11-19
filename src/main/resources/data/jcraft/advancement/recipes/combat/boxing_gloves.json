@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:boxing_gloves"
+        "recipes": "jcraft:boxing_gloves"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

@@ -1,6 +1,7 @@
 package net.arna.jcraft.common.tickable;
 
 import net.arna.jcraft.JCraft;
+import net.arna.jcraft.common.saveddata.PastDimensionsData;
 import net.arna.jcraft.common.util.DimensionData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
@@ -11,21 +12,115 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 public class PastDimensions {
     protected static final List<DimensionData> dimensions = new ArrayList<>();
+    protected static final Map<UUID, PastDimensionsData.Entry> pendingEntries = new LinkedHashMap<>();
+    private static boolean dirty = false;
 
     public static void enqueue(DimensionData dimensionData) {
+        if (dimensionData.getUser() != null) {
+            pendingEntries.remove(dimensionData.getUser().getUUID());
+        }
         dimensions.add(dimensionData);
+        dirty = true;
     }
 
     public static void remove(DimensionData dimensionData) {
-        dimensions.remove(dimensionData);
+        if (dimensions.remove(dimensionData)) {
+            dirty = true;
+        }
+    }
+
+    public static void load(MinecraftServer server) {
+        dimensions.clear();
+        pendingEntries.clear();
+        dirty = false;
+        PastDimensionsData data = PastDimensionsData.fromDefaultFile(server);
+        for (PastDimensionsData.Entry entry : data.getEntries()) {
+            pendingEntries.put(entry.uuid(), entry);
+        }
+        resolvePending(server);
+    }
+
+    public static void save(MinecraftServer server) {
+        if (server == null) return;
+        if (!dirty && dimensions.isEmpty() && pendingEntries.isEmpty()) {
+            return;
+        }
+        Map<UUID, PastDimensionsData.Entry> snapshot = new LinkedHashMap<>(pendingEntries);
+        for (DimensionData dd : dimensions) {
+            Entity user = dd.getUser();
+            if (user == null || !user.isAlive() || user.isRemoved()) continue;
+            snapshot.put(user.getUUID(), new PastDimensionsData.Entry(
+                    user.getUUID(),
+                    dd.getWorldKey(),
+                    dd.getPos(),
+                    Math.max(1, dd.getTimer())
+            ));
+        }
+        PastDimensionsData.saveToDefaultFile(server, snapshot.values());
+        dirty = false;
+    }
+
+    public static void clearAll() {
+        dimensions.clear();
+        pendingEntries.clear();
+        dirty = false;
+    }
+
+    private static void resolvePending(MinecraftServer server) {
+        if (pendingEntries.isEmpty() || server == null || JCraft.auWorld == null) {
+            return;
+        }
+        Iterator<Map.Entry<UUID, PastDimensionsData.Entry>> it = pendingEntries.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<UUID, PastDimensionsData.Entry> pair = it.next();
+            UUID uuid = pair.getKey();
+            PastDimensionsData.Entry entry = pair.getValue();
+
+            ServerPlayer player = server.getPlayerList().getPlayer(uuid);
+            if (player != null) {
+                if (player.level() == JCraft.auWorld && player.isAlive() && !hasActiveEntry(player)) {
+                    dimensions.add(new DimensionData(player, entry.pos(), entry.worldKey(), Math.max(1, entry.timer())));
+                }
+                it.remove();
+                dirty = true;
+                continue;
+            }
+
+            Entity entity = JCraft.auWorld.getEntity(uuid);
+            if (entity instanceof LivingEntity living) {
+                if (living.isAlive() && !living.isRemoved() && !hasActiveEntry(living)) {
+                    dimensions.add(new DimensionData(living, entry.pos(), entry.worldKey(), Math.max(1, entry.timer())));
+                }
+                it.remove();
+                dirty = true;
+            }
+        }
+    }
+
+    private static boolean hasActiveEntry(LivingEntity entity) {
+        for (DimensionData dd : dimensions) {
+            if (dd.getUser() == entity) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static void tick(MinecraftServer server) {
+        if (JCraft.auWorld == null) {
+            return;
+        }
+        resolvePending(server);
+
         for (ServerPlayer serverPlayer : JCraft.auWorld.players()) {
             boolean contained = false;
             for (DimensionData dimensionData : dimensions) {
@@ -41,16 +136,19 @@ public class PastDimensions {
 
         for (DimensionData dimensionData : dimensions) {
             Entity user = dimensionData.getUser();
-            if (user == null || !user.isAlive()) {
+            if (user == null || !user.isAlive() || user.isRemoved()) {
+                dirty = true;
                 continue;
             }
 
             ServerLevel original = server.getLevel(dimensionData.getWorldKey());
-            if (user.level() == original) {
+            if (original == null || user.level() == original) {
+                dirty = true;
                 continue;
             }
 
             dimensionData.decreaseTimer();
+            dirty = true;
             if (dimensionData.getTimer() > 1) {
                 newDimensions.add(dimensionData);
                 continue;
@@ -101,6 +199,7 @@ public class PastDimensions {
             }
             isStored = true;
             dimV.setTimer(1);
+            dirty = true;
         }
 
         return isStored;

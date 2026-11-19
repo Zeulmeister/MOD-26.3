@@ -553,7 +553,7 @@ public interface IAttacker<A extends IAttacker<? extends A, S>, S extends Enum<?
 
         LivingEntity user = getUserOrThrow();
         if (user instanceof ServerPlayer player)
-            return VariantInputPacket.getState(player).crouch();
+            return VariantInputPacket.getState(player).crouch() || player.isShiftKeyDown();
 
         return user.isShiftKeyDown();
     }

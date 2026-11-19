@@ -24,7 +24,9 @@ public class TimeStopComponentImpl extends CommonTimeStopComponentImpl implement
 
     @Override
     public void sync(Entity entity) {
-        JComponents.TIME_STOP.sync(entity);
+        if (!entity.level().isClientSide()) {
+            JComponents.TIME_STOP.sync(entity);
+        }
     }
 
     @Override

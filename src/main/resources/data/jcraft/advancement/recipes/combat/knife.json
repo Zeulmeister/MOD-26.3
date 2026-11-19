@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:knife"
+        "recipes": "jcraft:knife"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

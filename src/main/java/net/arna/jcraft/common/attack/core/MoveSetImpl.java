@@ -16,7 +16,9 @@ import net.arna.jcraft.api.attack.StateContainerHolder;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.ref.WeakReference;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 
@@ -32,7 +34,7 @@ public class MoveSetImpl<A extends IAttacker<? extends A, S>, S extends Enum<S>>
     @Getter
     private final Codec<MoveMap<A, S>> codec;
     private final Codec<MoveMap.Entry<A, S>> entryCodec;
-    private final Set<ReloadListener<A, S>> listeners = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
+    private final List<WeakReference<ReloadListener<A, S>>> listeners = new CopyOnWriteArrayList<>();
     @Getter
     private final MoveMap<A, S> moveMap = new MoveMapImpl<>();
     @Getter
@@ -112,8 +114,15 @@ public class MoveSetImpl<A extends IAttacker<? extends A, S>, S extends Enum<S>>
         this.moveMap.copyFrom(moveMap);
 
         initialized = true;
-        if (gameExecutor != null) gameExecutor.execute(() -> listeners.forEach(listener ->
-                listener.onMoveSetReload(this)));
+        if (gameExecutor != null) gameExecutor.execute(() -> {
+            listeners.removeIf(ref -> ref.get() == null);
+            for (WeakReference<ReloadListener<A, S>> ref : listeners) {
+                ReloadListener<A, S> listener = ref.get();
+                if (listener != null) {
+                    listener.onMoveSetReload(this);
+                }
+            }
+        });
     }
 
     @Override
@@ -134,9 +143,38 @@ public class MoveSetImpl<A extends IAttacker<? extends A, S>, S extends Enum<S>>
         return codec.encodeStart(ops, moveMap);
     }
 
+    private void ensureDefaultLoaded() {
+        if (!initialized) {
+            try {
+                onLoad(save(), null);
+            } catch (Exception e) {
+                JCraft.LOGGER.error("Failed to initialize default moveset {} for {}", name, type.getId(), e);
+            }
+        }
+    }
+
+    @Override
+    public MoveMap<A, S> getMoveMap() {
+        ensureDefaultLoaded();
+        return moveMap;
+    }
+
     @Override
     public void registerListener(final ReloadListener<A, S> listener) {
-        if (!listeners.add(listener)) return;
+        ensureDefaultLoaded();
+        synchronized (listeners) {
+            boolean present = false;
+            for (WeakReference<ReloadListener<A, S>> ref : listeners) {
+                ReloadListener<A, S> existing = ref.get();
+                if (existing == null) {
+                    listeners.remove(ref);
+                } else if (existing == listener) {
+                    present = true;
+                }
+            }
+            if (present) return;
+            listeners.add(new WeakReference<>(listener));
+        }
 
         if (initialized) {
             listener.onMoveSetReload(this);

@@ -23,7 +23,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:hot_sand_block"
+        "recipes": "jcraft:hot_sand_block"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

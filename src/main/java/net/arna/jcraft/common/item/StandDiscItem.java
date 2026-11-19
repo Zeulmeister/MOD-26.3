@@ -83,26 +83,31 @@ public class StandDiscItem extends Item {
         final StandType userStand = standData.getType();
         final int userSkin = standData.getSkin();
 
-        if (oneUse && !StandTypeUtil.isNone(userStand)) {
+        final boolean itemEmpty = StandTypeUtil.isNone(itemStand);
+        final boolean userEmpty = StandTypeUtil.isNone(userStand);
+
+        if (oneUse && !userEmpty) {
             user.sendOverlayMessage(Component.translatable("jcraft.disc.fragile_has_stand").withStyle(ChatFormatting.RED));
             return InteractionResult.FAIL;
         }
 
-        if (itemStand == userStand && (itemStand == null || itemSkin == userSkin)) {
-            if (itemStand != null) {
-                user.sendOverlayMessage(Component.translatable("jcraft.disc.same_stand"));
-            }
+        if (itemEmpty && userEmpty) {
             return InteractionResult.FAIL;
         }
 
-        if (StandTypeUtil.isIn(itemStand, JTagRegistry.PLAYER_STAND_BLACKLIST, world.registryAccess())) {
+        if (!itemEmpty && itemStand == userStand && itemSkin == userSkin) {
+            user.sendOverlayMessage(Component.translatable("jcraft.disc.same_stand"));
+            return InteractionResult.FAIL;
+        }
+
+        if (!itemEmpty && StandTypeUtil.isIn(itemStand, JTagRegistry.PLAYER_STAND_BLACKLIST, world.registryAccess())) {
             user.sendOverlayMessage(Component.translatable("jcraft.disc.blacklisted"));
             return InteractionResult.FAIL;
         }
 
-        standData.setTypeAndSkin(itemStand, itemSkin, false);
+        standData.setTypeAndSkin(itemEmpty ? net.arna.jcraft.api.registry.JStandTypeRegistry.NONE.get() : itemStand, itemEmpty ? 0 : itemSkin, false);
         JItemData.edit(itemStack, tag -> {
-            if (userStand == null || StandTypeUtil.isNone(userStand)) {
+            if (userEmpty) {
                 tag.remove("StandID");
                 tag.remove("Skin");
             } else {
@@ -121,7 +126,9 @@ public class StandDiscItem extends Item {
             standData.setStand(null);
         }
 
-        JCraft.summon(world, user);
+        if (!itemEmpty) {
+            JCraft.summon(world, user);
+        }
         user.getCooldowns().addCooldown(itemStack, 20);
 
         if (oneUse) {
@@ -171,6 +178,11 @@ public class StandDiscItem extends Item {
     public static boolean isEmptyDisc(ItemStack stack) {
         CompoundTag tag = JItemData.getTag(stack);
         return tag == null || !tag.contains("StandID");
+    }
+
+    public static boolean isFragile(ItemStack stack) {
+        CompoundTag tag = JItemData.getTag(stack);
+        return tag != null && tag.getByteOr("OneUse", (byte) 0) != 0;
     }
 
     public static StandType getStandType(ItemStack stack) {

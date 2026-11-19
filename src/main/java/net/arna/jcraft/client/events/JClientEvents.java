@@ -79,6 +79,11 @@ public class JClientEvents {
             return;
         }
 
+        // Clear any stale Time Stop / shader / kinetic HUD state from a previous world or server session.
+        JClientUtils.clearTimestops();
+        net.arna.jcraft.client.rendering.handler.ZaWarudoShaderHandler.INSTANCE.reset();
+        net.arna.jcraft.client.gui.hud.JoJoAnimeHudRenderer.setClientSuspendedProjectiles(0);
+
         // Sync initial prediction option
         // net.arna.jcraft.common.network.JNetwork.sendToServer(JPacketRegistry.C2S_PREDICTION_TRIGGER, PredictionTriggerPacket.write(JClientConfig.getInstance().isClientsidePrediction()));
     }
@@ -219,12 +224,22 @@ public class JClientEvents {
             return;
         }
 
+        JCraftClient.sanitizeKeyBindings(client);
+
         // Quick 8-Slice JoJo Radial Wheel (default key: Y)
         if (client.gui.screen() == null && RADIAL_MENU_KEY != null && RADIAL_MENU_KEY.isPressedThisTick()) {
             client.gui.setScreen(new net.arna.jcraft.client.gui.screen.JoJoRadialWheelScreen());
         }
 
         final StandEntity<?, ?> stand = JUtils.getStand(player);
+
+        // Sync aerial and crouch variants BEFORE move inputs so variant moves see up-to-date flags on the same tick
+        final boolean aerialChanged = AERIAL_VARIANT_KEY.isChangedThisTick();
+        final boolean crouchChanged = CROUCH_VARIANT_KEY.isChangedThisTick();
+        if (aerialChanged || crouchChanged) {
+            FriendlyByteBuf buf = VariantInputPacket.write(AERIAL_VARIANT_KEY.isDown(), CROUCH_VARIANT_KEY.isDown());
+            net.arna.jcraft.common.network.JNetwork.sendToServer(JPacketRegistry.C2S_VARIANT, buf);
+        }
 
         // Handle JCraft inputs (stand, spec, universal controls)
         if (player.isAlive()) {
@@ -266,17 +281,10 @@ public class JClientEvents {
             net.arna.jcraft.common.network.JNetwork.sendToServer(JPacketRegistry.C2S_COOLDOWN_CANCEL, new FriendlyByteBuf(Unpooled.buffer()));
         }
 
-        // Aerial and crouch variants
-        if (AERIAL_VARIANT_KEY.isChangedThisTick() || CROUCH_VARIANT_KEY.isChangedThisTick()) {
-            FriendlyByteBuf buf = VariantInputPacket.write(AERIAL_VARIANT_KEY.isDown(), CROUCH_VARIANT_KEY.isDown());
-            net.arna.jcraft.common.network.JNetwork.sendToServer(JPacketRegistry.C2S_VARIANT, buf);
-        }
-
         // Custom 1.20.1 + 26.3 Client Feature Handlers
         net.arna.jcraft.client.zoom.StarPlatinumPrecisionHandler.tick(client);
         net.arna.jcraft.client.taunt.PlayerPoseTauntHandler.tick(client);
         net.arna.jcraft.client.remote.StandRemoteControlHandler.tick(client);
-        net.arna.jcraft.client.rendering.handler.ColorShiftShaderHandler.INSTANCE.tick(client);
         net.arna.jcraft.client.rendering.JoJoOnomatopoeiaRenderer.tick(client);
 
         if (client.isPaused() && client.isLocalServer()) {
@@ -288,9 +296,14 @@ public class JClientEvents {
 
         while (iter.hasNext()) {
             final DimensionData timestop = iter.next();
+            if (timestop == null) {
+                iter.remove();
+                continue;
+            }
             final LivingEntity user = timestop.getUser();
 
-            if (user != null && user.isAlive()) {
+            if (user != null && user.isAlive() && !user.isRemoved() && user.level() == client.level
+                    && timestop.getWorldKey().equals(client.level.dimension())) {
                 timestop.decreaseTimer();
                 if (timestop.getTimer() <= 0) {
                     iter.remove();
@@ -305,14 +318,23 @@ public class JClientEvents {
             final Vec3 pos = user.position();
             timestop.setPos(pos);
 
+            final boolean hasLocalServer = client.hasSingleplayerServer();
             final List<? extends Entity> toStop = user.level().getEntitiesOfClass(Entity.class,
                     new AABB(pos.add(160.0, 160.0, 160.0), pos.subtract(160.0, 160.0, 160.0)), Timestops.TIMESTOP_PREDICATE);
 
             for (final Entity entity : toStop) {
-                if (entity != user && entity != JUtils.getStand(user) && entity != user.getVehicle()
-                        && !net.arna.jcraft.common.combat.TimeStopKineticPhysicsHandler.shouldAllowInitialTravel(entity, user)) {
+                if (entity == user || entity == JUtils.getStand(user) || entity == user.getVehicle() || user.isPassengerOfSameVehicle(entity)) {
+                    continue;
+                }
+                final boolean allowKineticTravel = hasLocalServer
+                        ? net.arna.jcraft.common.combat.TimeStopKineticPhysicsHandler.shouldAllowInitialTravel(entity, user)
+                        : (entity instanceof net.minecraft.world.entity.projectile.Projectile proj
+                            && net.arna.jcraft.common.combat.TimeStopKineticPhysicsHandler.isOwnedByTimestopUser(proj, user)
+                            && entity.tickCount <= net.arna.jcraft.common.combat.TimeStopKineticPhysicsHandler.MAX_INITIAL_TRAVEL_TICKS + 1
+                            && entity.getDeltaMovement().lengthSqr() > net.arna.jcraft.common.combat.TimeStopKineticPhysicsHandler.SUSPENSION_SPEED_SQR_THRESHOLD);
+                if (!allowKineticTravel) {
                     JComponentPlatformUtils.getTimeStopData(entity)
-                            .ifPresent(d -> d.setTicks(3));
+                            .ifPresent(d -> d.setClientTicks(3));
                 }
             }
         }

@@ -10,13 +10,21 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 
+import java.util.Collections;
+import java.util.Set;
+import java.util.WeakHashMap;
+
 public abstract class SpecObtainmentItem extends Item {
-    protected boolean warned = false;
+    protected final Set<Player> warned = Collections.newSetFromMap(new WeakHashMap<>());
     protected final RegistrySupplier<SpecType> switchTo;
 
     public SpecObtainmentItem(Properties settings, RegistrySupplier<SpecType> switchTo) {
         super(settings);
         this.switchTo = switchTo;
+    }
+
+    protected boolean isWarned(Player player) {
+        return player != null && warned.contains(player);
     }
 
     private boolean setSpec(Player player) {
@@ -28,7 +36,7 @@ public abstract class SpecObtainmentItem extends Item {
         if (!player.level().isClientSide()) {
             player.awardStat(JStatRegistry.SPECS_CHANGED.get());
         }
-        warned = false;
+        warned.remove(player);
         return true;
     }
 
@@ -36,14 +44,14 @@ public abstract class SpecObtainmentItem extends Item {
         JSpec<?, ?> spec = JUtils.getSpec(player);
         if (spec != null) { // If the player already has a spec
             if (spec.getType() != switchTo.get()) { // And it isn't the one that will be switched to
-                if (!warned) {
+                if (!warned.contains(player)) {
                     player.sendSystemMessage(Component.translatable("warning.jcraft.spec.change"));
-                    warned = true;
+                    warned.add(player);
                     return false;
                 }
                 return setSpec(player);
-            }
-            else {
+            } else {
+                warned.remove(player);
                 return false;
             }
         }

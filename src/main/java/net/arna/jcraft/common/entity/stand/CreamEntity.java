@@ -508,7 +508,7 @@ public class CreamEntity extends StandEntity<CreamEntity, CreamEntity.State> {
                 serverPlayer.stopFallFlying();
             }
 
-            if (lastRemoteInputTime - tickCount > 4) {
+            if (tickCount - lastRemoteInputTime > 4) {
                 updateRemoteInputs(0, 0, false, false);
             }
 

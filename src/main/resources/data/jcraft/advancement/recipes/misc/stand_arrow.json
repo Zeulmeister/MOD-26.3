@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:stand_arrow"
+        "recipes": "jcraft:stand_arrow"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

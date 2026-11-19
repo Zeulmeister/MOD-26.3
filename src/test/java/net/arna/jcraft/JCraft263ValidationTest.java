@@ -227,7 +227,7 @@ public final class JCraft263ValidationTest {
                 totalMixins++;
             }
         }
-        checkEquals(23, totalMixins, "All 23 common + client Mixins must be registered and bytecode-verified");
+        checkEquals(31, totalMixins, "All 31 common + client Mixins must be registered and bytecode-verified");
     }
 
     static void verifyKineticTimeStopPhysicsMath() {
@@ -296,6 +296,224 @@ public final class JCraft263ValidationTest {
         }
     }
 
+    static void verifySptwHairTexturesTimeSkipSafetyAndVelocityClamp() throws Exception {
+        // 1. SPTW dedicated hair textures (all 4 skins + out-of-bounds clamping)
+        for (int skin = 0; skin < 4; skin++) {
+            String suffix = skin == 0 ? "default_hair.png" : "skin" + skin + "_hair.png";
+            var sptwHair = net.arna.jcraft.client.renderer.entity.layer.SPHairLayer.getHairTexture(true, skin);
+            checkEquals("jcraft:textures/entity/stands/star_platinum_the_world/" + suffix, sptwHair.toString(),
+                    "SPTW hair texture path for skin " + skin);
+            check(Files.exists(RESOURCES_ROOT.resolve("assets/jcraft/" + sptwHair.getPath())),
+                    "SPTW hair texture file must exist: " + sptwHair.getPath());
+
+            var spHair = net.arna.jcraft.client.renderer.entity.layer.SPHairLayer.getHairTexture(false, skin);
+            checkEquals("jcraft:textures/entity/stands/star_platinum/" + suffix, spHair.toString(),
+                    "SP hair texture path for skin " + skin);
+        }
+        checkEquals(
+                "jcraft:textures/entity/stands/star_platinum_the_world/default_hair.png",
+                net.arna.jcraft.client.renderer.entity.layer.SPHairLayer.getHairTexture(true, -5).toString(),
+                "SPTW hair skin lower clamp"
+        );
+        checkEquals(
+                "jcraft:textures/entity/stands/star_platinum_the_world/skin3_hair.png",
+                net.arna.jcraft.client.renderer.entity.layer.SPHairLayer.getHairTexture(true, 99).toString(),
+                "SPTW hair skin upper clamp"
+        );
+
+        // 2. TimeStop accumulated velocity clamping
+        Vec3 huge = new Vec3(20.0, 0.0, 0.0);
+        Vec3 clamped = net.arna.jcraft.common.component.impl.entity.CommonTimeStopComponentImpl.clampAccumulatedVelocity(huge);
+        checkClose(net.arna.jcraft.common.component.impl.entity.CommonTimeStopComponentImpl.MAX_ACCUMULATED_LAUNCH_SPEED,
+                clamped.length(), 1.0E-6, "Time Stop accumulated velocity clamped at max speed");
+        Vec3 normal = new Vec3(1.0, 0.5, 0.0);
+        checkEquals(normal, net.arna.jcraft.common.component.impl.entity.CommonTimeStopComponentImpl.clampAccumulatedVelocity(normal),
+                "Normal Time Stop velocity preserved");
+
+        // 3. TimeSkip safe block-face backoff (wall / ceiling / floor / miss)
+        var wallHit = new net.minecraft.world.phys.BlockHitResult(
+                new Vec3(10.0, 65.0, 0.0), net.minecraft.core.Direction.WEST, new net.minecraft.core.BlockPos(10, 65, 0), false);
+        Vec3 safeWall = net.arna.jcraft.common.attack.moves.shared.TimeSkipMove.computeSafeTeleportPos(wallHit, 0.6, 1.8);
+        check(safeWall.x < 9.7, "TimeSkip backs off from WEST wall face (x=" + safeWall.x + ")");
+
+        var ceilHit = new net.minecraft.world.phys.BlockHitResult(
+                new Vec3(0.0, 70.0, 0.0), net.minecraft.core.Direction.DOWN, new net.minecraft.core.BlockPos(0, 70, 0), false);
+        Vec3 safeCeil = net.arna.jcraft.common.attack.moves.shared.TimeSkipMove.computeSafeTeleportPos(ceilHit, 0.6, 1.8);
+        checkClose(70.0 - 1.85, safeCeil.y, 1.0E-6, "TimeSkip backs off below ceiling by entity height + 0.05");
+
+        var floorHit = new net.minecraft.world.phys.BlockHitResult(
+                new Vec3(0.0, 64.0, 0.0), net.minecraft.core.Direction.UP, new net.minecraft.core.BlockPos(0, 63, 0), false);
+        Vec3 safeFloor = net.arna.jcraft.common.attack.moves.shared.TimeSkipMove.computeSafeTeleportPos(floorHit, 0.6, 1.8);
+        checkClose(64.05, safeFloor.y, 1.0E-6, "TimeSkip offsets slightly above floor");
+
+        var missHit = net.minecraft.world.phys.BlockHitResult.miss(
+                new Vec3(14.0, 65.0, 0.0), net.minecraft.core.Direction.EAST, new net.minecraft.core.BlockPos(14, 65, 0));
+        checkEquals(new Vec3(14.0, 65.0, 0.0),
+                net.arna.jcraft.common.attack.moves.shared.TimeSkipMove.computeSafeTeleportPos(missHit, 0.6, 1.8),
+                "TimeSkip miss teleports to exact end location");
+    }
+
+    static void verifyNonStandMechanicsAndMixins() throws Exception {
+        ClassLoader cl = JCraft263ValidationTest.class.getClassLoader();
+
+        // 1. MainMenuScreen overrides MC 26.3 extractLabels (not dead 1.20 renderLabels)
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/client/gui/screen/MainMenuScreen.class")) {
+            check(in != null, "MainMenuScreen.class must exist");
+            ClassReader cr = new ClassReader(in);
+            ClassNode cn = new ClassNode();
+            cr.accept(cn, 0);
+            boolean hasExtractLabels = cn.methods.stream().anyMatch(m -> "extractLabels".equals(m.name));
+            boolean hasDeadRenderLabels = cn.methods.stream().anyMatch(m -> "renderLabels".equals(m.name));
+            check(hasExtractLabels, "MainMenuScreen must override MC 26.3 extractLabels");
+            check(!hasDeadRenderLabels, "MainMenuScreen must not keep dead 1.20 renderLabels method");
+        }
+
+        // 2. Cinderella's Kiss enchantment JSON supports jcraft:cinderella_mask
+        JsonObject ckJson = JsonParser.parseString(Files.readString(
+                RESOURCES_ROOT.resolve("data/jcraft/enchantment/cinderellas_kiss.json"), StandardCharsets.UTF_8)).getAsJsonObject();
+        checkEquals("jcraft:cinderella_mask", ckJson.get("supported_items").getAsString(),
+                "cinderellas_kiss enchantment must support jcraft:cinderella_mask");
+        checkEquals(3, ckJson.get("max_level").getAsInt(), "cinderellas_kiss max_level must be 3");
+
+        // 3. Restored non-Stand mixins are registered in jcraft.mixins.json
+        JsonObject mixinJson = JsonParser.parseString(Files.readString(
+                RESOURCES_ROOT.resolve("jcraft.mixins.json"), StandardCharsets.UTF_8)).getAsJsonObject();
+        List<String> commonMixins = new ArrayList<>();
+        for (JsonElement e : mixinJson.getAsJsonArray("mixins")) {
+            commonMixins.add(e.getAsString());
+        }
+        for (String required : List.of("AnvilMenuMixin", "CombatTrackerAccessor", "FoodDataMixin", "GrindstoneMenuMixin",
+                "GrindstoneSlotMixin", "ItemUseMixin", "VillagerEntityMixin")) {
+            check(commonMixins.contains(required), "jcraft.mixins.json must include restored mixin: " + required);
+        }
+
+        // 4. Peacemaker isolates Minecraft.getInstance() into Peacemaker$ClientKeys (dedicated-server safe)
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/common/item/Peacemaker.class")) {
+            check(in != null, "Peacemaker.class must exist");
+            ClassReader cr = new ClassReader(in);
+            ClassNode cn = new ClassNode();
+            cr.accept(cn, 0);
+            boolean hasGetShots = cn.methods.stream().anyMatch(m -> "getShots".equals(m.name));
+            check(hasGetShots, "Peacemaker must define getShots(ItemStack)");
+        }
+        check(cl.getResource("net/arna/jcraft/common/item/Peacemaker$ClientKeys.class") != null,
+                "Peacemaker$ClientKeys must isolate client key lookups");
+
+        // 5. CinderellasKissEnchantment handles null/empty cleanly
+        checkEquals(0, net.arna.jcraft.common.enchantments.CinderellasKissEnchantment.getCKLevel(null),
+                "getCKLevel(null) returns 0");
+        check(net.arna.jcraft.common.enchantments.CinderellasKissEnchantment.getCKHolder(null) == null,
+                "getCKHolder(null) returns null");
+    }
+
+    static void verifyStandUserPosesAndArmSafety() throws Exception {
+        ClassLoader cl = JCraft263ValidationTest.class.getClassLoader();
+        net.arna.jcraft.api.pose.PoseModifiers.register();
+
+        // 1. All Stand pose JSONs must parse cleanly through PoseModifiers.CODEC
+        Path posesDir = RESOURCES_ROOT.resolve("assets/jcraft/poses");
+        List<Path> poseFiles;
+        try (var stream = Files.walk(posesDir)) {
+            poseFiles = stream.filter(p -> p.getFileName().toString().equals("humanoid.json")).sorted().toList();
+        }
+        check(poseFiles.size() >= 7, "Expected at least 7 Stand humanoid pose JSONs, found " + poseFiles.size());
+        for (Path poseFile : poseFiles) {
+            JsonObject obj = JsonParser.parseString(Files.readString(poseFile, StandardCharsets.UTF_8)).getAsJsonObject();
+            var parsed = net.arna.jcraft.api.pose.PoseModifiers.CODEC.parse(com.mojang.serialization.JsonOps.INSTANCE, obj);
+            check(parsed.result().isPresent(), "Pose JSON must parse cleanly: " + posesDir.relativize(poseFile)
+                    + (parsed.error().isPresent() ? " (" + parsed.error().get().message() + ")" : ""));
+        }
+
+        // 2. star_platinum/humanoid.json must NOT force awkward rightArm splay or half-swing
+        String spPoseRaw = Files.readString(posesDir.resolve("star_platinum/humanoid.json"), StandardCharsets.UTF_8);
+        check(!spPoseRaw.contains("\"rightArm\""), "star_platinum/humanoid.json must leave rightArm natural");
+        check(spPoseRaw.contains("\"leftArm\""), "star_platinum/humanoid.json must keep Jotaro leftArm pocket pose");
+
+        // 3. the_world/humanoid.json must guard rightArm/leftArm offsets with RIGHT_ARM_EMPTY/LEFT_ARM_EMPTY
+        JsonObject twPose = JsonParser.parseString(
+                Files.readString(posesDir.resolve("the_world/humanoid.json"), StandardCharsets.UTF_8)).getAsJsonObject();
+        var twGroup = (net.arna.jcraft.api.pose.modifier.PoseModifierGroup) net.arna.jcraft.api.pose.PoseModifiers.CODEC
+                .parse(com.mojang.serialization.JsonOps.INSTANCE, twPose).result().orElseThrow();
+        check(twGroup.modifiers().size() == 3, "the_world pose must have 3 top-level modifier groups");
+        var notSprintingGroup = (net.arna.jcraft.api.pose.modifier.PoseModifierGroup) twGroup.modifiers().get(2);
+        boolean hasDirectArmMod = notSprintingGroup.modifiers().stream()
+                .filter(m -> m instanceof net.arna.jcraft.api.pose.modifier.CustomPoseModifier)
+                .map(m -> ((net.arna.jcraft.api.pose.modifier.CustomPoseModifier) m).part().partName())
+                .anyMatch(name -> name.equals("rightArm") || name.equals("leftArm"));
+        check(!hasDirectArmMod, "the_world USER_NOT_SPRINTING must not modify arms without arm-empty conditions");
+
+        // 4. HumanoidModelMixin guards swings/riding/elytra/swimming and does not reset body angles at TAIL
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/mixin/client/HumanoidModelMixin.class")) {
+            check(in != null, "HumanoidModelMixin.class must exist");
+            ClassReader cr = new ClassReader(in);
+            ClassNode cn = new ClassNode();
+            cr.accept(cn, 0);
+            var setupMethod = cn.methods.stream()
+                    .filter(m -> "jcraft$applyStandAndTimestopLevitationPoses".equals(m.name))
+                    .findFirst().orElseThrow();
+            boolean callsResetPartAngles = false;
+            boolean checksSwingAnimation = false;
+            boolean checksIsPassenger = false;
+            boolean checksIsTwoHanded = false;
+            for (var insn = setupMethod.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi) {
+                    if ("resetPartAngles".equals(mi.name)) callsResetPartAngles = true;
+                    if ("isTwoHanded".equals(mi.name)) checksIsTwoHanded = true;
+                } else if (insn instanceof org.objectweb.asm.tree.FieldInsnNode fi) {
+                    if ("swingAnimation".equals(fi.name)) checksSwingAnimation = true;
+                    if ("isPassenger".equals(fi.name)) checksIsPassenger = true;
+                }
+            }
+            check(!callsResetPartAngles, "HumanoidModelMixin must not call resetPartAngles(body) at TAIL");
+            check(checksSwingAnimation, "HumanoidModelMixin must guard pose application against swingAnimation");
+            check(checksIsPassenger, "HumanoidModelMixin must guard pose application against isPassenger");
+            check(checksIsTwoHanded, "HumanoidModelMixin must guard Time Stop arm pose against two-handed ArmPoses");
+        }
+
+        // 5. ModifierCondition checks swinging and two-handed item poses; LevitationPoseModifier checks arm conditions
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/api/pose/ModifierCondition.class")) {
+            check(in != null, "ModifierCondition.class must exist");
+            ClassReader cr = new ClassReader(in);
+            ClassNode cn = new ClassNode();
+            cr.accept(cn, 0);
+            boolean checksSwinging = cn.methods.stream().anyMatch(m -> {
+                for (var insn = m.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                    if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi && "isSwinging".equals(mi.name)) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            boolean checksCrossbow = cn.methods.stream().anyMatch(m -> {
+                for (var insn = m.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                    if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi && "isCharged".equals(mi.name)) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            check(checksSwinging, "ModifierCondition must guard arm pose conditions against isSwinging()");
+            check(checksCrossbow, "ModifierCondition must guard arm pose conditions against charged crossbows");
+        }
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/api/pose/modifier/LevitationPoseModifier.class")) {
+            check(in != null, "LevitationPoseModifier.class must exist");
+            ClassReader cr = new ClassReader(in);
+            ClassNode cn = new ClassNode();
+            cr.accept(cn, 0);
+            var applyMethod = cn.methods.stream().filter(m -> "apply".equals(m.name)).findFirst().orElseThrow();
+            boolean checksRightArmEmpty = false;
+            boolean checksLeftArmEmpty = false;
+            for (var insn = applyMethod.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                if (insn instanceof org.objectweb.asm.tree.FieldInsnNode fi) {
+                    if ("RIGHT_ARM_EMPTY".equals(fi.name)) checksRightArmEmpty = true;
+                    if ("LEFT_ARM_EMPTY".equals(fi.name)) checksLeftArmEmpty = true;
+                }
+            }
+            check(checksRightArmEmpty, "LevitationPoseModifier must guard rightArm with RIGHT_ARM_EMPTY");
+            check(checksLeftArmEmpty, "LevitationPoseModifier must guard leftArm with LEFT_ARM_EMPTY");
+        }
+    }
+
     public static void main(String[] args) throws Exception {
         System.out.println("=== Running JCraft 26.3 Superior Edition Verification Suite ===");
         verifyAllStandsSpecsEvolutionsAndMovesetsPresentAndValid();
@@ -303,13 +521,118 @@ public final class JCraft263ValidationTest {
         verifyMc263AssetsWorldgenTradesAndTranslations();
         System.out.println("[PASS] 223 Items, 4 RenderPearl 26.3 Post-Effects + GLSL 330 std140 Shaders, Trades & Translations verified.");
         verifyFabricModJsonEntrypointsAndMixins();
-        System.out.println("[PASS] fabric.mod.json, 16 CCA Components, 5 Entrypoints & all 23 Java 25 Mixins verified.");
+        System.out.println("[PASS] fabric.mod.json, 16 CCA Components, 5 Entrypoints & all 31 Java 25 Mixins verified.");
         verifyKineticTimeStopPhysicsMath();
         System.out.println("[PASS] Kinetic Time Stop Deceleration & +25% Momentum Release Physics verified.");
         verifySmartCombatInputBufferWindowAndExpiry();
         System.out.println("[PASS] 6-Tick Smart Combat Input Buffer verified.");
         verifyStarPlatinumPrecisionZoomCurve();
         System.out.println("[PASS] Star Platinum 5x Precision Zoom Curve verified.");
+        verifySptwHairTexturesTimeSkipSafetyAndVelocityClamp();
+        System.out.println("[PASS] SPTW Hair Textures, TimeSkip Collision Backoff & TimeStop Velocity Cap verified.");
+        verifyNonStandMechanicsAndMixins();
+        System.out.println("[PASS] Non-Stand Mixins, MainMenuScreen extractLabels, Cinderella's Kiss & Headless Safety verified.");
+        verifyStandUserPosesAndArmSafety();
+        System.out.println("[PASS] Stand User Poses, Star Platinum Right Arm & HumanoidModelMixin Arm Safety verified.");
+        verifyTimeStopOnlyFlightKeybindsAndCleanHud();
+        System.out.println("[PASS] Time-Stop-Only Flight, Debug-Chord-Safe Keybinds & Clean Stand Ability Dock verified.");
         System.out.println("=== ALL " + passedAssertions + " ASSERTIONS PASSED SUCCESSFULLY ===");
+    }
+
+    static void verifyTimeStopOnlyFlightKeybindsAndCleanHud() throws Exception {
+        ClassLoader cl = JCraft263ValidationTest.class.getClassLoader();
+
+        // 1. ConditionalFlightHandler only registers GER Flight + Active Time Stop (NO unconditional Stand summon flight)
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/api/misc/ConditionalFlightHandler.class")) {
+            check(in != null, "ConditionalFlightHandler.class must exist");
+            ClassReader cr = new ClassReader(in);
+            ClassNode cn = new ClassNode();
+            cr.accept(cn, 0);
+            var regMethod = cn.methods.stream()
+                    .filter(m -> "registerJCraftConditions".equals(m.name))
+                    .findFirst().orElseThrow();
+            int addCondCount = 0;
+            for (var insn = regMethod.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi && "addCondition".equals(mi.name)) {
+                    addCondCount++;
+                }
+            }
+            checkEquals(2, addCondCount, "ConditionalFlightHandler must register exactly 2 flight conditions (GER flight + active Time Stop)");
+            boolean hasRevoke = cn.methods.stream().anyMatch(m -> "revokeStaleFlightIfNotAllowed".equals(m.name));
+            check(hasRevoke, "ConditionalFlightHandler must expose revokeStaleFlightIfNotAllowed");
+        }
+
+        // 2. Timestops, JCraft.stopTimestop, JServerEvents.playerJoin and ClientPacketHandler all revoke stale flight
+        for (String cls : List.of(
+                "net/arna/jcraft/common/tickable/Timestops.class",
+                "net/arna/jcraft/JCraft.class",
+                "net/arna/jcraft/common/events/JServerEvents.class",
+                "net/arna/jcraft/client/net/ClientPacketHandler.class")) {
+            try (InputStream in = cl.getResourceAsStream(cls)) {
+                check(in != null, cls + " must exist");
+                ClassReader cr = new ClassReader(in);
+                ClassNode cn = new ClassNode();
+                cr.accept(cn, 0);
+                boolean callsRevoke = cn.methods.stream().anyMatch(m -> {
+                    for (var insn = m.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                        if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi
+                                && "revokeStaleFlightIfNotAllowed".equals(mi.name)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
+                check(callsRevoke, cls + " must call ConditionalFlightHandler.revokeStaleFlightIfNotAllowed");
+            }
+        }
+
+        // 3. JCraftConfigScreen ignores MC 26.3 KeyMapping.Category.DEBUG chord keys in conflict checks
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/client/gui/screen/JCraftConfigScreen.class")) {
+            check(in != null, "JCraftConfigScreen.class must exist");
+            ClassReader cr = new ClassReader(in);
+            ClassNode cn = new ClassNode();
+            cr.accept(cn, 0);
+            var ignoreMethod = cn.methods.stream()
+                    .filter(m -> "isIgnoredVanillaKey".equals(m.name))
+                    .findFirst().orElseThrow();
+            boolean referencesDebugCategory = false;
+            for (var insn = ignoreMethod.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                if (insn instanceof org.objectweb.asm.tree.FieldInsnNode fi && "DEBUG".equals(fi.name)) {
+                    referencesDebugCategory = true;
+                }
+            }
+            check(referencesDebugCategory, "JCraftConfigScreen.isIgnoredVanillaKey must exclude KeyMapping.Category.DEBUG");
+        }
+
+        // 4. Clean Stand Ability Dock icons exist for SPTW, Star Platinum, The World, fallback & universal
+        Path iconsRoot = RESOURCES_ROOT.resolve("assets/jcraft/textures/gui/ability_icons");
+        for (String standDir : List.of("star_platinum_the_world", "star_platinum", "the_world", "fallback")) {
+            for (String icon : List.of("light.png", "heavy.png", "barrage.png", "special1.png", "special2.png", "special3.png", "ult.png", "utility.png")) {
+                check(Files.exists(iconsRoot.resolve(standDir).resolve(icon)),
+                        "Missing ability icon texture: " + standDir + "/" + icon);
+            }
+        }
+        for (String uniIcon : List.of("dash.png", "cooldowncancel.png", "combobreaker.png")) {
+            check(Files.exists(iconsRoot.resolve("universal").resolve(uniIcon)),
+                    "Missing universal ability icon texture: " + uniIcon);
+        }
+
+        // 5. JCraftAbilityHud and JoJoAnimeHudRenderer compile with integrated clean header helper
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/client/gui/hud/JoJoAnimeHudRenderer.class")) {
+            check(in != null, "JoJoAnimeHudRenderer.class must exist");
+            ClassReader cr = new ClassReader(in);
+            ClassNode cn = new ClassNode();
+            cr.accept(cn, 0);
+            check(cn.methods.stream().anyMatch(m -> "drawMinimalStandHeader".equals(m.name)),
+                    "JoJoAnimeHudRenderer must expose drawMinimalStandHeader");
+        }
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/client/gui/hud/JCraftAbilityHud.class")) {
+            check(in != null, "JCraftAbilityHud.class must exist");
+            ClassReader cr = new ClassReader(in);
+            ClassNode cn = new ClassNode();
+            cr.accept(cn, 0);
+            check(cn.methods.stream().anyMatch(m -> "renderAbilityTile".equals(m.name)),
+                    "JCraftAbilityHud must define renderAbilityTile");
+        }
     }
 }

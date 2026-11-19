@@ -5,16 +5,8 @@
       "bonus_rolls": 0.0,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "minecraft:air",
-          "weight": 3,
-          "modifier": [
-            {
-              "add": false,
-              "count": 1.0,
-              "type": "minecraft:set_count"
-            }
-          ]
+          "type": "minecraft:empty",
+          "weight": 3
         },
         {
           "type": "minecraft:item",

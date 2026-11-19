@@ -34,14 +34,27 @@ public abstract class CommonSpecComponentImpl implements CommonSpecComponent {
         sync(user);
     }
 
-    private void setTypeRaw(final SpecType type, final boolean loading) {
-        this.type = type;
-        spec = type == null ? null : type.createSpec(user);
-        if (!SpecTypeUtil.isNone(type) && user instanceof ServerPlayer player) {
+    private void setTypeRaw(final SpecType rawType, final boolean loading) {
+        final SpecType prevType = this.type;
+        final SpecType normalized = rawType == null ? JSpecTypeRegistry.NONE.get() : rawType;
+        if (!loading && prevType != normalized && user != null && !user.level().isClientSide()) {
+            if (prevType == JSpecTypeRegistry.RANGER.get()) {
+                net.arna.jcraft.platform.JComponentPlatformUtils.getGunslinger(user).setFocusActive(false);
+            } else if (prevType == JSpecTypeRegistry.ANUBIS.get()) {
+                net.arna.jcraft.platform.JComponentPlatformUtils.getMiscData(user).setAttackSpeedMult(1f);
+            } else if (prevType == JSpecTypeRegistry.HAMON.get()) {
+                var hamon = net.arna.jcraft.platform.JComponentPlatformUtils.getHamon(user);
+                hamon.resetHamonCharge();
+                hamon.setHamonizeReady(false);
+            }
+        }
+        this.type = normalized;
+        spec = SpecTypeUtil.isNone(normalized) ? null : normalized.createSpec(user);
+        if (!SpecTypeUtil.isNone(normalized) && user instanceof ServerPlayer player) {
             if (!loading) {
                 JUtils.maySendSpecAboutInfo(player);
             }
-            JAdvancementTriggerRegistry.OBTAINED_SPEC.trigger(player, type);
+            JAdvancementTriggerRegistry.OBTAINED_SPEC.trigger(player, normalized);
         }
     }
 

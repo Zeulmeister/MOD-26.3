@@ -46,30 +46,25 @@ public class AyaTsujiEntity extends PathfinderMob implements Merchant {
         if (world.isClientSide()) return;
         JEnemies.add(this);
 
+        final var kissHolderOpt = world.registryAccess().lookup(net.minecraft.core.registries.Registries.ENCHANTMENT)
+                .flatMap(reg -> reg.get(net.arna.jcraft.common.enchantments.CinderellasKissEnchantment.KEY));
         final ItemStack[] masks = new ItemStack[4];
         for (int i = 0; i <= 3; i++) {
             masks[i] = new ItemStack(JItemRegistry.CINDERELLA_MASK.get());
-            if (i > 0) {
-                final CompoundTag nbt = JItemData.getOrCreateTag(masks[i]);
-                final ListTag enchantments = new ListTag();
-                final CompoundTag enchantment = new CompoundTag();
-                enchantment.putString("id", "jcraft:cinderellas_kiss");
-                enchantment.putShort("lvl", (short) i);
-                enchantments.add(enchantment);
-                nbt.put("Enchantments", enchantments);
-                JItemData.setTag(masks[i], nbt);
+            if (i > 0 && kissHolderOpt.isPresent()) {
+                masks[i].enchant(kissHolderOpt.get(), i);
             }
         }
-        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(Items.EMERALD, 15), masks[0], 4, 0, 1f));
-        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(Items.EMERALD, 25), masks[1], 3, 0, 1f));
-        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(Items.EMERALD, 35), masks[2], 2, 0, 1f));
-        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(Items.ENDER_PEARL, 16), masks[0], 4, 0, 1f));
-        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(Items.ENDER_EYE, 8), masks[1], 3, 0, 1f));
-        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(Items.ENDER_EYE, 10), masks[2], 2, 0, 1f));
-        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(Items.ENDER_EYE, 12), masks[3], 1, 0, 1f));
-        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(JItemRegistry.STELLAR_IRON_INGOT.get(), 1), masks[1], 3, 0, 1f));
-        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(JItemRegistry.STAND_ARROW.get(), 1), masks[2], 2, 0, 1f));
-        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(JItemRegistry.STAND_ARROW.get(), 2), masks[3], 1, 0, 1f));
+        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(Items.EMERALD, 15), masks[0].copy(), 4, 0, 1f));
+        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(Items.EMERALD, 25), masks[1].copy(), 3, 0, 1f));
+        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(Items.EMERALD, 35), masks[2].copy(), 2, 0, 1f));
+        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(Items.ENDER_PEARL, 16), masks[0].copy(), 4, 0, 1f));
+        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(Items.ENDER_EYE, 8), masks[1].copy(), 3, 0, 1f));
+        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(Items.ENDER_EYE, 10), masks[2].copy(), 2, 0, 1f));
+        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(Items.ENDER_EYE, 12), masks[3].copy(), 1, 0, 1f));
+        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(JItemRegistry.STELLAR_IRON_INGOT.get(), 1), masks[1].copy(), 3, 0, 1f));
+        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(JItemRegistry.STAND_ARROW.get(), 1), masks[2].copy(), 2, 0, 1f));
+        merchantOffers.add(new MerchantOffer(new net.minecraft.world.item.trading.ItemCost(JItemRegistry.STAND_ARROW.get(), 2), masks[3].copy(), 1, 0, 1f));
     }
 
     @Override

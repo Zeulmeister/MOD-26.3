@@ -2,7 +2,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:crazy_diamond/oak_wood"
+        "recipes": "jcraft:crazy_diamond/oak_wood"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

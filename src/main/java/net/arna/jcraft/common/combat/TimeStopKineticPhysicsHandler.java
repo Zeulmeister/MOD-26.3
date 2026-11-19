@@ -88,14 +88,25 @@ public final class TimeStopKineticPhysicsHandler {
     }
 
     /**
-     * Returns true if this entity is a projectile owned by the active Time Stop user and is still
+     * Matches projectiles owned directly by the Time Stop user OR thrown by the user's Stand (e.g. SPTW Item Toss).
+     */
+    public static boolean isOwnedByTimestopUser(final @Nullable Projectile projectile, final @Nullable Entity timestopUser) {
+        if (projectile == null || timestopUser == null) {
+            return false;
+        }
+        final Entity owner = projectile.getOwner();
+        return owner == timestopUser || net.arna.jcraft.common.util.JUtils.getUserIfStand(owner) == timestopUser;
+    }
+
+    /**
+     * Returns true if this entity is a projectile owned by the active Time Stop user (or their Stand) and is still
      * in its initial 1.8m launch travel phase (so Timestops.tick shouldn't freeze it prematurely).
      */
     public static boolean shouldAllowInitialTravel(Entity entity, @Nullable Entity timestopUser) {
         if (timestopUser == null || !(entity instanceof Projectile projectile)) {
             return false;
         }
-        if (projectile.getOwner() != timestopUser) {
+        if (!isOwnedByTimestopUser(projectile, timestopUser)) {
             return false;
         }
         if (projectile instanceof AbstractArrow arrow && arrow.isInGround()) {
@@ -108,14 +119,26 @@ public final class TimeStopKineticPhysicsHandler {
         return !entry.suspended;
     }
 
+    public static void clearAll() {
+        TRACKED_PROJECTILES.clear();
+    }
+
     public static void tickActiveTimestop(ServerLevel world, Entity user, Vec3 centerPos) {
         if (user == null || !user.isAlive()) {
             return;
         }
         UUID userUuid = user.getUUID();
+        // Prune dead, removed, or embedded projectiles so HUD counts stay accurate.
+        TRACKED_PROJECTILES.entrySet().removeIf(e -> {
+            if (!e.getValue().ownerUuid.equals(userUuid)) {
+                return false;
+            }
+            Entity ent = world.getEntity(e.getKey());
+            return !(ent instanceof Projectile p) || !p.isAlive() || p.isRemoved() || (p instanceof AbstractArrow a && a.isInGround());
+        });
         AABB box = new AABB(centerPos.add(160.0, 160.0, 160.0), centerPos.subtract(160.0, 160.0, 160.0));
         List<Projectile> projectiles = world.getEntitiesOfClass(Projectile.class, box,
-                p -> p.isAlive() && p.getOwner() == user && !(p instanceof AbstractArrow arrow && arrow.isInGround()));
+                p -> p.isAlive() && isOwnedByTimestopUser(p, user) && !(p instanceof AbstractArrow arrow && arrow.isInGround()));
 
         for (Projectile projectile : projectiles) {
             SuspendedProjectileEntry entry = TRACKED_PROJECTILES.computeIfAbsent(
@@ -156,7 +179,11 @@ public final class TimeStopKineticPhysicsHandler {
                 projectile.setYRot(entry.lockedYRot);
                 projectile.setXRot(entry.lockedXRot);
                 projectile.setDeltaMovement(Vec3.ZERO);
-                JComponentPlatformUtils.getTimeStopData(projectile).ifPresent(d -> d.setTicks(3));
+                JComponentPlatformUtils.getTimeStopData(projectile).ifPresent(d -> {
+                    if (d.getTicks() <= 1) {
+                        d.setTicks(4);
+                    }
+                });
                 if (entry.ticksTracked % 10 == 0) {
                     world.sendParticles(JParticleTypeRegistry.GO.get(),
                             entry.suspendedPos.x, entry.suspendedPos.y + 0.1, entry.suspendedPos.z,

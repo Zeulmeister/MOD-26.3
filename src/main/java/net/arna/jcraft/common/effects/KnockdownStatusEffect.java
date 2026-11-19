@@ -17,7 +17,7 @@ public class KnockdownStatusEffect extends MobEffect {
         super(MobEffectCategory.NEUTRAL, 0x444444);
         this.addAttributeModifier(Attributes.ARMOR, JCraft.id("knockdown_armor"), 30.0, AttributeModifier.Operation.ADD_VALUE)
             .addAttributeModifier(Attributes.ARMOR_TOUGHNESS, JCraft.id("knockdown_toughness"), 20.0, AttributeModifier.Operation.ADD_VALUE)
-            .addAttributeModifier(Attributes.MOVEMENT_SPEED, JCraft.id("knockdown_movement"), 0.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+            .addAttributeModifier(Attributes.MOVEMENT_SPEED, JCraft.id("knockdown_movement"), -1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
     }
 
     @Override

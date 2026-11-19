@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:soul_block"
+        "recipes": "jcraft:soul_block"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

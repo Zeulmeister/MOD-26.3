@@ -61,9 +61,7 @@ public class TrackedKeyBinding implements IJKeyBinding {
     }
 
     public static TrackedKeyBinding wrap(final KeyMapping binding) {
-        final TrackedKeyBinding trackingBinding = new TrackedKeyBinding(binding);
-        bindings.put(binding, trackingBinding);
-        return trackingBinding;
+        return bindings.computeIfAbsent(binding, TrackedKeyBinding::new);
     }
 
     public static void onKeyPressSet(final KeyMapping binding, final boolean pressed) {

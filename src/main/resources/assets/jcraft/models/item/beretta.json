@@ -87,6 +87,6 @@
     }
   },
   "textures": {
-    "particle": "finish_blue"
+    "particle": "jcraft:item/fv_revolver"
   }
 }

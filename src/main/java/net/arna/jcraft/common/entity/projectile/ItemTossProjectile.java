@@ -233,7 +233,12 @@ public class ItemTossProjectile extends AbstractArrow {
                 double d = Math.max(0, 1f - livingEntity.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
                 Vec3 vec3 = this.getDeltaMovement().multiply(1f, 0f, 1f).normalize().scale(knockback * 0.6 * d);
                 if (vec3.lengthSqr() > 0) {
-                    livingEntity.push(vec3.x, 0.1, vec3.z);
+                    if (JUtils.isAffectedByTimeStop(livingEntity)) {
+                        JComponentPlatformUtils.getTimeStopData(livingEntity)
+                                .ifPresent(ts -> ts.addTotalVelocity(new Vec3(vec3.x, 0.1, vec3.z)));
+                    } else {
+                        livingEntity.push(vec3.x, 0.1, vec3.z);
+                    }
                 }
             }
             if (getOwner() instanceof LivingEntity owner) {
@@ -393,6 +398,9 @@ public class ItemTossProjectile extends AbstractArrow {
 
     @Override
     protected void onHitBlock(final BlockHitResult result) {
+        if (level().isClientSide()) {
+            return;
+        }
         final BlockState blockstate = level().getBlockState(result.getBlockPos());
         // notify the block it has been hit with something
         blockstate.onProjectileHit(level(), blockstate, result, this);

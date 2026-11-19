@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:blood_bottle"
+        "recipes": "jcraft:blood_bottle"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

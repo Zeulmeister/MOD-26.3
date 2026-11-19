@@ -92,6 +92,6 @@
     }
   },
   "textures": {
-    "particle": "gascan"
+    "particle": "jcraft:item/gascan"
   }
 }

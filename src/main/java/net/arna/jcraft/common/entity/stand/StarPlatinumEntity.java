@@ -79,10 +79,6 @@ public final class StarPlatinumEntity extends AbstractStarPlatinumEntity<StarPla
                     leftArm.yRot = -15deg;
                     leftArm.zRot = 5deg;
                     """, ModifierCondition.LEFT_ARM_EMPTY))
-            .modifier(PoseModifiers.parse("""
-                    rightArm.zRot = 15deg;
-                    rightArm.xRot *= 0.5;
-                    """, ModifierCondition.RIGHT_ARM_EMPTY))
             .build();
 
     public static final SimpleUppercutAttack<StarPlatinumEntity> UPPERCUT = new SimpleUppercutAttack<StarPlatinumEntity>(JCraft.LIGHT_COOLDOWN,

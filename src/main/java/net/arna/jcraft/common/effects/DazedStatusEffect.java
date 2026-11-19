@@ -75,6 +75,27 @@ public class DazedStatusEffect extends MobEffect {
     }
 
     @Override
+    public void addAttributeModifiers(final net.minecraft.world.entity.ai.attributes.AttributeMap attributeMap, final int amplifier) {
+        this.createModifiers(amplifier, (attribute, modifier) -> {
+            var inst = attributeMap.getInstance(attribute);
+            if (inst != null) {
+                inst.removeModifier(modifier.id());
+                inst.addPermanentModifier(modifier);
+            }
+        });
+    }
+
+    @Override
+    public void removeAttributeModifiers(final net.minecraft.world.entity.ai.attributes.AttributeMap attributeMap) {
+        this.createModifiers(0, (attribute, modifier) -> {
+            var inst = attributeMap.getInstance(attribute);
+            if (inst != null) {
+                inst.removeModifier(modifier.id());
+            }
+        });
+    }
+
+    @Override
     public void createModifiers(final int amplifier, final BiConsumer<Holder<Attribute>, AttributeModifier> consumer) {
         consumer.accept(Attributes.ATTACK_DAMAGE, new AttributeModifier(ATTACK_DAMAGE_ID, -1.0 * (amplifier + 1), AttributeModifier.Operation.ADD_MULTIPLIED_BASE));
         consumer.accept(Attributes.ATTACK_SPEED, new AttributeModifier(ATTACK_SPEED_ID, -1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
@@ -84,6 +105,6 @@ public class DazedStatusEffect extends MobEffect {
             default -> 0.0;
         };
         consumer.accept(Attributes.MOVEMENT_SPEED, new AttributeModifier(SLOW_ID, slowAmount, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
-        consumer.accept(Attributes.FLYING_SPEED, new AttributeModifier(FLYING_SPEED_ID, 0.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+        consumer.accept(Attributes.FLYING_SPEED, new AttributeModifier(FLYING_SPEED_ID, slowAmount, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
     }
 }

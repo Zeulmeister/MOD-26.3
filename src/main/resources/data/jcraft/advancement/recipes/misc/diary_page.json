@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:diary_page"
+        "recipes": "jcraft:diary_page"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

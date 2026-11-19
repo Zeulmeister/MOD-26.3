@@ -35,8 +35,41 @@ import java.util.concurrent.Executor;
 public class AttackerDataLoader {
     private static final Map<Identifier, StandData> STAND_DATA = new HashMap<>();
     private static final Map<Identifier, SpecData> SPEC_DATA = new HashMap<>();
+    private static boolean bootstrapLoaded = false;
     @Getter @Setter // used in server tick to inform clients of changes
     private static boolean dirty = false;
+
+    private static synchronized void ensureBootstrapLoaded() {
+        if (bootstrapLoaded) {
+            return;
+        }
+        bootstrapLoaded = true;
+        final Gson gson = new Gson();
+        loadBootstrapEntries("stands", StandData.CODEC, JRegistries.STAND_TYPE_REGISTRY, STAND_DATA, gson);
+        loadBootstrapEntries("specs", SpecData.CODEC, JRegistries.SPEC_TYPE_REGISTRY, SPEC_DATA, gson);
+    }
+
+    private static <T> void loadBootstrapEntries(final String dir, final Codec<T> codec, final Registrar<?> registry,
+                                                 final Map<Identifier, T> map, final Gson gson) {
+        final Identifier noneId = JCraft.id("none");
+        for (final Identifier id : registry.getIds()) {
+            if (id.equals(noneId) || map.containsKey(id)) {
+                continue;
+            }
+            final String path = "/data/" + id.getNamespace() + "/" + dir + "/" + id.getPath() + ".json";
+            try (var stream = AttackerDataLoader.class.getResourceAsStream(path)) {
+                if (stream == null) {
+                    continue;
+                }
+                try (BufferedReader reader = new BufferedReader(new java.io.InputStreamReader(stream, java.nio.charset.StandardCharsets.UTF_8))) {
+                    final JsonObject obj = gson.fromJson(reader, JsonObject.class);
+                    codec.parse(JsonOps.INSTANCE, obj).result().ifPresent(parsed -> map.put(id, parsed));
+                }
+            } catch (Exception e) {
+                JCraft.LOGGER.warn("Failed to bootstrap {} data for {}: {}", dir, id, e.getMessage());
+            }
+        }
+    }
 
     /**
      * Gets the StandData for a given stand type id.
@@ -47,6 +80,7 @@ public class AttackerDataLoader {
      * @return The StandData if it exists, or the {@link StandData#EMPTY empty data} if it doesn't.
      */
     public static StandData getStandData(final Identifier id) {
+        ensureBootstrapLoaded();
         return STAND_DATA.getOrDefault(id, StandData.EMPTY);
     }
 
@@ -59,6 +93,7 @@ public class AttackerDataLoader {
      * @return The SpecData if it exists, or the {@link SpecData#EMPTY empty data} if it doesn't.
      */
     public static SpecData getSpecData(final Identifier id) {
+        ensureBootstrapLoaded();
         return SPEC_DATA.getOrDefault(id, SpecData.EMPTY);
     }
 
@@ -79,7 +114,7 @@ public class AttackerDataLoader {
                                                    final ProfilerFiller reloadProfiler, final Executor backgroundExecutor, final Executor gameExecutor) {
         return CompletableFuture.supplyAsync(() -> loadDataFiles(resourceManager), backgroundExecutor)
                 .thenCompose(preparationBarrier::wait) // Wait for preparations to finish
-                .thenAcceptAsync(AttackerDataLoader::loadAllData);
+                .thenAcceptAsync(AttackerDataLoader::loadAllData, gameExecutor);
     }
 
     /**

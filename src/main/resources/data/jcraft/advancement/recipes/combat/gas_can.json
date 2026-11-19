@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:gas_can"
+        "recipes": "jcraft:gas_can"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

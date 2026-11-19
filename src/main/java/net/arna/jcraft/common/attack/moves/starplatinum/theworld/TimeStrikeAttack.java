@@ -41,13 +41,14 @@ public class TimeStrikeAttack<A extends IAttacker<? extends A, ?>> extends Abstr
     public void activeTick(A attacker, int moveStun) {
         super.activeTick(attacker, moveStun);
 
-        if (moveStun == 7) {
+        if (moveStun == 7 && attacker.hasUser()) {
             final LivingEntity user = attacker.getUserOrThrow();
-            final Vec3 prevPos = user.getEyePosition();
+            final LivingEntity actor = attacker.isRemote() ? attacker.getBaseEntity() : user;
+            final Vec3 prevPos = actor.getEyePosition();
 
             TimeSkipMove.doTimeSkip(attacker, user, 2.5, List.of(JSoundRegistry.STAR_PLATINUM_TIMESKIP.get()));
             if (turnAround) {
-                user.lookAt(EntityAnchorArgument.Anchor.EYES, prevPos);
+                actor.lookAt(EntityAnchorArgument.Anchor.EYES, prevPos);
             }
         }
     }

@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:kq_coin"
+        "recipes": "jcraft:kq_coin"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

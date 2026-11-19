@@ -59,7 +59,8 @@ public abstract class LevelMixin implements LevelAddon, IJSplatterManagerHolder 
 
     @Inject(method = "shouldTickBlocksAt(Lnet/minecraft/core/BlockPos;)Z", at = @At("HEAD"), cancellable = true)
     private void jcraft$freezeBlockEntitiesInTimestop(BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
-        if (Timestops.isInTSRange(pos)) {
+        Level self = (Level) (Object) this;
+        if (Timestops.isInTSRangeForLevel(self, pos)) {
             cir.setReturnValue(false);
         }
     }

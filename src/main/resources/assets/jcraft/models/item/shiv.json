@@ -2,7 +2,8 @@
 	"credit": "Made with Blockbench",
 	"texture_size": [32, 32],
 	"textures": {
-		"0": "jcraft:item/shiv/shiv"
+		"0": "jcraft:item/shiv/shiv",
+		"particle": "jcraft:item/shiv/shiv"
 	},
 	"elements": [
 		{

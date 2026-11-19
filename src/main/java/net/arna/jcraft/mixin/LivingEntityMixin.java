@@ -25,10 +25,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityMixin implements IJCraftComboTracker {
@@ -40,7 +40,7 @@ public abstract class LivingEntityMixin implements IJCraftComboTracker {
     private int jcraft$hitCount = 0;
 
     @Unique
-    private final Map<LivingEntity, Set<MoveUsage>> jcraft$usedComboMoves = new HashMap<>();
+    private final Map<LivingEntity, Set<MoveUsage>> jcraft$usedComboMoves = new WeakHashMap<>();
 
     @Override
     public float jcraft$getDamageScaling() {
@@ -67,6 +67,9 @@ public abstract class LivingEntityMixin implements IJCraftComboTracker {
 
     @Override
     public boolean jcraft$addMoveToCombo(@NonNull LivingEntity attacker, MoveUsage moveUsage) {
+        if (!jcraft$usedComboMoves.isEmpty()) {
+            jcraft$usedComboMoves.keySet().removeIf(k -> k == null || !k.isAlive() || k.isRemoved());
+        }
         AbstractMove<?, ?> move = moveUsage.move();
         Set<MoveUsage> set = jcraft$usedComboMoves.get(attacker);
         if (set != null) {
@@ -95,6 +98,9 @@ public abstract class LivingEntityMixin implements IJCraftComboTracker {
 
     @Override
     public boolean jcraft$comboFromAttackerContains(LivingEntity attacker, AbstractMove<?, ?> move) {
+        if (attacker == null || !attacker.isAlive() || attacker.isRemoved()) {
+            return false;
+        }
         Set<MoveUsage> set = jcraft$usedComboMoves.get(attacker);
         if (set == null) {
             return false;

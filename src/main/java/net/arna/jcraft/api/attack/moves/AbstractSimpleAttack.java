@@ -19,6 +19,7 @@ import net.arna.jcraft.api.attack.enums.BlockableType;
 import net.arna.jcraft.api.attack.enums.StunType;
 import net.arna.jcraft.api.component.living.CommonHitPropertyComponent;
 import net.arna.jcraft.api.misc.JBlockBreaker;
+import net.arna.jcraft.api.registry.JSoundRegistry;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.attack.core.data.AttackMoveExtras;
 import net.arna.jcraft.common.attack.core.data.BaseMoveExtras;
@@ -31,6 +32,7 @@ import net.arna.jcraft.common.util.JUtils;
 import net.arna.jcraft.platform.JComponentPlatformUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
@@ -498,13 +500,76 @@ public abstract class AbstractSimpleAttack<T extends AbstractSimpleAttack<T, A>,
         final DamageSource damageSource = attacker.getDamageSource();
         final Set<LivingEntity> targets = attackBoxes(attacker, boxes, damageSource, fPos);
 
-        // Do shockwaves
-        if (doShockwaves && !targets.isEmpty()) {
-            createShockwaves(attacker, user);
+        final boolean meleeAttack = hitboxSize > 0 || !extraHitBoxes.isEmpty();
+        final boolean airWindEligible = isPunchWindEligible(meleeAttack);
+
+        // Air shockwaves & punch wind burst (for both impacts and clean air swings)
+        if (doShockwaves || airWindEligible) {
+            createShockwaves(attacker, user, rotVec, targets);
+        }
+        if (airWindEligible && attacker.getEntityWorld() instanceof ServerLevel serverWorld) {
+            spawnPunchAirBurst(attacker, serverWorld, fPos, rotVec, !targets.isEmpty());
+        }
+        if (!targets.isEmpty() && airWindEligible) {
+            playPunchHitAudio(attacker);
         }
 
         performHook(attacker, targets, boxes, damageSource, fPos, rotVec);
         return targets;
+    }
+
+    protected boolean isPunchWindEligible(final boolean meleeAttack) {
+        return meleeAttack && (!isBarrage() || doShockwaves) && damage > 0.0f;
+    }
+
+    /**
+     * Spawns directional air wind-streak / gust particles in the punch trajectory.
+     */
+    protected void spawnPunchAirBurst(final A attacker, final ServerLevel serverWorld, final Vec3 fPos,
+                                      final Vec3 rotVec, final boolean hit) {
+        final RandomSource random = attacker.getBaseEntity().getRandom();
+        final Vec3 forward = rotVec.lengthSqr() > 1.0e-4 ? rotVec.normalize() : attacker.getBaseEntity().getLookAngle();
+        final Vec3 baseOrigin = fPos.subtract(forward.scale(0.35));
+
+        final int streakCount = isBarrage() ? 1 : (damage >= 7.5f ? 4 : 3);
+        for (int i = 0; i < streakCount; i++) {
+            final double ox = (random.nextDouble() - 0.5) * (isBarrage() ? 0.55 : 0.4);
+            final double oy = (random.nextDouble() - 0.5) * (isBarrage() ? 0.55 : 0.35);
+            final double oz = (random.nextDouble() - 0.5) * (isBarrage() ? 0.55 : 0.4);
+            final double speed = (damage >= 7.5f ? 0.42 : 0.30) + random.nextDouble() * 0.14;
+            serverWorld.sendParticles(
+                    ParticleTypes.CLOUD,
+                    baseOrigin.x + ox, baseOrigin.y + oy, baseOrigin.z + oz,
+                    0,
+                    forward.x * speed, forward.y * speed, forward.z * speed,
+                    1.0
+            );
+        }
+
+        if (!isBarrage() && (hit || damage >= 7.5f || doShockwaves)) {
+            final Vec3 gustPos = fPos.subtract(forward.scale(0.15));
+            serverWorld.sendParticles(ParticleTypes.SMALL_GUST, gustPos.x, gustPos.y, gustPos.z, 1, 0.05, 0.05, 0.05, 0.02);
+        }
+    }
+
+    private void playPunchHitAudio(final A attacker) {
+        if (attacker.getEntityWorld().isClientSide()) {
+            return;
+        }
+        final RandomSource random = attacker.getBaseEntity().getRandom();
+        if (!isBarrage()) {
+            final float whooshVol = damage >= 7.5f ? 0.55f : 0.40f;
+            final float whooshPitch = (damage >= 7.5f ? 0.78f : 0.98f) + random.nextFloat() * 0.16f;
+            attacker.playAttackerSound(JSoundRegistry.WHIFF.get(), whooshVol, whooshPitch, false, true);
+        }
+        if (!hasOnHitSoundAction()) {
+            final net.minecraft.sounds.SoundEvent impact = isBarrage()
+                    ? JSoundRegistry.IMPACT_3.get()
+                    : (damage >= 8.0f ? JSoundRegistry.IMPACT_8.get() : JSoundRegistry.IMPACT_1.get());
+            final float volume = isBarrage() ? (0.55f + random.nextFloat() * 0.15f) : 1.0f;
+            final float pitch = isBarrage() ? (0.90f + random.nextFloat() * 0.28f) : (0.92f + random.nextFloat() * 0.16f);
+            attacker.playAttackerSound(impact, volume, pitch, false, true);
+        }
     }
 
     /**
@@ -535,12 +600,26 @@ public abstract class AbstractSimpleAttack<T extends AbstractSimpleAttack<T, A>,
      * @param user The user of the attacker
      */
     protected void createShockwaves(A attacker, LivingEntity user) {
-        LivingEntity attackerEntity = attacker.getBaseEntity();
+        final Vec3 fallbackDir = attacker.isRemote()
+                ? Vec3.directionFromRotation(attacker.getBaseEntity().getXRot(), attacker.getBaseEntity().getYRot())
+                : user.getLookAngle();
+        createShockwaves(attacker, user, fallbackDir, Set.of());
+    }
+
+    protected void createShockwaves(final A attacker, final LivingEntity user, final Vec3 rotVec, final Set<LivingEntity> targets) {
+        final LivingEntity attackerEntity = attacker.getBaseEntity();
+        final Vec3 dir = rotVec.lengthSqr() > 1.0e-4 ? rotVec.normalize() : attackerEntity.getLookAngle();
         Vec3 shockwavePos = attackerEntity.position();
-        shockwavePos = shockwavePos.add(attackerEntity.getLookAngle());
-        shockwavePos = shockwavePos.add(RotationUtil.vecPlayerToWorld(new Vec3(0, attackerEntity.getBbHeight() / 2.0 - offset, 0), GravityChangerAPI.getGravityDirection(user)));
+        shockwavePos = shockwavePos.add(dir.scale(targets.isEmpty() ? 1.05 : 1.0));
+        shockwavePos = shockwavePos.add(RotationUtil.vecPlayerToWorld(
+                new Vec3(0, attackerEntity.getBbHeight() / 2.0 - offset, 0),
+                GravityChangerAPI.getGravityDirection(user)
+        ));
+        final float scale = doShockwaves
+                ? (targets.isEmpty() ? Mth.clamp(damage / 3.0f, 0.85f, 3.0f) : Mth.clamp(damage / 2.4f, 1.0f, 4.0f))
+                : (targets.isEmpty() ? Mth.clamp(damage / 4.2f, 0.72f, 1.25f) : Mth.clamp(damage / 3.2f, 0.90f, 1.60f));
         JComponentPlatformUtils.getShockwaveHandler(attacker.getEntityWorld())
-                .addShockwave(shockwavePos, attackerEntity.getLookAngle(), damage / 2.5f);
+                .addShockwave(shockwavePos, dir, scale);
     }
 
     /**
@@ -621,6 +700,25 @@ public abstract class AbstractSimpleAttack<T extends AbstractSimpleAttack<T, A>,
     @Override
     protected boolean shouldPlayWhiffSound(final A attacker) {
         return hitboxSize > 0 || !extraHitBoxes.isEmpty();
+    }
+
+    @Override
+    protected float getWhiffVolume(final A attacker, final RandomSource random) {
+        if (isBarrage()) {
+            return 0.50f + random.nextFloat() * 0.15f;
+        }
+        return (damage >= 7.5f ? 1.05f : 0.85f) + random.nextFloat() * 0.22f;
+    }
+
+    @Override
+    protected float getWhiffPitch(final A attacker, final RandomSource random) {
+        if (isBarrage()) {
+            return 1.05f + random.nextFloat() * 0.28f;
+        }
+        if (damage >= 7.5f) {
+            return 0.68f + random.nextFloat() * 0.14f;
+        }
+        return 0.90f + random.nextFloat() * 0.24f;
     }
 
     private void breakBlocks(final A attacker, final Set<AABB> boxes) {

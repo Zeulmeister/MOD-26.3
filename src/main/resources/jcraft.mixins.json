@@ -8,8 +8,14 @@
   },
   "mixins": [
     "AbilitiesMixin",
+    "AnvilMenuMixin",
+    "CombatTrackerAccessor",
     "EntityMixin",
     "EntitySelectorOptionsMixin",
+    "FoodDataMixin",
+    "GrindstoneMenuMixin",
+    "GrindstoneSlotMixin",
+    "ItemUseMixin",
     "LevelMixin",
     "LivingEntityMixin",
     "MobMixin",
@@ -17,7 +23,8 @@
     "PlayerMixin",
     "ServerExplosionMixin",
     "ServerLevelMixin",
-    "ServerPlayerMixin"
+    "ServerPlayerMixin",
+    "VillagerEntityMixin"
   ],
   "client": [
     "client.CameraMixin",
@@ -29,6 +36,7 @@
     "client.HumanoidModelMixin",
     "client.HumanoidRenderStateMixin",
     "client.KeyMappingMixin",
+    "client.LevelExtractorMixin",
     "client.LocalPlayerMixin",
     "client.RenderTargetMixin",
     "client.SoundEngineMixin"

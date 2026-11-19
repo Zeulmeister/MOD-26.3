@@ -126,10 +126,10 @@ public class TonpettyEntity extends HamonSpecUser implements NeutralMob {
         }
         // Hamon initiation
         else {
-            int damage = specData.getType() == JSpecTypeRegistry.VAMPIRE ? 200 : 1;
+            int damage = specData.getType() == JSpecTypeRegistry.VAMPIRE.get() ? 200 : 1;
             player.hurt(JDamageSources.create(player.level(), HAMON_INITIATION, player), damage);
 
-            if (!player.level().isClientSide()) {
+            if (!player.level().isClientSide() && player.isAlive()) {
                 warned.remove(player);
                 specData.setType(JSpecTypeRegistry.HAMON.get());
                 player.awardStat(JStatRegistry.SPECS_CHANGED.get());

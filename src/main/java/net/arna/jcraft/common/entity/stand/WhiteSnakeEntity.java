@@ -287,7 +287,9 @@ public class WhiteSnakeEntity extends StandEntity<WhiteSnakeEntity, WhiteSnakeEn
             final double f = getRemoteForwardInput(), s = getRemoteSideInput();
             final boolean jump = getRemoteJumpInput();
 
-            tickRemoteMovement(f, s, jump);
+            if (tickCount - lastClientRemoteSyncTick > 2) {
+                tickRemoteMovement(f, s, jump);
+            }
 
             if (getMoveStun() <= 0) {
                 if (f == 0) {
@@ -318,7 +320,7 @@ public class WhiteSnakeEntity extends StandEntity<WhiteSnakeEntity, WhiteSnakeEn
      */
     public void tickRemoteMovement(double f, double s, boolean jump) {
         // 1 tick of inertia, helping movement be fluid as well as dealing with packet drops
-        if (lastRemoteInputTime - tickCount > 2) {
+        if (tickCount - lastRemoteInputTime > 4) {
             updateRemoteInputs(0, 0, false, false);
         }
         final Vec3 pos = position();

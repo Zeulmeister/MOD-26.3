@@ -1387,5 +1387,71 @@
     "sounds": [
       "jcraft:projectiles/matchbox/use"
     ]
+  },
+  "throw": {
+    "sounds": [
+      "jcraft:generic/throw"
+    ]
+  },
+  "twtimestop_clean": {
+    "subtitle": "subtitles.jcraft.twts",
+    "sounds": [
+      "jcraft:stands/theworld/time_stop"
+    ]
+  },
+  "scthrust": {
+    "sounds": [
+      "jcraft:stands/silverchariot/thrust"
+    ]
+  },
+  "rangerunholster": {
+    "sounds": [
+      "jcraft:specs/ranger/unholster"
+    ]
+  },
+  "rangerreholster": {
+    "sounds": [
+      "jcraft:specs/ranger/reholster"
+    ]
+  },
+  "rangerfocus": {
+    "sounds": [
+      "jcraft:specs/ranger/focus"
+    ]
+  },
+  "rangerfocus_start": {
+    "sounds": [
+      "jcraft:specs/ranger/focus_start"
+    ]
+  },
+  "peacemaker_fire": {
+    "sounds": [
+      "jcraft:gun/peacemaker_fire"
+    ]
+  },
+  "gun_cock": {
+    "sounds": [
+      "jcraft:gun/cock"
+    ]
+  },
+  "gun_gate": {
+    "sounds": [
+      "jcraft:gun/gate"
+    ]
+  },
+  "gun_eject": {
+    "sounds": [
+      "jcraft:gun/eject"
+    ]
+  },
+  "gun_load": {
+    "sounds": [
+      "jcraft:gun/load"
+    ]
+  },
+  "gun_cycle": {
+    "sounds": [
+      "jcraft:gun/cycle"
+    ]
   }
 }

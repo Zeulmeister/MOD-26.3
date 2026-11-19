@@ -23,7 +23,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:stand_disc"
+        "recipes": "jcraft:stand_disc"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

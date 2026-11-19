@@ -81,7 +81,8 @@ public class InduceAttackCommand {
             final boolean aerial,
             final boolean crouching,
             final MoveClass moveClass
-    ) {
+    ) throws CommandSyntaxException {
+        JPerms.checkTargets(source, targets, JPerms.ATTACK_OTHERS);
         int flag = 0;
         String typeName = moveClass.toString();
 

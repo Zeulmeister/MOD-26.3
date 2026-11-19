@@ -30,9 +30,11 @@ public class DiscCaseItem extends Item {
     public InteractionResult use(final @NonNull Level level, final @NonNull Player player, final @NonNull InteractionHand usedHand) {
         final ItemStack item = player.getItemInHand(usedHand);
         if (level.isClientSide()) {
-            return InteractionResult.FAIL;
+            return InteractionResult.PASS;
         }
-        JPlatformUtils.callDiscCaseMenu((ServerPlayer)player);
+        if (player instanceof ServerPlayer serverPlayer) {
+            JPlatformUtils.callDiscCaseMenu(serverPlayer);
+        }
         return InteractionResult.SUCCESS.heldItemTransformedTo(item);
     }
 

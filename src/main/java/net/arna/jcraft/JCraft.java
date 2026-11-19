@@ -263,6 +263,15 @@ public final class JCraft {
         JStatRegistry.init();
         STATS.register();
 
+        dev.architectury.registry.ReloadListenerRegistry.register(net.minecraft.server.packs.PackType.SERVER_DATA,
+                JServerReloadListenerRegistry.adapt(net.arna.jcraft.common.data.MoveSetLoader::onReload), id("moveset_loader"));
+        dev.architectury.registry.ReloadListenerRegistry.register(net.minecraft.server.packs.PackType.SERVER_DATA,
+                JServerReloadListenerRegistry.adapt(net.arna.jcraft.common.command.JCraftChangesCommand::onReload), id("changes_command"));
+        dev.architectury.registry.ReloadListenerRegistry.register(net.minecraft.server.packs.PackType.SERVER_DATA,
+                JServerReloadListenerRegistry.adapt(net.arna.jcraft.common.util.EvolutionItemHandler::onReload), id("evolution_item_handler"));
+        dev.architectury.registry.ReloadListenerRegistry.register(net.minecraft.server.packs.PackType.SERVER_DATA,
+                JServerReloadListenerRegistry.adapt(net.arna.jcraft.common.data.AttackerDataLoader::onReload), id("attacker_data_loader"));
+
         MoveTickQueue.registerMoveTickQueue();
         GravityChannel.registerReceivers();
         JBlockBreaker.init();
@@ -453,49 +462,66 @@ public final class JCraft {
 
             // Puts all player items besides armor into cooldown for entire duration of timestop
             for (int i = 0; i < serverPlayer.getInventory().items.size(); i++) {
-                serverPlayer.getCooldowns().addCooldown(new net.minecraft.world.item.ItemStack(serverPlayer.getInventory().items.get(i).getItem()), duration);
+                ItemStack stack = serverPlayer.getInventory().items.get(i);
+                if (!stack.isEmpty()) {
+                    serverPlayer.getCooldowns().addCooldown(stack, duration);
+                }
             }
-            serverPlayer.getCooldowns().addCooldown(new net.minecraft.world.item.ItemStack(serverPlayer.getOffhandItem().getItem()), duration);
+            if (!serverPlayer.getOffhandItem().isEmpty()) {
+                serverPlayer.getCooldowns().addCooldown(serverPlayer.getOffhandItem(), duration);
+            }
         }
     }
 
     public static void stopTimestop(Entity timestopper) {
+        if (timestopper == null) {
+            return;
+        }
         DimensionData timestop = Timestops.getTimestop(timestopper);
         Level world = timestopper.level();
-
-        if (world instanceof ServerLevel serverWorld) {
-            net.arna.jcraft.common.combat.TimeStopKineticPhysicsHandler.onTimeStopEnd(timestopper, serverWorld);
+        ServerLevel serverWorld = null;
+        if (timestop != null && world.getServer() != null) {
+            serverWorld = world.getServer().getLevel(timestop.getWorldKey());
+        }
+        if (serverWorld == null && world instanceof ServerLevel sl) {
+            serverWorld = sl;
         }
 
-        if (timestop == null || !(world instanceof ServerLevel serverWorld)) {
+        if (timestop != null) {
+            Timestops.remove(timestop);
+        }
+
+        if (timestopper instanceof LivingEntity living) {
+            StandEntity<?, ?> stand = JUtils.getStand(living);
+            if (stand != null && stand.getTsTime() > 0) {
+                stand.setTsTime(0);
+            }
+        }
+        if (timestopper instanceof net.minecraft.world.entity.player.Player tsPlayer) {
+            ConditionalFlightHandler.revokeStaleFlightIfNotAllowed(tsPlayer);
+        }
+
+        net.arna.jcraft.common.combat.TimeStopKineticPhysicsHandler.onTimeStopEnd(timestopper, serverWorld);
+
+        if (timestop == null || serverWorld == null) {
             return;
         }
 
         // Synchronization
         TimeStopStatePacket.send(serverWorld.players(), TimeStopStatePacket.createStopPacket(timestopper.getId()));
 
-        Vec3 position = timestopper.position();
+        Vec3 centerPos = timestop.getPos() != null ? timestop.getPos() : timestopper.position();
 
-        List<ServerPlayer> toUnfreeze = serverWorld.getEntitiesOfClass(ServerPlayer.class,
-                new AABB(position.add(160.0, 160.0, 160.0), position.subtract(160.0, 160.0, 160.0)), EntitySelector.LIVING_ENTITY_STILL_ALIVE);
-
-        for (ServerPlayer serverPlayer : toUnfreeze) {
-            // Shader handling
-            ShaderDeactivationPacket.send(serverPlayer, ShaderActivationPacket.Type.ZA_WARUDO);
-
-            // Removes cooldowns
-            for (int i = 0; i < 36; i++) {
-                ItemStack st = serverPlayer.getInventory().getItem(i);
-                if (!st.isEmpty()) {
-                    serverPlayer.getCooldowns().removeCooldown(serverPlayer.getCooldowns().getCooldownGroup(st));
+        for (ServerPlayer serverPlayer : serverWorld.players()) {
+            if (!Timestops.isInTSRange(serverWorld.dimension(), serverPlayer.position())) {
+                ShaderDeactivationPacket.send(serverPlayer, ShaderActivationPacket.Type.ZA_WARUDO);
+                if (serverPlayer != timestopper) {
+                    Timestops.clearPlayerItemCooldowns(serverPlayer);
                 }
-            }
-            if (!serverPlayer.getOffhandItem().isEmpty()) {
-                serverPlayer.getCooldowns().removeCooldown(serverPlayer.getCooldowns().getCooldownGroup(serverPlayer.getOffhandItem()));
             }
         }
 
-        Timestops.remove(timestop);
+        Timestops.releaseFrozenEntities(serverWorld, centerPos, timestopper);
     }
 
     /**
@@ -538,7 +564,7 @@ public final class JCraft {
         int skin = standData.getSkin();
         stand.setSkin(skin);
         stand.setPos(user.position().subtract(user.getLookAngle()));
-        stand.startRiding(user);
+        stand.startRiding(user, true, false);
         stand.setUser(user);
 
         if (user instanceof ServerPlayer player) {
@@ -775,6 +801,9 @@ public final class JCraft {
 
     public static boolean wasRecentlyAttacked(CombatTracker tracker) {
         tracker.recheckStatus();
+        if (tracker instanceof net.arna.jcraft.mixin.CombatTrackerAccessor acc) {
+            return acc.jcraft$isInCombat() || acc.jcraft$isTakingDamage();
+        }
         return tracker.getCombatDuration() > 0;
     }
 

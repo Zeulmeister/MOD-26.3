@@ -24,6 +24,16 @@ public final class PoseTauntPacket {
 
     private PoseTauntPacket() {}
 
+    public static void clear(ServerPlayer player) {
+        if (player != null) {
+            LAST_TAUNT_TIMES.remove(player.getUUID());
+        }
+    }
+
+    public static void clearAll() {
+        LAST_TAUNT_TIMES.clear();
+    }
+
     public static void send() {
         JNetwork.sendToServer(JPacketRegistry.C2S_POSE_TAUNT, new FriendlyByteBuf(Unpooled.buffer()));
     }

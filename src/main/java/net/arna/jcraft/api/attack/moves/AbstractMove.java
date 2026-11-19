@@ -881,14 +881,31 @@ public abstract class AbstractMove<T extends AbstractMove<T, A>, A extends IAtta
         return false;
     }
 
+    protected float getWhiffVolume(final A attacker, final RandomSource random) {
+        return 0.8f + random.nextFloat() * 0.25f;
+    }
+
+    protected float getWhiffPitch(final A attacker, final RandomSource random) {
+        return 0.88f + random.nextFloat() * 0.26f;
+    }
+
+    protected final boolean hasOnHitSoundAction() {
+        for (final MoveAction<?, ? super A> action : actions) {
+            if (action.getRunMoment() == RunMoment.ON_HIT && action instanceof net.arna.jcraft.common.attack.actions.PlaySoundAction) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void playWhiffSound(final A attacker) {
         if (!shouldPlayWhiffSound(attacker) || attacker.getEntityWorld().isClientSide() || attacker.getCurrentMove() != this) {
             return;
         }
 
         final RandomSource random = attacker.getBaseEntity().getRandom();
-        final float volume = 0.6f + random.nextFloat() * 0.35f;
-        final float pitch = 0.85f + random.nextFloat() * 0.3f;
+        final float volume = getWhiffVolume(attacker, random);
+        final float pitch = getWhiffPitch(attacker, random);
         attacker.playAttackerSound(JSoundRegistry.WHIFF.get(), volume, pitch, false, true);
     }
 

@@ -33,7 +33,7 @@ public class SHAAttackGoal extends Goal {
     }
 
     public boolean canContinueToUse() {
-        if (!target.isAlive() || target.isRemoved() || target.isInvulnerable()) {
+        if (!target.isAlive() || target.isRemoved() || target.isPermanentlyInvulnerable()) {
             return false;
         }
 

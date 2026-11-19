@@ -9,7 +9,9 @@ public class InputMap extends EnumMap<MoveInputType, Integer> {
         super(MoveInputType.class);
     }
 
-    public EnumMap<MoveInputType, Integer> cloneOf() {
-        return super.clone();
+    public InputMap cloneOf() {
+        InputMap copy = new InputMap();
+        copy.putAll(this);
+        return copy;
     }
 }

@@ -6,11 +6,12 @@ import lombok.NonNull;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 
 public class VariantInputPacket {
-    private static final Map<ServerPlayer, State> VARIANT_STATES = new WeakHashMap<>();
+    private static final Map<ServerPlayer, State> VARIANT_STATES = Collections.synchronizedMap(new WeakHashMap<>());
     private static final State DEFAULT = new State(false, false);
 
     public static void handle(FriendlyByteBuf buf, NetworkManager.PacketContext ctx) {

@@ -41,6 +41,10 @@ public final class GunAiming {
         return AIMING.contains(user.getUUID());
     }
 
+    public static void clearAll() {
+        AIMING.clear();
+    }
+
     public static boolean isAimableGun(ItemStack stack) {
         return stack.getItem() instanceof Peacemaker;
     }

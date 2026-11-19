@@ -76,7 +76,7 @@ public class KnifeItem extends Item {
 
     @Override
     public boolean releaseUsing(@NotNull ItemStack stack, @NotNull Level world, LivingEntity user, int remainingUseTicks) {
-        if (user.hasEffect(JStatusRegistry.DAZED.asHolder())) {
+        if (user.hasEffect(JStatusRegistry.DAZED.asHolder()) || user.getItemInHand(user.getUsedItemHand()) != stack) {
             return false;
         }
 
@@ -92,7 +92,6 @@ public class KnifeItem extends Item {
             KnifeProjectile knife = new KnifeProjectile(world, user);
             knife.shootFromRotation(user, user.getXRot(), user.getYRot(), 0.0F, 1.5F * getSpeedMult(stack, remainingUseTicks), 0F);
             world.addFreshEntity(knife);
-        } else {
             world.playSound(null, user.getX(), user.getY(), user.getZ(), SoundEvents.ENDER_PEARL_THROW, SoundSource.NEUTRAL, 0.5F, 1F);
         }
         return true;

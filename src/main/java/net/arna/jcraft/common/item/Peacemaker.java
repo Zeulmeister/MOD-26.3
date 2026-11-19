@@ -1,5 +1,6 @@
 package net.arna.jcraft.common.item;
 
+import dev.architectury.platform.Platform;
 import mod.azure.azurelib.animation.dispatch.command.AzCommand;
 import mod.azure.azurelib.animation.play_behavior.AzPlayBehaviors;
 import net.arna.jcraft.JCraft;
@@ -11,7 +12,7 @@ import net.arna.jcraft.common.entity.projectile.BulletProjectile;
 import net.arna.jcraft.common.system.GunAiming;
 import net.arna.jcraft.common.tickable.PeacemakerReload;
 import net.arna.jcraft.common.util.JItemData;
-import net.minecraft.client.Minecraft;
+import net.fabricmc.api.EnvType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -65,23 +66,41 @@ public class Peacemaker extends Item {
         });
     }
 
+    public static int getShots(ItemStack stack) {
+        CompoundTag data = JItemData.getTag(stack);
+        if (data == null || !data.contains(SHOTS_ID)) {
+            return MAX_ROUNDS;
+        }
+        return data.getIntOr(SHOTS_ID, 0);
+    }
+
     public static String getFireKey() {
-        return Minecraft.getInstance().options.keyAttack.getTranslatedKeyMessage().getString();
+        return Platform.getEnv() == EnvType.CLIENT ? ClientKeys.fire() : "LMB";
     }
 
     public static String getAimKey() {
-        return Minecraft.getInstance().options.keyUse.getTranslatedKeyMessage().getString();
+        return Platform.getEnv() == EnvType.CLIENT ? ClientKeys.aim() : "RMB";
     }
 
     public static String getReloadKey() {
-        return Minecraft.getInstance().options.keyPickItem.getTranslatedKeyMessage().getString();
+        return Platform.getEnv() == EnvType.CLIENT ? ClientKeys.reload() : "MMB";
+    }
+
+    private static final class ClientKeys {
+        static String fire() {
+            return net.minecraft.client.Minecraft.getInstance().options.keyAttack.getTranslatedKeyMessage().getString();
+        }
+        static String aim() {
+            return net.minecraft.client.Minecraft.getInstance().options.keyUse.getTranslatedKeyMessage().getString();
+        }
+        static String reload() {
+            return net.minecraft.client.Minecraft.getInstance().options.keyPickItem.getTranslatedKeyMessage().getString();
+        }
     }
 
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext tooltipCtx, TooltipDisplay tooltipDisplay, Consumer<Component> tooltipAdder, TooltipFlag context) {
-        CompoundTag itemData = JItemData.getTag(stack);
-        int shots = itemData != null && itemData.contains(SHOTS_ID)
-                ? itemData.getIntOr(SHOTS_ID, MAX_ROUNDS) : MAX_ROUNDS;
+        int shots = getShots(stack);
 
         tooltipAdder.accept(Component.translatable("tooltip.jcraft.peacemaker.shots").append(" §e" + shots));
         tooltipAdder.accept(Component.translatable("tooltip.jcraft.peacemaker.fire", getFireKey()));
@@ -129,12 +148,12 @@ public class Peacemaker extends Item {
     }
 
     private static int plannedRounds(ItemStack itemStack, Player user) {
-        final int empty = MAX_ROUNDS - JItemData.getOrCreateTag(itemStack).getIntOr(SHOTS_ID, 0);
+        final int empty = MAX_ROUNDS - getShots(itemStack);
         return user.isCreative() ? empty : Math.min(empty, countBulletsInInventory(user));
     }
 
     public static boolean canLoadMore(ItemStack itemStack, LivingEntity user) {
-        if (JItemData.getOrCreateTag(itemStack).getIntOr(SHOTS_ID, 0) >= MAX_ROUNDS) {
+        if (getShots(itemStack) >= MAX_ROUNDS) {
             return false;
         }
         if (!(user instanceof Player player)) {
@@ -147,7 +166,7 @@ public class Peacemaker extends Item {
         if (!(user instanceof Player player)) {
             return;
         }
-        final int shots = JItemData.getOrCreateTag(itemStack).getIntOr(SHOTS_ID, 0);
+        final int shots = getShots(itemStack);
         if (shots >= MAX_ROUNDS) {
             return;
         }
@@ -198,7 +217,7 @@ public class Peacemaker extends Item {
             return true;
         }
 
-        if (data.getIntOr(SHOTS_ID, 0) < 1 && !player.isCreative()) {
+        if (getShots(peacemakerStack) < 1 && !player.isCreative()) {
             return true;
         }
 
@@ -233,7 +252,7 @@ public class Peacemaker extends Item {
             return true;
         }
         final CompoundTag data = JItemData.getOrCreateTag(peacemakerStack);
-        if (data.getIntOr(SHOTS_ID, 0) >= MAX_ROUNDS || data.getBooleanOr(RELOADING_ID, false) || !canLoadMore(peacemakerStack, player)) {
+        if (getShots(peacemakerStack) >= MAX_ROUNDS || data.getBooleanOr(RELOADING_ID, false) || !canLoadMore(peacemakerStack, player)) {
             return true;
         }
         if (!world.isClientSide()) {
@@ -252,8 +271,7 @@ public class Peacemaker extends Item {
     }
 
     public static void shoot(ItemStack itemStack, Level world, LivingEntity user, @Nullable Vec3 muzzle) {
-        CompoundTag data = JItemData.getOrCreateTag(itemStack);
-        int shots = data.getIntOr(SHOTS_ID, 0);
+        int shots = getShots(itemStack);
 
         if (!(user instanceof Player player && player.isCreative())) {
             if (shots < 1) {
@@ -297,7 +315,7 @@ public class Peacemaker extends Item {
     }
 
     private static boolean hasBulletInInventory(Player player) {
-        return player.getInventory().contains(new ItemStack(JItemRegistry.BULLET.get()));
+        return countBulletsInInventory(player) > 0;
     }
 
     private static int countBulletsInInventory(Player player) {

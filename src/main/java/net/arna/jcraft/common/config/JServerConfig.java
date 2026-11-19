@@ -60,13 +60,13 @@ public class JServerConfig {
     public static final IntOption MIH_TIME_ACCELERATION_DURATION = new IntOption(JCraft.id("mih_time_acceleration_duration"), BALANCE, 300, 0);
     public static final FloatOption MIH_SPRINT_HUNGER_MULTIPLIER = new FloatOption(JCraft.id("mih_sprint_hunger_multiplier"), BALANCE, 1.25f, 0f);
     public static final BooleanOption KILL_VAMPIRISM = new BooleanOption(JCraft.id("kill_vampirism"), BALANCE, false);
-    /*
     public static final IntOption KC_TIME_ERASURE_DURATION = new IntOption(JCraft.id("kc_time_erasure_duration"), BALANCE, 120, 0);
+    public static final FloatOption STAND_DAMAGE_MULTIPLIER = new FloatOption(JCraft.id("stand_damage_multiplier"), BALANCE, 1.0f, 0f, 10f);
+    public static final BooleanOption IGNORE_ARMOR = new BooleanOption(JCraft.id("ignore_armor"), BALANCE, false);
+    /*
     public static final IntOption CMOON_UTIL_DURATION = new IntOption(JCraft.id("cmoon_util_duration"), BALANCE, 300, 0);
-    public static final FloatOption STAND_DAMAGE_MULTIPLIER = new FloatOption(JCraft.id("stand_damage_multiplier"), BALANCE, 1f, 0f, 5f);
     public static final IntOption CMOON_ULT_RANGE = new IntOption(JCraft.id("cmoon_ult_range"), BALANCE, 100, 0, 256);
     public static final EnumOption<SpecType> DEF_SPEC = new EnumOption<>("def_spec", BALANCE, SpecType.class, SpecType.NONE);
-    public static final BooleanOption IGNORE_ARMOR = new BooleanOption(JCraft.id("ignore_armor"), BALANCE, true);
     public static final BooleanOption INVIS_CREAM_VOID = new BooleanOption(JCraft.id("invis_cream_void"), BALANCE, false);
     public static final BooleanOption TIME_SKIP_USE_UTIL = new BooleanOption(JCraft.id("time_skip_use_util"), BALANCE, false);
      */
@@ -76,7 +76,7 @@ public class JServerConfig {
     public static final FloatOption SCALING_PENALTY_PER_HIT = new FloatOption(JCraft.id("scaling_penalty_per_hit"), BALANCE, 0.02f);
     public static final BooleanOption ENABLE_MOVE_COOLDOWNS = new BooleanOption(JCraft.id("enable_move_cooldowns"), BALANCE, true);
     public static final FloatOption COOLDOWN_MULTIPLIER = new FloatOption(JCraft.id("cooldown_multiplier"), BALANCE, 1.0f);
-    // public static final BooleanOption ENABLE_IPS = new BooleanOption(JCraft.id("enable_ips"), BALANCE, false);
+    public static final BooleanOption ENABLE_IPS = new BooleanOption(JCraft.id("enable_ips"), BALANCE, false);
     public static final BooleanOption SURVIVAL_CDC = new BooleanOption(JCraft.id("survival_cdc"), BALANCE, false);
     public static final BooleanOption ENABLE_FRIENDLY_FIRE = new BooleanOption(JCraft.id("enable_friendly_fire"), BALANCE, true);
     public static final IntOption BASE_AI_LEVEL = new IntOption(JCraft.id("base_ai_level"), BALANCE, IJAttackerBrain.COMPETITIVE_LEVEL, IJAttackerBrain.MIN_LEVEL, IJAttackerBrain.MAX_LEVEL);
@@ -97,8 +97,15 @@ public class JServerConfig {
     public static final BooleanOption PLAYER_VAMPS_DIE_TO_HAMON = new BooleanOption(JCraft.id("player_vamps_die_to_hamon"), INTERACTION, true);
     public static final BooleanOption MANDOM_AFFECTS_BLOCKS = new BooleanOption(JCraft.id("mandom_affects_blocks"), INTERACTION, true);
     public static final BooleanOption WS_STEAL_STANDS_FROM_PLAYERS = new BooleanOption(JCraft.id("ws_steal_stands_from_players"), INTERACTION, false);
-    public static final BooleanOption GRAVITY_ONLY_AFFECTS_PLAYERS = new BooleanOption(JCraft.id("gravity_only_affects_players"), INTERACTION, false);
     public static final FloatOption BLOCK_BREAKAGE_MULTIPLIER = new FloatOption(JCraft.id("block_breakage_multiplier"), INTERACTION, 1.0f);
+
+    // Gravity options (backed by & synchronized with JCraft.gravityConfig)
+    private static final Identifier GRAVITY = JCraft.id("gravity");
+    public static final BooleanOption GRAVITY_ONLY_AFFECTS_PLAYERS = new BooleanOption(JCraft.id("gravity_only_affects_players"), GRAVITY, false);
+    public static final BooleanOption GRAVITY_KEEP_WORLD_LOOK = new BooleanOption(JCraft.id("gravity_keep_world_look"), GRAVITY, false);
+    public static final IntOption GRAVITY_ROTATION_TIME = new IntOption(JCraft.id("gravity_rotation_time"), GRAVITY, 500, 0, 5000);
+    public static final BooleanOption GRAVITY_WORLD_VELOCITY = new BooleanOption(JCraft.id("gravity_world_velocity"), GRAVITY, false);
+    public static final BooleanOption RESET_GRAVITY_ON_DIMENSION_CHANGE = new BooleanOption(JCraft.id("reset_gravity_on_dimension_change"), GRAVITY, true);
     /*
     public static final BooleanOption UNIVERSAL_ABILITIES = new BooleanOption(JCraft.id("universal_abilities"), INTERACTION, true);
     public static final BooleanOption STAND_GRIEFING = new BooleanOption(JCraft.id("stand_griefing"), INTERACTION, true);
@@ -125,7 +132,14 @@ public class JServerConfig {
     // Empty method to force class initialization.
     // Not doing this breaks the /jconfig command (cuz this class won't be initialized on clients).
     public static void init() {
-        // intentionally left empty
+        syncGravityConfig();
+    }
+
+    public static void syncGravityConfig() {
+        JCraft.gravityConfig.keepWorldLook = GRAVITY_KEEP_WORLD_LOOK.getValue();
+        JCraft.gravityConfig.rotationTime = GRAVITY_ROTATION_TIME.getValue();
+        JCraft.gravityConfig.worldVelocity = GRAVITY_WORLD_VELOCITY.getValue();
+        JCraft.gravityConfig.resetGravityOnDimensionChange = RESET_GRAVITY_ON_DIMENSION_CHANGE.getValue();
     }
 
     @SneakyThrows
@@ -140,28 +154,59 @@ public class JServerConfig {
                 Files.copy(defaultPath, path, StandardCopyOption.REPLACE_EXISTING);
             } else {
                 save(server);
+                syncGravityConfig();
 
                 // No need to load anything, we're using the defaults.
                 return;
             }
+        } else if (Files.exists(GLOBAL_DEFAULT)
+                && Files.getLastModifiedTime(GLOBAL_DEFAULT).compareTo(Files.getLastModifiedTime(path)) > 0) {
+            Files.copy(GLOBAL_DEFAULT, path, StandardCopyOption.REPLACE_EXISTING);
         }
 
         try (BufferedReader reader = Files.newBufferedReader(path)) {
             JsonObject data = gson.fromJson(reader, JsonObject.class);
-            for (String key : data.keySet()) {
-                ConfigOption option = ConfigOption.getOptions().get(parseKey(key));
-                if (option != null) {
-                    option.read(data.get(key));
+            if (data != null) {
+                for (String key : data.keySet()) {
+                    ConfigOption option = ConfigOption.getOptions().get(parseKey(key));
+                    if (option != null) {
+                        option.read(data.get(key));
+                    }
                 }
             }
         } catch (IOException e) {
             JCraft.LOGGER.error("An error occurred trying to read the server config.", e);
+        } finally {
+            syncGravityConfig();
+        }
+    }
+
+    @Synchronized
+    public static void saveGlobalDefault() {
+        syncGravityConfig();
+        try {
+            Path parent = GLOBAL_DEFAULT.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            JsonObject data = new JsonObject();
+            ConfigOption.getOptions().forEach((key, option) ->
+                    data.add(key.toString(), option.write()));
+
+            try (BufferedWriter writer = Files.newBufferedWriter(GLOBAL_DEFAULT, StandardOpenOption.CREATE,
+                    StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
+                gson.toJson(data, writer);
+                writer.flush();
+            }
+        } catch (IOException e) {
+            JCraft.LOGGER.error("An error occurred trying to save global default server config.", e);
         }
     }
 
     @Synchronized
     @SneakyThrows
     public static void save(final MinecraftServer server) {
+        syncGravityConfig();
         Path path = getPath(server);
 
         JsonObject data = new JsonObject();
@@ -173,6 +218,7 @@ public class JServerConfig {
             gson.toJson(data, writer);
             writer.flush();
         }
+        saveGlobalDefault();
     }
 
     private static @NotNull Path getPath(final MinecraftServer server) throws IOException {
@@ -220,6 +266,7 @@ public class JServerConfig {
             option.read(buf);
             changedOptions.add(option);
         }
+        syncGravityConfig();
         return changedOptions;
     }
 

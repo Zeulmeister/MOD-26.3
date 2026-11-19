@@ -2,7 +2,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:crazy_diamond/warped_stem"
+        "recipes": "jcraft:crazy_diamond/warped_stem"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

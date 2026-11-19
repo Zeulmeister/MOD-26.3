@@ -60,8 +60,13 @@ public final class TossChargeMove<A extends IAttacker<A, ?>> extends AbstractHol
     @Override
     public void onCancel(final A attacker) {
         final LivingEntity baseEntity = attacker.getBaseEntity();
-        Containers.dropItemStack(baseEntity.level(), baseEntity.getX(), baseEntity.getY(), baseEntity.getZ(),
-                baseEntity.getItemInHand(InteractionHand.MAIN_HAND));
+        if (baseEntity.level().isClientSide()) return;
+        final ItemStack held = baseEntity.getItemInHand(InteractionHand.MAIN_HAND);
+        baseEntity.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        if (held.isEmpty()) return;
+        final LivingEntity user = attacker.getUser();
+        if (user instanceof Player player && player.isCreative()) return;
+        Containers.dropItemStack(baseEntity.level(), baseEntity.getX(), baseEntity.getY(), baseEntity.getZ(), held);
     }
 
     @Override

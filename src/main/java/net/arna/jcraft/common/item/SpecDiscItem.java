@@ -66,14 +66,21 @@ public class SpecDiscItem extends Item {
         final CommonSpecComponent specData = JComponentPlatformUtils.getSpecData(user);
         final SpecType userSpec = specData.getType();
 
-        if (itemSpec == userSpec && itemSpec != null) {
+        final boolean itemEmpty = SpecTypeUtil.isNone(itemSpec);
+        final boolean userEmpty = SpecTypeUtil.isNone(userSpec);
+
+        if (itemEmpty && userEmpty) {
+            return InteractionResult.FAIL;
+        }
+
+        if (!itemEmpty && itemSpec == userSpec) {
             user.sendOverlayMessage(Component.translatable("jcraft.disc.same_spec"));
             return InteractionResult.FAIL;
         }
 
-        specData.setType(itemSpec);
+        specData.setType(itemEmpty ? net.arna.jcraft.api.registry.JSpecTypeRegistry.NONE.get() : itemSpec);
         JItemData.edit(itemStack, tag -> {
-            if (userSpec == null || SpecTypeUtil.isNone(userSpec)) {
+            if (userEmpty) {
                 tag.remove(SPEC_ID);
             } else {
                 tag.putString(SPEC_ID, userSpec.getId().toString());

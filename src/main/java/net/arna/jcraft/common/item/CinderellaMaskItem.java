@@ -14,7 +14,7 @@ import java.util.function.Consumer;
 
 public class CinderellaMaskItem extends Item {
     public CinderellaMaskItem() {
-        super(JItemRegistry.settings().rarity(Rarity.RARE).equippable(EquipmentSlot.HEAD));
+        super(JItemRegistry.settings().rarity(Rarity.RARE).equippable(EquipmentSlot.HEAD).enchantable(15));
     }
 
     @Override

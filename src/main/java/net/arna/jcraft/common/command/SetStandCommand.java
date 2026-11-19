@@ -91,7 +91,7 @@ public class SetStandCommand {
 
                 // Check if the stand is already taken by another player
                 CommonStandComponent firstPlayerStandComp = JComponentPlatformUtils.getStandComponent(playerTargets.get(0));
-                if (firstPlayerStandComp.getType() != type && JCraft.getExclusiveStandsData().isStandUsed(type)) {
+                if (type != null && firstPlayerStandComp.getType() != type && JCraft.getExclusiveStandsData().isStandUsed(type)) {
                     throw EXCLUSIVE_STANDS_STAND_TAKEN.create();
                 }
             }

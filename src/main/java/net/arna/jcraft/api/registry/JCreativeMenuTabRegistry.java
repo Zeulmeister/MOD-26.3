@@ -238,6 +238,7 @@ public interface JCreativeMenuTabRegistry {
                     {
                         final ItemStack stack = new ItemStack(JItemRegistry.BLOOD_BOTTLE.get());
                         JItemData.edit(stack, t -> t.putFloat("Blood", 16f));
+                        net.arna.jcraft.common.item.BloodBottleItem.syncBottleModel(stack, 16f);
                         entries.accept(stack);
                     }
 /*                    for (int i = 16; i >= 0; i--) {
@@ -248,18 +249,14 @@ public interface JCreativeMenuTabRegistry {
 
                     // cinderella mask + enchantments
                     entries.accept(JItemRegistry.CINDERELLA_MASK.get());
-                    for (int i = 1; i <= 3; i++) {
-                        final ItemStack stack = new ItemStack(Items.ENCHANTED_BOOK);
-                        final CompoundTag nbt = JItemData.getOrCreateTag(stack);
-                        final ListTag enchantments = new ListTag();
-                        final CompoundTag enchantment = new CompoundTag();
-                        enchantment.putString("id", "jcraft:cinderellas_kiss");
-                        enchantment.putShort("lvl", (short)i);
-                        enchantments.add(enchantment);
-                        nbt.put("StoredEnchantments", enchantments);
-                        JItemData.setTag(stack, nbt);
-                        entries.accept(stack);
-                    }
+                    displayContext.holders().lookup(net.minecraft.core.registries.Registries.ENCHANTMENT)
+                            .flatMap(reg -> reg.get(net.arna.jcraft.common.enchantments.CinderellasKissEnchantment.KEY))
+                            .ifPresent(kissHolder -> {
+                                for (int i = 1; i <= 3; i++) {
+                                    entries.accept(net.minecraft.world.item.enchantment.EnchantmentHelper.createBook(
+                                            new net.minecraft.world.item.enchantment.EnchantmentInstance(kissHolder, i)));
+                                }
+                            });
                     // spawn eggs part 1
                     entries.accept(JItemRegistry.BRAWLER_SPAWN_EGG.get());
                     entries.accept(JItemRegistry.HAMON_SPAWN_EGG.get());

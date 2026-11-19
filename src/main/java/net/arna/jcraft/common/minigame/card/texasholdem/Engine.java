@@ -629,26 +629,30 @@ public final class Engine {
     }
 
     public void readFromNbt(@NonNull CompoundTag tag) {
+        readFromNbt(tag, net.minecraft.nbt.NbtOps.INSTANCE);
+    }
+
+    public void readFromNbt(@NonNull CompoundTag tag, @NonNull com.mojang.serialization.DynamicOps<Tag> ops) {
         final ListIterator<Wager> wagersIt = wagers.listIterator();
         for (final Tag wagerTag : tag.getListOrEmpty("wagers")) {
-            wagersIt.next().readFromNbt((CompoundTag)wagerTag);
+            wagersIt.next().readFromNbt((CompoundTag)wagerTag, ops);
         }
         final ListIterator<ImmutableWager> currentRaisesIt = currentRaises.listIterator();
         for (final Tag currentRaiseTag : tag.getListOrEmpty("current_raises")) {
             final Wager currentRaise = new Wager();
-            currentRaise.readFromNbt((CompoundTag)currentRaiseTag);
+            currentRaise.readFromNbt((CompoundTag)currentRaiseTag, ops);
             currentRaisesIt.next();
             currentRaisesIt.set(new ImmutableWager(currentRaise));
         }
         potChanged = true;
         final CompoundTag bigBlindTag = tag.getCompoundOrEmpty("big_blind");
         final Wager bigBlind = new Wager();
-        bigBlind.readFromNbt(bigBlindTag);
+        bigBlind.readFromNbt(bigBlindTag, ops);
         this.bigBlind = new ImmutableWager(bigBlind);
         bigBlindPlayer = tag.getIntOr("big_blind_player", 0);
         final CompoundTag currentRaiseTag = tag.getCompoundOrEmpty("current_raise");
         final Wager currentRaise = new Wager();
-        currentRaise.readFromNbt(currentRaiseTag);
+        currentRaise.readFromNbt(currentRaiseTag, ops);
         this.currentRaise = new ImmutableWager(currentRaise);
         resetPockets();
         final Iterator<List<Card>> pocketsIt = pockets.iterator();
@@ -671,27 +675,31 @@ public final class Engine {
     }
 
     public void writeToNbt(@NonNull CompoundTag tag) {
+        writeToNbt(tag, net.minecraft.nbt.NbtOps.INSTANCE);
+    }
+
+    public void writeToNbt(@NonNull CompoundTag tag, @NonNull com.mojang.serialization.DynamicOps<Tag> ops) {
         // we assume the player count to be known at this point
         final ListTag wagersTag = new ListTag();
         for (final Wager wager : wagers) {
             final CompoundTag wagerTag = new CompoundTag();
-            wager.writeToNbt(wagerTag);
+            wager.writeToNbt(wagerTag, ops);
             wagersTag.add(wagerTag);
         }
         tag.put("wagers", wagersTag);
         final ListTag currentRaisesTag = new ListTag();
         for (final ImmutableWager currentRaise : currentRaises) {
             final CompoundTag currentRaiseTag = new CompoundTag();
-            currentRaise.writeToNbt(currentRaiseTag);
+            currentRaise.writeToNbt(currentRaiseTag, ops);
             currentRaisesTag.add(currentRaiseTag);
         }
         tag.put("current_raises", currentRaisesTag);
         final CompoundTag bigBlindTag = new CompoundTag();
-        bigBlind.writeToNbt(bigBlindTag);
+        bigBlind.writeToNbt(bigBlindTag, ops);
         tag.put("big_blind", bigBlindTag);
         tag.put("big_blind_player", IntTag.valueOf(bigBlindPlayer));
         final CompoundTag currentRaiseTag = new CompoundTag();
-        currentRaise.writeToNbt(currentRaiseTag);
+        currentRaise.writeToNbt(currentRaiseTag, ops);
         tag.put("current_raise", currentRaiseTag);
         final ListTag pocketsTag = new ListTag();
         for (final List<Card> pocket : pockets) {

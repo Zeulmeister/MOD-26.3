@@ -66,13 +66,13 @@ public class GravityChannel<P extends GravityPacket> {
         return gravityVerifierRegistry;
     }
 
-    //todo: figure out why this is called this way.
-    //      its really confusing given S2C means its CLIENTside
     public void registerServerReceiver() {
-        if (Platform.getEnvironment() == Env.SERVER) return;
-        net.arna.jcraft.common.network.JNetwork.registerReceiver(NetworkManager.Side.S2C, channel, (buf, context) -> {
-            receiveFromClient(buf, context.getPlayer().level().getServer(), (ServerPlayer) context.getPlayer());
+        net.arna.jcraft.common.network.JNetwork.registerReceiver(NetworkManager.Side.C2S, channel, (buf, context) -> {
+            if (context.getPlayer() instanceof ServerPlayer sp && sp.level().getServer() != null) {
+                receiveFromClient(buf, sp.level().getServer(), sp);
+            }
         });
+        net.arna.jcraft.common.network.JNetwork.registerS2CPayload(channel);
     }
 
     public static void registerReceivers() {

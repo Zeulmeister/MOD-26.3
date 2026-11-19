@@ -118,7 +118,7 @@ public class FireMeteorAttack extends AbstractMove<FireMeteorAttack, TheSunEntit
                     Codec.FLOAT.fieldOf("meteor_velocity").forGetter(FireMeteorAttack::getMeteorVelocity),
                     Codec.FLOAT.fieldOf("meteor_speed").forGetter(FireMeteorAttack::getMeteorSpeed),
                     Codec.FLOAT.fieldOf("meteor_divergence").forGetter(FireMeteorAttack::getMeteorDivergence),
-                    Codec.DOUBLE.fieldOf("explosive_scale_minimum").forGetter(FireMeteorAttack::getExplodeScaleMinimum),
+                    Codec.DOUBLE.optionalFieldOf("explosive_scale_minimum", 2.0).forGetter(FireMeteorAttack::getExplodeScaleMinimum),
                     ExtraCodecs.NON_NEGATIVE_INT.listOf()
                             .<IntCollection>xmap(IntOpenHashSet::new, ArrayList::new)
                             .fieldOf("hit_moments").forGetter(FireMeteorAttack::getHitMoments)

@@ -32,14 +32,18 @@ public class HolsterItem extends SpecObtainmentItem {
     public @NotNull InteractionResult use(Level world, Player user, @NotNull InteractionHand hand) {
         ItemStack itemStack = user.getItemInHand(hand);
 
-        if (!world.isClientSide()) {
-            boolean specChanged = tryGetSpec(user);
-            if (specChanged) {
-                if (!user.isCreative()) {
-                    itemStack.shrink(1);
-                }
-                user.getCooldowns().addCooldown(new net.minecraft.world.item.ItemStack(this), 20);
-            }
+        if (world.isClientSide()) {
+            return InteractionResult.PASS;
+        }
+
+        boolean specChanged = tryGetSpec(user);
+        if (!specChanged) {
+            return InteractionResult.FAIL;
+        }
+
+        user.getCooldowns().addCooldown(new net.minecraft.world.item.ItemStack(this), 20);
+        if (!user.isCreative()) {
+            itemStack.shrink(1);
         }
 
         return InteractionResult.CONSUME.heldItemTransformedTo(itemStack);

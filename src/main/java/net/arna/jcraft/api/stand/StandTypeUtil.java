@@ -158,20 +158,17 @@ public class StandTypeUtil {
      */
     @Nullable
     public static StandType readFromNBT(final CompoundTag nbt, final String key) {
-        if (nbt.contains(key)) {
-            int ordinal = nbt.getIntOr(key, 0);
-            return Optional.ofNullable(JStandTypeRegistry.LEGACY_ORDINALS.get(ordinal))
-                    .map(Supplier::get)
-                    .orElse(null);
-        } else if (nbt.contains(key)) {
-            String id = nbt.getStringOr(key, "");
-            if (id.isEmpty()) {
-                return null;
-            }
-            return JRegistries.STAND_TYPE_REGISTRY.get(Identifier.parse(id));
-        } else {
+        if (!nbt.contains(key)) {
             return null;
         }
+        String id = nbt.getStringOr(key, "");
+        if (!id.isEmpty()) {
+            return JRegistries.STAND_TYPE_REGISTRY.get(Identifier.parse(id));
+        }
+        int ordinal = nbt.getIntOr(key, 0);
+        return Optional.ofNullable(JStandTypeRegistry.LEGACY_ORDINALS.get(ordinal))
+                .map(Supplier::get)
+                .orElse(null);
     }
 
     /**

@@ -51,10 +51,14 @@ public abstract class HumanoidModelMixin<T extends HumanoidRenderState> {
             return;
         }
 
-        if (entity.hasPose(Pose.STANDING)) {
+        if (entity.hasPose(Pose.STANDING)
+                && !state.isCrouching
+                && !state.isPassenger
+                && !state.isFallFlying
+                && state.swimAmount <= 0.0f
+                && state.swingAnimation <= 0.0f) {
             IPoseModifier pose = StandUserPoseLoader.getPose(ModelType.HUMANOID, entity);
             if (pose != IPoseModifier.EMPTY) {
-                JClientUtils.resetPartAngles(this.body);
                 pose.apply((HumanoidModel<?>) (Object) this, entity, state.ageInTicks);
             }
         }
@@ -64,7 +68,9 @@ public abstract class HumanoidModelMixin<T extends HumanoidRenderState> {
                 && (player.getAbilities().flying || !player.onGround())
                 && JClientUtils.isUserOfActiveTimestop(player)) {
             this.body.xRot = (float) Math.toRadians(4.0);
-            this.body.yRot = 0.0f;
+            if (state.swingAnimation <= 0.0f) {
+                this.body.yRot = 0.0f;
+            }
             this.body.zRot = 0.0f;
 
             this.rightLeg.xRot = (float) Math.toRadians(10.0);
@@ -75,11 +81,16 @@ public abstract class HumanoidModelMixin<T extends HumanoidRenderState> {
             this.leftLeg.yRot = (float) Math.toRadians(-4.0);
             this.leftLeg.zRot = (float) Math.toRadians(-5.0);
 
-            if (!player.isUsingItem()) {
-                this.rightArm.xRot = (float) Math.toRadians(-6.0);
-                this.rightArm.zRot = (float) Math.toRadians(10.0);
-                this.leftArm.xRot = (float) Math.toRadians(-6.0);
-                this.leftArm.zRot = (float) Math.toRadians(-10.0);
+            boolean twoHanded = state.rightArmPose.isTwoHanded() || state.leftArmPose.isTwoHanded();
+            if (state.swingAnimation <= 0.0f && !state.isUsingItem && !twoHanded) {
+                if (state.rightArmPose == HumanoidModel.ArmPose.EMPTY) {
+                    this.rightArm.xRot = (float) Math.toRadians(-6.0);
+                    this.rightArm.zRot = (float) Math.toRadians(10.0);
+                }
+                if (state.leftArmPose == HumanoidModel.ArmPose.EMPTY) {
+                    this.leftArm.xRot = (float) Math.toRadians(-6.0);
+                    this.leftArm.zRot = (float) Math.toRadians(-10.0);
+                }
             }
         }
     }

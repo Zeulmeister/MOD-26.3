@@ -9,6 +9,7 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.Nullable;
@@ -65,7 +66,7 @@ public class EpitaphOverlay {
         countdown = -1;
     }
 
-    public static void render() {
+    public static void render(final GuiGraphicsExtractor graphics) {
         if (!shouldRender() || frameCounter == null || state.getAnimation() == null) {
             return;
         }
@@ -90,7 +91,7 @@ public class EpitaphOverlay {
         if (state == State.NONE) {
             return;
         }
-        state.getFrame(lastFrame = currentFrame).render();
+        state.getFrame(lastFrame = currentFrame).render(graphics);
     }
 
     public static boolean shouldRender() {

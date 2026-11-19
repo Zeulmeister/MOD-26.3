@@ -32,7 +32,7 @@ public class InputStateManager {
     }
 
     public void copyFrom(InputStateManager other) {
-        this.heldInputs = (InputMap) other.heldInputs.cloneOf();
+        this.heldInputs = other.heldInputs.cloneOf();
         this.forward = other.forward;
         this.backward = other.backward;
         this.left = other.left;

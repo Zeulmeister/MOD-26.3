@@ -153,15 +153,22 @@ public interface MoveMap<A extends IAttacker<? extends A, S>, S extends Enum<?>>
      * @param chargeTime How long the current move was charged for.
      */
     default void initiateFollowup(final A attacker, AbstractMove<?, ? super A> move, boolean setMoveStun, int chargeTime) {
+        tryInitiateFollowup(attacker, move, setMoveStun, chargeTime);
+    }
+
+    /**
+     * Attempts to initiate a follow-up move and reports whether the follow-up actually started.
+     */
+    default boolean tryInitiateFollowup(final A attacker, AbstractMove<?, ? super A> move, boolean setMoveStun, int chargeTime) {
         MoveMap.Entry<A, S> entry = getEntry(move.getOriginalMove());
         if (entry == null || entry.getFollowup() == null) {
-            return;
+            return false;
         }
         entry = entry.getFollowup();
 
         // Check conditions
         if (!entry.getMove().conditionsMet(attacker)) {
-            return;
+            return false;
         }
 
         move = entry.getMove();
@@ -170,6 +177,7 @@ public interface MoveMap<A extends IAttacker<? extends A, S>, S extends Enum<?>>
         if (setMoveStun) {
             attacker.setMoveStun(move.getDuration());
         }
+        return true;
     }
 
     /**

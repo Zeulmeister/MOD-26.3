@@ -97,9 +97,15 @@ public class EvolutionItemHandler {
         standData.setTypeAndSkin(evolution.target(), standData.getSkin(), false);
         player.awardStat(JStatRegistry.STAND_EVOLVED.get());
 
+        // End any active Time Stop cleanly before desummoning/swapping stand
+        if (net.arna.jcraft.common.tickable.Timestops.isUserOfActiveTimestop(player)) {
+            JCraft.stopTimestop(player);
+        }
+
         // Re-summon users stand
         StandEntity<?, ?> stand = standData.getStand();
         if (stand != null) {
+            stand.setTsTime(0);
             stand.desummon();
         }
         JCraft.summon(player.level(), player);
@@ -112,7 +118,10 @@ public class EvolutionItemHandler {
                                                    ProfilerFiller reloadProfiler, Executor backgroundExecutor, Executor gameExecutor) {
         return CompletableFuture.supplyAsync(() -> readEvolutions(resourceManager), backgroundExecutor)
                 .thenCompose(preparationBarrier::wait)
-                .thenAccept(evs -> evs.forEach(e -> evolutions.put(e.item(), e)));
+                .thenAcceptAsync(evs -> {
+                    evolutions.clear();
+                    evs.forEach(e -> evolutions.put(e.item(), e));
+                }, gameExecutor);
     }
 
     private static Collection<Evolution> readEvolutions(ResourceManager resourceManager) {

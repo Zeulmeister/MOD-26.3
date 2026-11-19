@@ -67,7 +67,7 @@ public class LifeDetectorEntity extends JAttackEntity {
         if (target instanceof IOwnable ownable && ownable.getMaster() == master) {
             return false;
         }
-        return target.canBeSeenAsEnemy() && target.isAlive() && JUtils.canDamage(level().damageSources().mobAttack(master), target);
+        return JUtils.canBeAttackedByJCraft(target) && JUtils.canDamage(level().damageSources().mobAttack(master), target);
     }
 
     private void explode() {

@@ -44,16 +44,16 @@ public class SpecTypeUtil {
      */
     @Nullable
     public static SpecType readFromNBT(final CompoundTag nbt, final String key) {
-        if (nbt.contains(key)) {
-            final int ordinal = nbt.getIntOr(key, 0);
-            return Optional.ofNullable(JSpecTypeRegistry.LEGACY_ORDINALS.get(ordinal))
-                    .map(Supplier::get)
-                    .orElse(null);
-        } else if (nbt.contains(key)) {
-            final String id = nbt.getStringOr(key, "");
-            return JRegistries.SPEC_TYPE_REGISTRY.get(Identifier.parse(id));
-        } else {
+        if (!nbt.contains(key)) {
             return null;
         }
+        final String id = nbt.getStringOr(key, "");
+        if (!id.isEmpty()) {
+            return JRegistries.SPEC_TYPE_REGISTRY.get(Identifier.parse(id));
+        }
+        final int ordinal = nbt.getIntOr(key, 0);
+        return Optional.ofNullable(JSpecTypeRegistry.LEGACY_ORDINALS.get(ordinal))
+                .map(Supplier::get)
+                .orElse(null);
     }
 }

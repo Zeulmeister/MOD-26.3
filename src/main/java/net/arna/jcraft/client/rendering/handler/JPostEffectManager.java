@@ -19,11 +19,6 @@ public final class JPostEffectManager {
         if (mc.player == null || mc.level == null) {
             return vanillaRequested;
         }
-        try {
-            if (!JClientConfig.getInstance().isTimeEraseShader() && CrimsonShaderHandler.INSTANCE.renderingEffect) {
-                return vanillaRequested;
-            }
-        } catch (Throwable ignored) {}
 
         boolean zaWarudo = ZaWarudoShaderHandler.INSTANCE.renderingEffect
                 || JClientUtils.isInTSRange(mc.player);

@@ -50,12 +50,14 @@ public abstract class CommonVampireComponentImpl implements CommonVampireCompone
         // FOR NOW, these are intrinsically tied.
         setVampire(spec != null && spec.getType() == JSpecTypeRegistry.VAMPIRE.get());
 
-        if (!isVampire) {
+        if (!isVampire || entity.isSpectator()) {
             return;
         }
 
-        // Taking damage when unprotected from sunlight.
-        if (world.isBrightOutside() &&
+        // Taking damage when unprotected from sunlight (skip creative players).
+        boolean isCreativePlayer = entity instanceof net.minecraft.world.entity.player.Player p && p.isCreative();
+        if (!isCreativePlayer &&
+                world.isBrightOutside() &&
                 !world.isRaining() &&
                 !world.isThundering() &&
                 !(entity.getItemBySlot(EquipmentSlot.HEAD).is(JTagRegistry.PROTECTS_FROM_SUN)) &&
@@ -89,7 +91,7 @@ public abstract class CommonVampireComponentImpl implements CommonVampireCompone
 
                         // Every third heal takes away a blood unit
                         if (healCount % 3 == 0) {
-                            blood--;
+                            setBlood(blood - 1);
                         }
                     }
 
@@ -145,7 +147,7 @@ public abstract class CommonVampireComponentImpl implements CommonVampireCompone
     }
 
     public void readFromNbt(final CompoundTag tag) {
-        blood = tag.getFloatOr("Blood", 0f);
+        blood = Mth.clamp(tag.getFloatOr("Blood", VampireSpec.MAX_BLOOD), 0f, VampireSpec.MAX_BLOOD);
         isVampire = tag.getBooleanOr("Vampire", false);
     }
 

@@ -102,7 +102,11 @@ public class JServerEvents {
         JCraft.auWorld = server.getLevel(JDimensionRegistry.AU_DIMENSION_KEY);
         JCraft.setExclusiveStandsData(ExclusiveStandsData.fromDefaultFile(server));
         JCraft.setServerJoinData(ServerJoinData.fromDefaultFile(server));
-        
+        PastDimensions.load(server);
+    }
+
+    public static void savePastDimensions(final MinecraftServer server) {
+        PastDimensions.save(server);
     }
 
     public static void saveExclusives(final MinecraftServer server) {
@@ -138,11 +142,20 @@ public class JServerEvents {
         FrameDataRequests.tick();
         MagneticFields.tick();
         RazorCoughs.tick();
+        if (net.arna.jcraft.common.debug.SptwRuntimeDiagnostic.ENABLED) {
+            net.arna.jcraft.common.debug.SptwRuntimeDiagnostic.tick(server);
+        }
+        if (net.arna.jcraft.common.debug.NonStandRuntimeDiagnostic.ENABLED) {
+            net.arna.jcraft.common.debug.NonStandRuntimeDiagnostic.tick(server);
+        }
 
-        // Player logic (cooldown handling and DamageTimer counting)
+        // Player logic (cooldown handling, GunAiming guard, and DamageTimer counting)
         for (ServerPlayer player : JUtils.all(server)) {
             if (player == null || !player.isAlive()) {
                 continue;
+            }
+            if (GunAiming.isAiming(player) && !GunAiming.isAimableGun(player.getMainHandItem())) {
+                GunAiming.set(player, false);
             }
 
             if (player.getLastHurtByMob() != null) {
@@ -155,6 +168,9 @@ public class JServerEvents {
 
         for (Object2IntMap.Entry<LivingEntity> burst : JCraft.burstTimers.object2IntEntrySet()) {
             LivingEntity player = burst.getKey();
+            if (player == null || !player.isAlive() || player.isRemoved()) {
+                continue;
+            }
             burst.setValue(burst.getIntValue() - 1);
             int newVal = burst.getIntValue();
 
@@ -209,8 +225,18 @@ public class JServerEvents {
         JCraft.burstTimers.clear();
         JCraft.burstTimers.putAll(newBurstTimers);
 
-        // Pushblock cooldown ticking
-        pushblockCooldowns.replaceAll((key, value) -> value - 1);
+        // Pushblock cooldown ticking & cleanup of expired/dead entities
+        var pushIt = JCraft.pushblockCooldowns.object2IntEntrySet().iterator();
+        while (pushIt.hasNext()) {
+            var entry = pushIt.next();
+            LivingEntity entity = entry.getKey();
+            int next = entry.getIntValue() - 1;
+            if (next <= 0 || entity == null || !entity.isAlive() || entity.isRemoved()) {
+                pushIt.remove();
+            } else {
+                entry.setValue(next);
+            }
+        }
 
         // Dash handling
         for (Map.Entry<LivingEntity, DashData> entry : new HashSet<>(JCraft.dashes.entrySet())) {
@@ -525,6 +551,9 @@ public class JServerEvents {
 
     public static EventResult death(final LivingEntity living, final DamageSource source) {
         if (living.level() instanceof final ServerLevel serverWorld) {
+            if (Timestops.isUserOfActiveTimestop(living)) {
+                JCraft.stopTimestop(living);
+            }
             if (living instanceof final ServerPlayer serverPlayer) {
                 final GameRules gameRules = serverWorld.getGameRules();
 
@@ -621,8 +650,12 @@ public class JServerEvents {
                 }
 
                 Vec3 knockback = entity.position().subtract(sourcePos).normalize().add(upVecD);
-                GravityChangerAPI.setWorldVelocity(entity, knockback);
-                entity.syncVelocity = true;
+                if (JUtils.isAffectedByTimeStop(entity)) {
+                    JComponentPlatformUtils.getTimeStopData(entity).ifPresent(ts -> ts.addTotalVelocity(knockback));
+                } else {
+                    GravityChangerAPI.setWorldVelocity(entity, knockback);
+                    entity.syncVelocity = true;
+                }
 
                 JCraft.createParticle(serverWorld,
                         entity.getX() - upVec.getX(),
@@ -741,6 +774,9 @@ public class JServerEvents {
     }
 
     public static void playerJoin(final ServerPlayer player) {
+        // Revoke any lingering survival flight left over from older saves where Stand summon granted mayfly
+        net.arna.jcraft.api.misc.ConditionalFlightHandler.revokeStaleFlightIfNotAllowed(player);
+
         // first join logic here
         final ServerJoinData serverJoinData = JCraft.getServerJoinData();
         if (serverJoinData != null && serverJoinData.addPlayer(player)) {

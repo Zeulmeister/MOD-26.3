@@ -37,4 +37,17 @@ public class LocalPlayerMixin {
             self.setJumping(false);
         }
     }
+
+    @Inject(method = "aiStep", at = @At("TAIL"))
+    private void jcraft$dampPlayerMomentumDuringPilotMode(CallbackInfo ci) {
+        Minecraft mc = Minecraft.getInstance();
+        if (StandRemoteControlHandler.isControlling(mc)) {
+            LocalPlayer self = (LocalPlayer) (Object) this;
+            self.xxa = 0.0f;
+            self.zza = 0.0f;
+            self.setJumping(false);
+            var vel = self.getDeltaMovement();
+            self.setDeltaMovement(0.0, vel.y, 0.0);
+        }
+    }
 }

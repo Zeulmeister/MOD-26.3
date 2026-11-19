@@ -2,7 +2,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:crazy_diamond/bamboo_block"
+        "recipes": "jcraft:crazy_diamond/bamboo_block"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

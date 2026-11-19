@@ -53,7 +53,7 @@ public class HUDAnimation {
     }
 
     public void preload(final TextureManager textureManager, final Executor executor) {
-        executor.execute(() -> textureManager.getTexture(atlas));
+        Minecraft.getInstance().execute(() -> textureManager.getTexture(atlas));
     }
 
     public Frame getFrame(final int index) {

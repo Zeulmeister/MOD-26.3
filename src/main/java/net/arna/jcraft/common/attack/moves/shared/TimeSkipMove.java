@@ -121,24 +121,55 @@ public final class TimeSkipMove<A extends IAttacker<? extends A, ?>> extends Abs
         ServerChannelFeedbackPacket.send(JUtils.around((ServerLevel) attacker.getBaseEntity().level(), pos, 128), buf);
     }
 
+    public static Vec3 computeSafeTeleportPos(final HitResult hitResult, final double entityWidth, final double entityHeight) {
+        return computeSafeTeleportPos(hitResult, entityWidth, entityHeight, 0.0);
+    }
+
+    public static Vec3 computeSafeTeleportPos(final HitResult hitResult, final double entityWidth, final double entityHeight, final double eyeHeight) {
+        Vec3 tpPos = hitResult.getLocation();
+        if (hitResult instanceof net.minecraft.world.phys.BlockHitResult bhr && bhr.getType() == HitResult.Type.BLOCK) {
+            final net.minecraft.core.Direction face = bhr.getDirection();
+            final double horizOffset = Math.max(0.35, entityWidth * 0.55);
+            tpPos = switch (face) {
+                case DOWN -> tpPos.add(0.0, -(entityHeight + 0.05), 0.0);
+                case UP -> tpPos.add(0.0, 0.05, 0.0);
+                default -> tpPos.add(face.getStepX() * horizOffset, -eyeHeight, face.getStepZ() * horizOffset);
+            };
+        } else if (eyeHeight > 0.0) {
+            tpPos = tpPos.subtract(0.0, eyeHeight, 0.0);
+        }
+        return tpPos;
+    }
+
     public static void doTimeSkip(final IAttacker<?, ?> attacker, final LivingEntity user, double range, final List<SoundEvent> sounds) {
-        final boolean hasVehicle = user.isPassenger();
+        final LivingEntity actor = attacker.isRemote() ? attacker.getBaseEntity() : user;
+        final boolean hasVehicle = !attacker.isRemote() && actor.isPassenger();
 
         if (hasVehicle) {
             range /= 3;
         }
 
-        final Vec3 rotVec = user.getLookAngle();
-        //todo: find length of line with direction rotVec, from the center of the stand users bounding box to the edge
-        //      then subtract that from the position. this should prevent any TP clipping bullshit
-        final Vec3 eyePos = user.getEyePosition();
+        final Vec3 rotVec = actor.getLookAngle();
+        final Vec3 eyePos = actor.getEyePosition();
         HitResult hitResult = attacker.getEntityWorld().clip(
                 new ClipContext(
                         eyePos,
                         eyePos.add(rotVec.scale(range)),
                         ClipContext.Block.COLLIDER,
-                        ClipContext.Fluid.NONE, user));
-        final Vec3 tpPos = hitResult.getLocation();
+                        ClipContext.Fluid.NONE, actor));
+        Vec3 tpPos = computeSafeTeleportPos(hitResult, actor.getBbWidth(), actor.getBbHeight(), actor.getEyeHeight());
+        // If shifting down by eyeHeight landed inside floor geometry, step up onto the surface cleanly.
+        final net.minecraft.world.level.Level world = attacker.getEntityWorld();
+        final net.minecraft.core.BlockPos footPos = net.minecraft.core.BlockPos.containing(tpPos);
+        if (!world.getBlockState(footPos).getCollisionShape(world, footPos).isEmpty()) {
+            final Vec3 candidate = new Vec3(tpPos.x, Math.floor(tpPos.y) + 1.02, tpPos.z);
+            final net.minecraft.core.BlockPos candPos = net.minecraft.core.BlockPos.containing(candidate);
+            if (world.getBlockState(candPos).getCollisionShape(world, candPos).isEmpty()) {
+                tpPos = candidate;
+            } else {
+                tpPos = new Vec3(tpPos.x, hitResult.getLocation().y, tpPos.z);
+            }
+        }
 
         // 3s minimum ult cooldown
         final CommonCooldownsComponent cooldowns = JComponentPlatformUtils.getCooldowns(user);
@@ -147,12 +178,15 @@ public final class TimeSkipMove<A extends IAttacker<? extends A, ?>> extends Abs
         }
 
         if (hasVehicle) {
-            final Entity vehicle = user.getVehicle();
+            final Entity vehicle = actor.getVehicle();
 
-            user.stopRiding();
-            vehicle.setPos(tpPos.x, tpPos.y, tpPos.z);
+            actor.stopRiding();
+            if (vehicle != null) {
+                vehicle.setPos(tpPos.x, tpPos.y, tpPos.z);
+            }
         }
-        user.teleportTo(tpPos.x, tpPos.y, tpPos.z);
+        actor.resetFallDistance();
+        actor.teleportTo(tpPos.x, tpPos.y, tpPos.z);
 
         for (SoundEvent sound : sounds) {
             attacker.getEntityWorld().playSound(null, tpPos.x, tpPos.y, tpPos.z, sound, SoundSource.PLAYERS, 1f, 1f);

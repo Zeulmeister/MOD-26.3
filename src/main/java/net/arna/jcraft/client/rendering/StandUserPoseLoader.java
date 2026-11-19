@@ -10,6 +10,7 @@ import net.arna.jcraft.api.pose.PoseModifiers;
 import net.arna.jcraft.api.pose.modifier.IPoseModifier;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.client.command.JPoseCommand;
+import net.arna.jcraft.common.util.JUtils;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.server.packs.resources.Resource;
@@ -23,13 +24,17 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 
 public class StandUserPoseLoader {
-    private static final Map<Identifier, Map<ModelType<?>, IPoseModifier>> POSES = new HashMap<>();
+    private static final Map<Identifier, Map<ModelType<?>, IPoseModifier>> POSES = new ConcurrentHashMap<>();
 
     public static IPoseModifier getPose(final ModelType<?> type, final LivingEntity entity) {
-        if (entity.getFirstPassenger() instanceof StandEntity<?, ?> stand) {
+        StandEntity<?, ?> stand = entity.getFirstPassenger() instanceof StandEntity<?, ?> passenger
+                ? passenger
+                : JUtils.getStand(entity);
+        if (stand != null && stand.isAlive() && !stand.isRemote()) {
             return getPose(type, stand.getUserPose());
         }
 
@@ -52,11 +57,11 @@ public class StandUserPoseLoader {
     }
 
     public static CompletableFuture<Void> onReload(final PreparableReloadListener.PreparationBarrier preparationBarrier,
-                                                    final ResourceManager resourceManager, final ProfilerFiller profilerFiller,
-                                                    final ProfilerFiller profilerFiller1, final Executor executor, final Executor executor1) {
-        return CompletableFuture.supplyAsync(() -> loadPoses(resourceManager))
+                                                   final ResourceManager resourceManager, final ProfilerFiller profilerFiller,
+                                                   final ProfilerFiller profilerFiller1, final Executor executor, final Executor executor1) {
+        return CompletableFuture.supplyAsync(() -> loadPoses(resourceManager), executor)
                 .thenCompose(preparationBarrier::wait)
-                .thenAcceptAsync(StandUserPoseLoader::parsePoses);
+                .thenAcceptAsync(StandUserPoseLoader::parsePoses, executor1);
     }
 
     private static Map<Identifier, JsonObject> loadPoses(final ResourceManager resourceManager) {

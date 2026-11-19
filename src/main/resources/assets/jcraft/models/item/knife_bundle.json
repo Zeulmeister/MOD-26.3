@@ -1,7 +1,8 @@
 {
   "credit": "Made with Blockbench",
   "textures": {
-    "0": "jcraft:item/knife/knife"
+    "0": "jcraft:item/knife/knife",
+    "particle": "jcraft:item/knife/knife"
   },
   "elements": [
     {

@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.*;
 import net.arna.jcraft.api.pose.ModelType;
+import net.arna.jcraft.api.pose.ModifierCondition;
 import net.arna.jcraft.common.util.JUtils;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.Model;
@@ -72,16 +73,13 @@ public class LevitationPoseModifier implements IPoseModifier {
         hModel.rightLeg.xRot = speedInfluence;
         hModel.leftLeg.xRot = 15 * DEG_TO_RAD + speedInfluence;
 
-        hModel.leftArm.xRot *= 0.25f;
-        hModel.rightArm.xRot *= 0.25f;
-
-        // One arm stretched out
-        if (true) {
+        // One arm stretched out (only when each arm is empty and not swinging/using a two-handed item)
+        if (ModifierCondition.LEFT_ARM_EMPTY.test(hModel, user)) {
             hModel.leftArm.zRot = -45 * DEG_TO_RAD + wave * amplitude / 8f;
             hModel.leftArm.xRot = speedInfluence;
         }
 
-        if (true) {
+        if (ModifierCondition.RIGHT_ARM_EMPTY.test(hModel, user)) {
             hModel.rightArm.xRot = speedInfluence;
         }
     }

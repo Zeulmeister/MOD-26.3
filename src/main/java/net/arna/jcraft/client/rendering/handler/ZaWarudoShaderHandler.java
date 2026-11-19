@@ -15,6 +15,16 @@ public class ZaWarudoShaderHandler extends StandShaderHandler {
     public long effectLength = 0;
     public @Nullable LivingEntity shaderSourceEntity = null;
 
+    public void reset() {
+        shouldRender = false;
+        renderingEffect = false;
+        ticks = 0;
+        prevRadius = 0f;
+        radius = 0f;
+        effectLength = 0;
+        shaderSourceEntity = null;
+    }
+
     @Override
     public void tick(final Minecraft client) {
         if (!shouldRender) {

@@ -102,7 +102,7 @@ public final class LaunchAttack<A extends IAttacker<? extends A, ?>> extends Abs
         public static final Type INSTANCE = new Type();
 
         protected RecordCodecBuilder<LaunchAttack<?>, Integer> numProjectiles() {
-            return Codec.INT.fieldOf("numProjectiles").forGetter(LaunchAttack::getNumProjectiles);
+            return Codec.INT.optionalFieldOf("numProjectiles", 1).forGetter(LaunchAttack::getNumProjectiles);
         }
 
         protected Products.P12<

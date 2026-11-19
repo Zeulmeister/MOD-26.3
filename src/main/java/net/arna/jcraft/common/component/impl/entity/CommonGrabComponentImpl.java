@@ -65,7 +65,7 @@ public abstract class CommonGrabComponentImpl implements CommonGrabComponent {
         if (attacker != null) {
             if (grabbed instanceof final LivingEntity living) {
                 final MobEffectInstance stun = living.getEffect(JStatusRegistry.DAZED.asHolder());
-                if (stun != null && stun.getAmplifier() == StunType.LAUNCH.ordinal()) {
+                if (stun != null && stun.getAmplifier() == StunType.LAUNCH.ordinal() && !net.arna.jcraft.common.util.JUtils.isAffectedByTimeStop(grabbed)) {
                     endGrab();
                     return;
                 }

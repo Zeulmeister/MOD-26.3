@@ -2,7 +2,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:crazy_diamond/deepslate"
+        "recipes": "jcraft:crazy_diamond/deepslate"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

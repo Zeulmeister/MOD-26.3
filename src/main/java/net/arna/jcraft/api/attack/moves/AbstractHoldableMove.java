@@ -46,7 +46,7 @@ public abstract class AbstractHoldableMove<T extends AbstractHoldableMove<T, A>,
      * Checks if the attacker is still using the given move.
      */
     private boolean sameMove(final A attacker, final MoveInputType type) {
-        return type.getMoveClass() == getMoveClass();
+        return type != null && type.getMoveClass() == getMoveClass();
     }
 
     @Override

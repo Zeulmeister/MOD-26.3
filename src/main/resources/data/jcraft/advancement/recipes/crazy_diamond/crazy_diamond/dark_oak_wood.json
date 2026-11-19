@@ -2,7 +2,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jcraft:crazy_diamond/dark_oak_wood"
+        "recipes": "jcraft:crazy_diamond/dark_oak_wood"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

@@ -29,7 +29,7 @@ public class GravityCommand {
                     literal(direction.getName())
                             .then(argument("priority", IntegerArgumentType.integer())
                                     .then(argument("duration", IntegerArgumentType.integer())
-                                            .executes(context -> executeSet(context.getSource(), direction, IntegerArgumentType.getInteger(context, "priority"), IntegerArgumentType.getInteger(context, "duration"), Collections.singleton(context.getSource().getPlayer())))
+                                            .executes(context -> executeSet(context.getSource(), direction, IntegerArgumentType.getInteger(context, "priority"), IntegerArgumentType.getInteger(context, "duration"), Collections.singleton(context.getSource().getPlayerOrException())))
                                             .then(argument("entities", EntityArgument.entities())
                                                     .executes(context -> executeSet(context.getSource(), direction, IntegerArgumentType.getInteger(context, "priority"), IntegerArgumentType.getInteger(context, "duration"), EntityArgument.getEntities(context, "entities"))))))
             );
@@ -38,7 +38,7 @@ public class GravityCommand {
         LiteralArgumentBuilder<CommandSourceStack> literalSetDefault = literal("set").requires(JPerms.GRAVITY_SET.require());
         for (Direction direction : Direction.values()) {
             literalSetDefault.then(literal(direction.getName())
-                    .executes(context -> executeSetDefault(context.getSource(), direction, Collections.singleton(context.getSource().getPlayer())))
+                    .executes(context -> executeSetDefault(context.getSource(), direction, Collections.singleton(context.getSource().getPlayerOrException())))
                     .then(argument("entities", EntityArgument.entities())
                             .executes(context -> executeSetDefault(context.getSource(), direction, EntityArgument.getEntities(context, "entities")))));
         }
@@ -46,7 +46,7 @@ public class GravityCommand {
         LiteralArgumentBuilder<CommandSourceStack> literalRotate = literal("rotate").requires(JPerms.GRAVITY_ROTATE.require());
         for (FacingDirection facingDirection : FacingDirection.values()) {
             literalRotate.then(literal(facingDirection.getName())
-                    .executes(context -> executeRotate(context.getSource(), facingDirection, Collections.singleton(context.getSource().getPlayer())))
+                    .executes(context -> executeRotate(context.getSource(), facingDirection, Collections.singleton(context.getSource().getPlayerOrException())))
                     .then(argument("entities", EntityArgument.entities())
                             .executes(context -> executeRotate(context.getSource(), facingDirection, EntityArgument.getEntities(context, "entities")))));
         }
@@ -56,17 +56,17 @@ public class GravityCommand {
                         JPerms.GRAVITY_SET, JPerms.GRAVITY_ROTATE, JPerms.GRAVITY_RANDOMISE))
                 .then(literal("get")
                         .requires(JPerms.GRAVITY_GET.require())
-                        .executes(context -> executeGet(context.getSource(), context.getSource().getPlayer()))
+                        .executes(context -> executeGet(context.getSource(), context.getSource().getPlayerOrException()))
                         .then(argument("entities", EntityArgument.entity())
                                 .executes(context -> executeGet(context.getSource(), EntityArgument.getEntity(context, "entities")))))
                 .then(literal("cleargravity")
                         .requires(JPerms.GRAVITY_CLEAR.require())
-                        .executes(context -> executeClearGravity(context.getSource(), Collections.singleton(context.getSource().getPlayer())))
-                        .then(argument("entities", EntityArgument.entity())
+                        .executes(context -> executeClearGravity(context.getSource(), Collections.singleton(context.getSource().getPlayerOrException())))
+                        .then(argument("entities", EntityArgument.entities())
                                 .executes(context -> executeClearGravity(context.getSource(), EntityArgument.getEntities(context, "entities")))))
                 .then(literalSet).then(literalSetDefault).then(literalRotate).then(literal("randomise")
                         .requires(JPerms.GRAVITY_RANDOMISE.require())
-                        .executes(context -> executeRandomise(context.getSource(), Collections.singleton(context.getSource().getPlayer())))
+                        .executes(context -> executeRandomise(context.getSource(), Collections.singleton(context.getSource().getPlayerOrException())))
                         .then(argument("entities", EntityArgument.entities())
                                 .executes(context -> executeRandomise(context.getSource(), EntityArgument.getEntities(context, "entities"))))));
     }

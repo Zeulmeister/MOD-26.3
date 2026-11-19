@@ -40,18 +40,24 @@ public class StandSkinCommand {
         for (Entity entity : targets) {
             if (entity instanceof LivingEntity livingEntity) {
                 CommonStandComponent standData = JComponentPlatformUtils.getStandComponent(livingEntity);
-                StandEntity<?, ?> stand = standData.getStand();
-
-                if (stand == null) {
+                net.arna.jcraft.api.stand.StandType standType = standData.getType();
+                if (net.arna.jcraft.api.stand.StandTypeUtil.isNone(standType)) {
                     continue;
                 }
 
-                if (skin < stand.getStandData().getInfo().getSkinCount()) {
+                if (skin < standType.getData().getInfo().getSkinCount()) {
                     standData.setSkin(skin);
                 }
 
-                livingEntity.unRide();
-                summon(entity.level(), livingEntity);
+                StandEntity<?, ?> stand = standData.getStand();
+                if (stand != null) {
+                    stand.desummon();
+                    if (!stand.isRemoved()) {
+                        stand.discard();
+                    }
+                    standData.setStand(null);
+                    summon(entity.level(), livingEntity);
+                }
             }
         }
         return 1;

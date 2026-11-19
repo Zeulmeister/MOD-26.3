@@ -7,6 +7,7 @@ import net.arna.jcraft.common.network.c2s.StandRotationPacket;
 import net.arna.jcraft.common.util.JUtils;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -19,6 +20,8 @@ import org.jetbrains.annotations.Nullable;
 @Environment(EnvType.CLIENT)
 public final class StandRemoteControlHandler {
     private static StandEntity<?, ?> controlledStand = null;
+    @Nullable
+    private static CameraType previousCameraType = null;
     private static int bodyDangerTicks = 0;
     private static float lastPlayerHealth = 20.0F;
 
@@ -40,6 +43,12 @@ public final class StandRemoteControlHandler {
 
         if (shouldControl) {
             if (client.getCameraEntity() != stand) {
+                if (controlledStand == null && previousCameraType == null) {
+                    previousCameraType = client.options.getCameraType();
+                    if (previousCameraType.isFirstPerson()) {
+                        client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+                    }
+                }
                 client.setCameraEntity(stand);
                 controlledStand = stand;
                 lastPlayerHealth = player.getHealth();
@@ -56,6 +65,8 @@ public final class StandRemoteControlHandler {
 
                 controlledStand.yHeadRotO = controlledStand.yHeadRot;
                 controlledStand.yBodyRotO = controlledStand.yBodyRot;
+                controlledStand.yHeadRot = controlledStand.getYRot();
+                controlledStand.yBodyRot = controlledStand.getYRot();
                 controlledStand.xRotO = controlledStand.getXRot();
                 controlledStand.yRotO = controlledStand.getYRot();
 
@@ -90,6 +101,12 @@ public final class StandRemoteControlHandler {
     }
 
     public static void resetCamera(Minecraft client) {
+        if (previousCameraType != null) {
+            if (client.options != null) {
+                client.options.setCameraType(previousCameraType);
+            }
+            previousCameraType = null;
+        }
         if (client.player != null) {
             client.player.resetFallDistance();
             if (client.getCameraEntity() != client.player) {

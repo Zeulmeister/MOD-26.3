@@ -37,13 +37,15 @@ public final class VehicleItem<T extends AbstractGroundVehicleEntity> extends It
         vehicle.setPos(position);
 
         if (hasOwner) {
-            vehicle.setXRot(owner.getXRot());
+            vehicle.setYRot(owner.getYRot());
         }
 
         if (level.addFreshEntity(vehicle)) {
             if (hasOwner) {
                 owner.getCooldowns().addCooldown(new net.minecraft.world.item.ItemStack(this), PLACEMENT_COOLDOWN);
-                itemStack.shrink(1);
+                if (!owner.isCreative()) {
+                    itemStack.shrink(1);
+                }
             }
             return true;
         }
@@ -53,6 +55,9 @@ public final class VehicleItem<T extends AbstractGroundVehicleEntity> extends It
 
     @Override
     public InteractionResult useOn(UseOnContext context) {
+        if (context.getLevel().isClientSide()) {
+            return InteractionResult.SUCCESS;
+        }
         return create(context.getLevel(), context.getPlayer(), context.getClickLocation(), context.getItemInHand()) ?
                 InteractionResult.CONSUME :
                 InteractionResult.PASS;
