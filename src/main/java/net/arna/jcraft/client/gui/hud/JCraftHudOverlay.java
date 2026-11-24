@@ -76,7 +76,7 @@ public final class JCraftHudOverlay {
         } + cfg.getHorizontalHudOffset();
 
         final boolean dockVisible = stand != null && cfg.isIconHud() && cfg.getUiDuration() != JClientConfig.UIDuration.NEVER;
-        final boolean hasBottomSpecBar = vamp.isVampire() || hamon.getHamonCharge() > 0.01F || hamon.isHamonizeReady();
+        final boolean hasBottomSpecBar = hamon.getHamonCharge() > 0.01F || hamon.isHamonizeReady();
 
         int yCursor;
         if (cfg.getUiPosition() == JClientConfig.UIPos.MIDDLE) {

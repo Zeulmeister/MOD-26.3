@@ -7,11 +7,14 @@ import lombok.Singular;
 import net.arna.jcraft.api.pose.ModelType;
 import net.arna.jcraft.api.pose.ModifierCondition;
 import net.arna.jcraft.api.pose.PoseModifiers;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.model.Model;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.List;
 
+@Environment(EnvType.CLIENT)
 @Builder
 public record PoseModifierGroup(@Singular List<ModifierCondition> conditions,
                                 @Singular List<IPoseModifier> modifiers) implements IPoseModifier {

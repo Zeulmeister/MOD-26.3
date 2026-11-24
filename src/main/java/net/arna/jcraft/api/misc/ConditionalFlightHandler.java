@@ -1,15 +1,13 @@
 package net.arna.jcraft.api.misc;
 
-import dev.architectury.event.events.client.ClientTickEvent;
 import dev.architectury.event.events.common.TickEvent;
-import dev.architectury.platform.Platform;
 import net.arna.jcraft.common.entity.stand.CreamEntity;
 import net.arna.jcraft.common.entity.stand.GEREntity;
 import net.arna.jcraft.common.util.JUtils;
-import net.fabricmc.api.EnvType;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -24,16 +22,21 @@ import java.util.function.Predicate;
 // TODO ideally, we'd use Flight API, but it's for 1.21+ only: https://www.curseforge.com/minecraft/mc-mods/flight-api
 public class ConditionalFlightHandler {
     private static final List<FlightTracker> TRACKERS = new ArrayList<>();
+    private static volatile Predicate<Player> clientTimestopChecker = player -> false;
+
+    public static void setClientTimestopChecker(Predicate<Player> checker) {
+        clientTimestopChecker = checker != null ? checker : player -> false;
+    }
+
+    public static void tickClientPlayer(@Nullable Player player) {
+        if (player != null) {
+            onTick(List.of(player));
+        }
+    }
 
     @ApiStatus.Internal
     public static void init() {
         TickEvent.SERVER_POST.register(server -> onTick(server.getPlayerList().getPlayers()));
-
-        if (Platform.getEnv() == EnvType.CLIENT)
-            ClientTickEvent.CLIENT_POST.register(client -> {
-                if (client.player != null) onTick(List.of(client.player));
-            });
-
         registerJCraftConditions();
     }
 
@@ -51,7 +54,7 @@ public class ConditionalFlightHandler {
     private static boolean isActiveTimestopUser(Player player) {
         return player instanceof ServerPlayer
                 ? net.arna.jcraft.common.tickable.Timestops.isUserOfActiveTimestop(player)
-                : net.arna.jcraft.client.util.JClientUtils.isUserOfActiveTimestop(player);
+                : clientTimestopChecker.test(player);
     }
 
     public static boolean isAllowedJCraftFlight(Player player) {

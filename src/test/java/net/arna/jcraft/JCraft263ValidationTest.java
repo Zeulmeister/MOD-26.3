@@ -227,7 +227,7 @@ public final class JCraft263ValidationTest {
                 totalMixins++;
             }
         }
-        checkEquals(36, totalMixins, "All 36 common + client Mixins must be registered and bytecode-verified");
+        checkEquals(37, totalMixins, "All 37 common + client Mixins must be registered and bytecode-verified");
     }
 
     static void verifyKineticTimeStopPhysicsMath() {
@@ -387,17 +387,23 @@ public final class JCraft263ValidationTest {
             check(commonMixins.contains(required), "jcraft.mixins.json must include restored mixin: " + required);
         }
 
-        // 4. Peacemaker isolates Minecraft.getInstance() into Peacemaker$ClientKeys (dedicated-server safe)
+        // 4. Peacemaker decouples client key lookups via setClientKeySuppliers (zero client classes in common)
         try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/common/item/Peacemaker.class")) {
             check(in != null, "Peacemaker.class must exist");
             ClassReader cr = new ClassReader(in);
             ClassNode cn = new ClassNode();
             cr.accept(cn, 0);
-            boolean hasGetShots = cn.methods.stream().anyMatch(m -> "getShots".equals(m.name));
-            check(hasGetShots, "Peacemaker must define getShots(ItemStack)");
+            check(cn.methods.stream().anyMatch(m -> "getShots".equals(m.name)),
+                    "Peacemaker must define getShots(ItemStack)");
+            check(cn.methods.stream().anyMatch(m -> "setClientKeySuppliers".equals(m.name)),
+                    "Peacemaker must define setClientKeySuppliers(...)");
+            check(cn.methods.stream().anyMatch(m -> "getFireKey".equals(m.name))
+                            && cn.methods.stream().anyMatch(m -> "getAimKey".equals(m.name))
+                            && cn.methods.stream().anyMatch(m -> "getReloadKey".equals(m.name)),
+                    "Peacemaker must expose getFireKey/getAimKey/getReloadKey");
         }
-        check(cl.getResource("net/arna/jcraft/common/item/Peacemaker$ClientKeys.class") != null,
-                "Peacemaker$ClientKeys must isolate client key lookups");
+        check(cl.getResource("net/arna/jcraft/common/item/Peacemaker$ClientKeys.class") == null,
+                "Legacy Peacemaker$ClientKeys inner class must be removed from common");
 
         // 5. CinderellasKissEnchantment handles null/empty cleanly
         checkEquals(0, net.arna.jcraft.common.enchantments.CinderellasKissEnchantment.getCKLevel(null),
@@ -521,7 +527,7 @@ public final class JCraft263ValidationTest {
         verifyMc263AssetsWorldgenTradesAndTranslations();
         System.out.println("[PASS] 223 Items, 4 RenderPearl 26.3 Post-Effects + GLSL 330 std140 Shaders, Trades & Translations verified.");
         verifyFabricModJsonEntrypointsAndMixins();
-        System.out.println("[PASS] fabric.mod.json, 16 CCA Components, 5 Entrypoints & all 36 Java 25 Mixins verified.");
+        System.out.println("[PASS] fabric.mod.json, 16 CCA Components, 5 Entrypoints & all 37 Java 25 Mixins verified.");
         verifyKineticTimeStopPhysicsMath();
         System.out.println("[PASS] Kinetic Time Stop Deceleration & +25% Momentum Release Physics verified.");
         verifySmartCombatInputBufferWindowAndExpiry();
@@ -542,6 +548,8 @@ public final class JCraft263ValidationTest {
         System.out.println("[PASS] Stand/Spec Mechanics (37/37 Icons & Poses, Gauges, Stealth/Pilot Mixins, NPC Anims & Fixes) verified.");
         verifyReverseEngineeringFixesAllFourBatches();
         System.out.println("[PASS] Brutal Reverse-Engineering Fixes (Lotes 1-4: MIH Clock, Hamon Server Safety, Equipment, Features, TS, Gravity C-Moon) verified.");
+        verifyDedicatedServerIsolation();
+        System.out.println("[PASS] Dedicated-Server Bytecode Isolation Gate (0 common/api -> client leaks across all non-client classes) verified.");
         System.out.println("=== ALL " + passedAssertions + " ASSERTIONS PASSED SUCCESSFULLY ===");
     }
 
@@ -615,11 +623,11 @@ public final class JCraft263ValidationTest {
         try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/client/gui/screen/StandGuideScreen.class")) {
             check(in != null, "StandGuideScreen.class must exist");
         }
-        // 6. TWOH & GER isolate LevitationPoseModifier into lazy ClientPose holder for dedicated-server safety
-        for (String holder : List.of(
+        // 6. TWOH & GER (and all other Stands) must no longer hold client-pose POSE fields or ClientPose holders
+        for (String removedHolder : List.of(
                 "net/arna/jcraft/common/entity/stand/TheWorldOverHeavenEntity$ClientPose.class",
                 "net/arna/jcraft/common/entity/stand/GEREntity$ClientPose.class")) {
-            check(cl.getResource(holder) != null, "Dedicated-server pose isolation class must exist: " + holder);
+            check(cl.getResource(removedHolder) == null, "Legacy POSE holder must be removed from common Stand: " + removedHolder);
         }
         for (String caller : List.of(
                 "net/arna/jcraft/client/gui/screen/JoJoRadialWheelScreen.class",
@@ -931,5 +939,184 @@ public final class JCraft263ValidationTest {
             check(cn.methods.stream().anyMatch(m -> "jcraft$applyGravityCameraRotation".equals(m.name)),
                     "CameraMixin must rotate camera quaternion for C-Moon gravity");
         }
+
+        // Lote 5 (Client Visual + Directional Gravity Completion)
+        for (String extraCls : List.of(
+                "net/arna/jcraft/mixin/ServerGamePacketListenerImplMixin.class",
+                "net/arna/jcraft/client/debug/ClientVisualDiagnostic.class")) {
+            check(cl.getResource(extraCls) != null, "Class must exist: " + extraCls);
+        }
+        check(!net.arna.jcraft.client.JClientConfig.getInstance().isDisableMihAfterimages(),
+                "MIH afterimages should be enabled by default");
+    }
+
+    private static boolean hasClientEnvironmentAnnotation(List<AnnotationNode> annotations) {
+        if (annotations == null) return false;
+        for (AnnotationNode an : annotations) {
+            if ("Lnet/fabricmc/api/Environment;".equals(an.desc) && an.values != null) {
+                for (int i = 0; i + 1 < an.values.size(); i += 2) {
+                    if ("value".equals(an.values.get(i)) && an.values.get(i + 1) instanceof String[] arr
+                            && arr.length == 2 && "CLIENT".equals(arr[1])) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private static String findForbiddenClientPrefix(String ref, List<String> forbiddenPrefixes) {
+        if (ref == null) return null;
+        for (String prefix : forbiddenPrefixes) {
+            if (ref.contains(prefix)) {
+                return prefix;
+            }
+        }
+        return null;
+    }
+
+    static void verifyDedicatedServerIsolation() throws Exception {
+        Path classesRoot = Path.of("build/classes/java/main");
+        Path modRoot = classesRoot.resolve("net/arna/jcraft");
+        check(Files.isDirectory(modRoot), "Compiled classes root must exist: " + modRoot);
+
+        List<String> forbiddenPrefixes = List.of(
+                "net/minecraft/client/",
+                "net/arna/jcraft/client/",
+                "net/arna/jcraft/fabric/client/",
+                "net/arna/jcraft/mixin/client/",
+                "net/arna/jcraft/api/pose/",
+                "com/mojang/blaze3d/",
+                "com/mojang/renderpearl/",
+                "org/lwjgl/",
+                "dev/architectury/event/events/client/",
+                "dev/architectury/registry/client/",
+                "net/fabricmc/fabric/api/client/",
+                "mod/azure/azurelib/util/client/",
+                "mod/azure/azurelib/render/"
+        );
+
+        // Verify common particle options exist in common.particle (zero client dependency)
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        for (String particleCls : List.of(
+                "net/arna/jcraft/common/particle/BreathParticleOptions.class",
+                "net/arna/jcraft/common/particle/LockOnParticleOptions.class",
+                "net/arna/jcraft/common/particle/MoshParticleOptions.class")) {
+            check(cl.getResource(particleCls) != null, "Common particle options class must exist: " + particleCls);
+        }
+
+        List<String> violations = new ArrayList<>();
+        int scannedNonClientClasses = 0;
+        int verifiedClientOnlyPoseClasses = 0;
+
+        try (Stream<Path> walk = Files.walk(modRoot)) {
+            List<Path> classFiles = walk
+                    .filter(Files::isRegularFile)
+                    .filter(p -> p.toString().endsWith(".class"))
+                    .sorted()
+                    .toList();
+
+            for (Path cf : classFiles) {
+                String rel = classesRoot.relativize(cf).toString().replace('\\', '/');
+                if (rel.startsWith("net/arna/jcraft/client/")
+                        || rel.startsWith("net/arna/jcraft/fabric/client/")
+                        || rel.startsWith("net/arna/jcraft/mixin/client/")) {
+                    continue;
+                }
+
+                ClassNode cn = new ClassNode();
+                try (InputStream in = Files.newInputStream(cf)) {
+                    new ClassReader(in).accept(cn, 0);
+                }
+
+                boolean classClientOnly = hasClientEnvironmentAnnotation(cn.visibleAnnotations)
+                        || hasClientEnvironmentAnnotation(cn.invisibleAnnotations);
+
+                if (rel.startsWith("net/arna/jcraft/api/pose/")) {
+                    // Anonymous/inner classes of client-only pose API inherit outer boundary
+                    boolean isInner = rel.contains("$");
+                    if (!isInner) {
+                        check(classClientOnly, "Client-only pose API class must be annotated @Environment(EnvType.CLIENT): " + rel);
+                        verifiedClientOnlyPoseClasses++;
+                    }
+                    continue;
+                }
+
+                if (classClientOnly) {
+                    continue;
+                }
+
+                scannedNonClientClasses++;
+
+                String bad;
+                if ((bad = findForbiddenClientPrefix(cn.superName, forbiddenPrefixes)) != null) {
+                    violations.add(rel + " superName -> " + cn.superName + " (" + bad + ")");
+                }
+                for (String iface : cn.interfaces) {
+                    if ((bad = findForbiddenClientPrefix(iface, forbiddenPrefixes)) != null) {
+                        violations.add(rel + " interface -> " + iface + " (" + bad + ")");
+                    }
+                }
+                for (var field : cn.fields) {
+                    if (hasClientEnvironmentAnnotation(field.visibleAnnotations)
+                            || hasClientEnvironmentAnnotation(field.invisibleAnnotations)) {
+                        continue;
+                    }
+                    if ((bad = findForbiddenClientPrefix(field.desc, forbiddenPrefixes)) != null) {
+                        violations.add(rel + " field " + field.name + " -> " + field.desc + " (" + bad + ")");
+                    }
+                }
+                for (var method : cn.methods) {
+                    if (hasClientEnvironmentAnnotation(method.visibleAnnotations)
+                            || hasClientEnvironmentAnnotation(method.invisibleAnnotations)) {
+                        continue;
+                    }
+                    if ((bad = findForbiddenClientPrefix(method.desc, forbiddenPrefixes)) != null) {
+                        violations.add(rel + " method " + method.name + " desc -> " + method.desc + " (" + bad + ")");
+                    }
+                    for (var insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                        if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi) {
+                            if ((bad = findForbiddenClientPrefix(mi.owner, forbiddenPrefixes)) != null
+                                    || (bad = findForbiddenClientPrefix(mi.desc, forbiddenPrefixes)) != null) {
+                                violations.add(rel + "#" + method.name + " calls " + mi.owner + "." + mi.name + mi.desc + " (" + bad + ")");
+                            }
+                        } else if (insn instanceof org.objectweb.asm.tree.FieldInsnNode fi) {
+                            if ((bad = findForbiddenClientPrefix(fi.owner, forbiddenPrefixes)) != null
+                                    || (bad = findForbiddenClientPrefix(fi.desc, forbiddenPrefixes)) != null) {
+                                violations.add(rel + "#" + method.name + " accesses " + fi.owner + "." + fi.name + " (" + bad + ")");
+                            }
+                        } else if (insn instanceof org.objectweb.asm.tree.TypeInsnNode ti) {
+                            if ((bad = findForbiddenClientPrefix(ti.desc, forbiddenPrefixes)) != null) {
+                                violations.add(rel + "#" + method.name + " type " + ti.desc + " (" + bad + ")");
+                            }
+                        } else if (insn instanceof org.objectweb.asm.tree.InvokeDynamicInsnNode indy) {
+                            if ((bad = findForbiddenClientPrefix(indy.desc, forbiddenPrefixes)) != null) {
+                                violations.add(rel + "#" + method.name + " indy " + indy.desc + " (" + bad + ")");
+                            }
+                            if (indy.bsmArgs != null) {
+                                for (Object arg : indy.bsmArgs) {
+                                    String s = arg != null ? arg.toString() : null;
+                                    if ((bad = findForbiddenClientPrefix(s, forbiddenPrefixes)) != null) {
+                                        violations.add(rel + "#" + method.name + " indy arg " + s + " (" + bad + ")");
+                                    }
+                                }
+                            }
+                        } else if (insn instanceof org.objectweb.asm.tree.LdcInsnNode ldc && ldc.cst instanceof Type t) {
+                            if ((bad = findForbiddenClientPrefix(t.getDescriptor(), forbiddenPrefixes)) != null) {
+                                violations.add(rel + "#" + method.name + " ldc " + t.getDescriptor() + " (" + bad + ")");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        check(verifiedClientOnlyPoseClasses >= 10,
+                "Expected at least 10 @Environment(EnvType.CLIENT) api.pose classes, found " + verifiedClientOnlyPoseClasses);
+        check(scannedNonClientClasses >= 700,
+                "Expected at least 700 non-client classes scanned, found " + scannedNonClientClasses);
+        check(violations.isEmpty(),
+                "Dedicated-server isolation violations (" + violations.size() + "): "
+                        + String.join("; ", violations.stream().limit(15).toList()));
     }
 }

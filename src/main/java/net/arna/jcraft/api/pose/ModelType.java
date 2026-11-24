@@ -4,6 +4,8 @@ import com.google.common.collect.ImmutableMap;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import lombok.Getter;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.Model;
@@ -18,6 +20,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 
+@Environment(EnvType.CLIENT)
 public class ModelType<T extends Model> {
     private static final Map<String, ModelType<?>> FROM_NAME = new HashMap<>();
     private static final Map<Class<? extends Model>, ModelType<?>> FROM_CLASS = new HashMap<>();

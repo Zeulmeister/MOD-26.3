@@ -2,12 +2,15 @@ package net.arna.jcraft.api.pose;
 
 import com.mojang.serialization.Codec;
 import net.arna.jcraft.common.util.JCodecUtils;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.model.geom.ModelPart;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+@Environment(EnvType.CLIENT)
 public enum ModelPartProperty {
     X(p -> p.x, (p, v) -> p.x = v),
     Y(p -> p.y, (p, v) -> p.y = v),

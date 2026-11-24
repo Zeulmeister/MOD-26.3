@@ -9,7 +9,6 @@ import net.arna.jcraft.api.attack.MoveMap;
 import net.arna.jcraft.api.attack.MoveSet;
 import net.arna.jcraft.api.attack.MoveSetManager;
 import net.arna.jcraft.api.attack.enums.MoveClass;
-import net.arna.jcraft.api.pose.modifier.IPoseModifier;
 import net.arna.jcraft.api.registry.JSoundRegistry;
 import net.arna.jcraft.api.registry.JStandTypeRegistry;
 import net.arna.jcraft.api.stand.StandData;
@@ -60,7 +59,6 @@ public final class KillerQueenEntity extends AbstractKillerQueenEntity<KillerQue
                     .build())
             .summonData(SummonData.of(JSoundRegistry.KQ_SUMMON))
             .build();
-    public static final Supplier<IPoseModifier> POSE = AbstractKillerQueenEntity.POSE;
 
     public static final SimpleAttack<KillerQueenEntity> HEAVY = new SimpleAttack<KillerQueenEntity>(0,
             16, 24, 0.75f, 9f, 10, 2f, 1.75f, 0f)

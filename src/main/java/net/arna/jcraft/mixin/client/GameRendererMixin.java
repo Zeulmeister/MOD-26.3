@@ -52,6 +52,7 @@ public class GameRendererMixin {
         if (!this.gameRenderState.shouldRenderLevel) {
             return;
         }
+        JPostEffectManager.setLastFailedPostEffects(this.failedPostEffects);
         List<Identifier> merged = JPostEffectManager.collectActiveEffects(this.gameRenderState.requestedPostEffects);
         if (merged != this.gameRenderState.requestedPostEffects) {
             this.gameRenderState.requestedPostEffects.clear();

@@ -10,7 +10,7 @@ import lombok.Setter;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.enums.MoveClass;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
-import net.arna.jcraft.client.particle.LockOnParticle;
+import net.arna.jcraft.common.particle.LockOnParticleOptions;
 import net.arna.jcraft.common.attack.core.data.BaseMoveExtras;
 import net.arna.jcraft.common.entity.stand.AerosmithEntity;
 import net.arna.jcraft.common.entity.stand.AerosmithEntity.FlyState;
@@ -102,7 +102,7 @@ public class AerosmithAttackOrderMove extends AbstractMove<AerosmithAttackOrderM
             if (currentTarget != null && user instanceof ServerPlayer serverPlayer) {
                 final var targetPosition = currentTarget.position();
 
-                serverPlayer.connection.send(new ClientboundLevelParticlesPacket(new LockOnParticle.Options(currentTarget.getId()), true, false, targetPosition.x, targetPosition.y, targetPosition.z, (float)(0), (float)(0), (float)(0), (float)(0), 1));
+                serverPlayer.connection.send(new ClientboundLevelParticlesPacket(new LockOnParticleOptions(currentTarget.getId()), true, false, targetPosition.x, targetPosition.y, targetPosition.z, (float)(0), (float)(0), (float)(0), (float)(0), 1));
             }
         }
     }
@@ -211,7 +211,7 @@ public class AerosmithAttackOrderMove extends AbstractMove<AerosmithAttackOrderM
         if (attacker.tickCount % 6 == 0 && user instanceof ServerPlayer serverPlayer) {
             final var targetPos = currentTarget.position();
 
-            LockOnParticle.Options options = new LockOnParticle.Options(currentTarget.getId());
+            LockOnParticleOptions options = new LockOnParticleOptions(currentTarget.getId());
             serverPlayer.connection.send(new ClientboundLevelParticlesPacket(options, true, false, targetPos.x, targetPos.y, targetPos.z, (float)(0), (float)(0), (float)(0), (float)(0), 1));
         }
     }

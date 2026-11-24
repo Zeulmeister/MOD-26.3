@@ -40,7 +40,7 @@ public class JClientConfig implements ConfigData {
     private float firstPersonStandOpacityMult = 1.0f;
     private boolean showStandUserWarningPlayer = true;
     private boolean showStandUserWarningMob = true;
-    private boolean disableMihAfterimages = true;
+    private boolean disableMihAfterimages = false;
 
     public static void load() {
         instance = AutoConfig.getConfigHolder(JClientConfig.class).getConfig();

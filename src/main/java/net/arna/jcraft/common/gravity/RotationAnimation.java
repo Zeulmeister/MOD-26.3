@@ -15,6 +15,12 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 public class RotationAnimation {
+    private static volatile Runnable onClientRotationStep = () -> {};
+
+    public static void setOnClientRotationStep(Runnable callback) {
+        onClientRotationStep = callback != null ? callback : () -> {};
+    }
+
     @Getter
     private boolean inAnimation = false;
     private Quaternionf startGravityRotation;
@@ -108,8 +114,7 @@ public class RotationAnimation {
         double delta = (double) (timeMs - startTimeMs) / (endTimeMs - startTimeMs);
 
         // make sure that frustum culling updates when running rotation animation
-        // TODO implement next line
-//        MinecraftClient.getInstance().worldRenderer.scheduleTerrainUpdate();
+        onClientRotationStep.run();
 
         return RotationUtil.interpolate(
                 startGravityRotation, endGravityRotation,

@@ -74,20 +74,16 @@ public final class JoJoAnimeHudRenderer {
             ctx.text(font, bufTxt, bx, by, 0xCC7DD3FC, true);
         }
 
-        // 3. Slim Vampire Blood / Hamon Charge micro-bar (only when relevant, unobtrusive)
-        CommonVampireComponent vamp = JComponentPlatformUtils.getVampirism(player);
+        // 3. Slim Hamon Charge micro-bar (Vampire Blood uses official blood drop icons via GuiMixin)
         CommonHamonComponent hamon = JComponentPlatformUtils.getHamon(player);
         int specBarY = (stand != null && cfg.isIconHud() && cfg.getUiDuration() != JClientConfig.UIDuration.NEVER
                 && cfg.getUiPosition() != JClientConfig.UIPos.MIDDLE)
-                ? sh - 68
+                ? sh - 78
                 : sh - 15;
         int specBarW = 89;
         int specBarX = (cfg.getUiPosition() == JClientConfig.UIPos.LEFT ? 8 : sw - specBarW - 8) + cfg.getHorizontalHudOffset();
         specBarY += cfg.getVerticalHudOffset();
-        if (vamp.isVampire()) {
-            float bloodRatio = Mth.clamp(vamp.getBlood() / 20.0F, 0.0F, 1.0F);
-            drawMicroSpecBar(ctx, font, specBarX, specBarY, specBarW, bloodRatio, 0xCCDC2626, "BLOOD");
-        } else if (hamon.getHamonCharge() > 0.01F || hamon.isHamonizeReady()) {
+        if (hamon.getHamonCharge() > 0.01F || hamon.isHamonizeReady()) {
             float hamonRatio = Mth.clamp(hamon.getHamonCharge() / 100.0F, 0.0F, 1.0F);
             int hamonColor = hamon.isHamonizeReady() ? 0xFFFDE047 : 0xCCFACC15;
             String hamonLabel = hamon.isHamonizeReady() ? "HAMON ★" : "HAMON";

@@ -2,6 +2,7 @@ package net.arna.jcraft.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Local;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.effects.FlammableEffect;
 import net.arna.jcraft.common.entity.stand.CreamEntity;
@@ -15,18 +16,27 @@ import net.arna.jcraft.mixin_logic.EntityAddon;
 import net.arna.jcraft.mixin_logic.EntityMixinLogic;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.particles.BlockParticleOption;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.Nullable;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -37,6 +47,9 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.List;
+import java.util.Optional;
+
 @Mixin(Entity.class)
 public abstract class EntityMixin implements EntityAddon {
 
@@ -45,6 +58,16 @@ public abstract class EntityMixin implements EntityAddon {
 
     @Shadow
     private EntityDimensions dimensions;
+
+    @Shadow
+    @Final
+    public RandomSource random;
+
+    @Shadow
+    public Optional<BlockPos> mainSupportingBlockPos;
+
+    @Shadow
+    private boolean onGroundNoBlocks;
 
     @Shadow
     public boolean horizontalCollision;
@@ -69,6 +92,33 @@ public abstract class EntityMixin implements EntityAddon {
 
     @Shadow
     public abstract void setDeltaMovement(Vec3 motion);
+
+    @Shadow
+    public abstract float maxUpStep();
+
+    @Shadow
+    public abstract boolean onGround();
+
+    @Shadow
+    public abstract BlockPos getOnPosLegacy();
+
+    @Shadow
+    public abstract Level level();
+
+    @Shadow
+    public abstract boolean touchingUnloadedChunk();
+
+    @Shadow
+    protected abstract void checkSupportingBlock(boolean onGround, @Nullable Vec3 movement);
+
+    @Shadow
+    protected abstract void checkFallDamage(double y, boolean onGround, BlockState state, BlockPos pos);
+
+    @Shadow
+    public static Vec3 collideBoundingBox(@Nullable Entity entity, Vec3 vec, AABB collisionBox, Level level,
+                                          List<VoxelShape> potentialHits) {
+        throw new AssertionError();
+    }
 
     @Unique
     private boolean jcraft$constructed = false;
@@ -150,7 +200,7 @@ public abstract class EntityMixin implements EntityAddon {
     }
 
     @ModifyVariable(method = "move(Lnet/minecraft/world/entity/MoverType;Lnet/minecraft/world/phys/Vec3;)V", at = @At("HEAD"), argsOnly = true)
-    private Vec3 jcraft$transformMoveToWorldGravity(Vec3 movement) {
+    private Vec3 jcraft$transformMoveToWorldGravity(Vec3 movement, @Local(argsOnly = true) MoverType type) {
         if (!this.jcraft$constructed) {
             return movement;
         }
@@ -161,10 +211,14 @@ public abstract class EntityMixin implements EntityAddon {
             this.jcraft$postMoveActualWorld = null;
             return movement;
         }
-        this.jcraft$preMoveWantedLocal = movement;
         this.jcraft$preMoveDeltaLocal = this.getDeltaMovement();
         this.jcraft$postMoveActualWorld = null;
-        return RotationUtil.vecPlayerToWorld(movement, dir);
+        if (type == MoverType.SELF) {
+            this.jcraft$preMoveWantedLocal = movement;
+            return RotationUtil.vecPlayerToWorld(movement, dir);
+        }
+        this.jcraft$preMoveWantedLocal = RotationUtil.vecWorldToPlayer(movement, dir);
+        return movement;
     }
 
     @WrapOperation(
@@ -203,7 +257,7 @@ public abstract class EntityMixin implements EntityAddon {
             return;
         }
         Direction dir = GravityChangerAPI.getGravityDirection((Entity) (Object) this);
-        if (dir != Direction.DOWN && this.jcraft$postMoveActualWorld != null) {
+        if (type == MoverType.SELF && dir != Direction.DOWN && this.jcraft$postMoveActualWorld != null) {
             Vec3 localActual = RotationUtil.vecWorldToPlayer(this.jcraft$postMoveActualWorld, dir);
             Vec3 wanted = this.jcraft$preMoveWantedLocal;
             Vec3 pre = this.jcraft$preMoveDeltaLocal;
@@ -215,6 +269,184 @@ public abstract class EntityMixin implements EntityAddon {
         this.jcraft$preMoveWantedLocal = null;
         this.jcraft$preMoveDeltaLocal = null;
         this.jcraft$postMoveActualWorld = null;
+    }
+
+    @WrapOperation(
+            method = "move(Lnet/minecraft/world/entity/MoverType;Lnet/minecraft/world/phys/Vec3;)V",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;checkFallDamage(DZLnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/core/BlockPos;)V")
+    )
+    private void jcraft$fixMoveFallDamageForGravity(
+            Entity instance,
+            double y,
+            boolean onGround,
+            BlockState state,
+            BlockPos pos,
+            Operation<Void> original) {
+        double fallY = y;
+        if (this.jcraft$constructed && this.jcraft$postMoveActualWorld != null) {
+            Direction dir = GravityChangerAPI.getGravityDirection(instance);
+            if (dir != Direction.DOWN) {
+                fallY = RotationUtil.vecWorldToPlayer(this.jcraft$postMoveActualWorld, dir).y;
+            }
+        }
+        original.call(instance, fallY, onGround, state, pos);
+    }
+
+    @Inject(method = "doCheckFallDamage(DDDZ)V", at = @At("HEAD"), cancellable = true)
+    private void jcraft$fixDoCheckFallDamageForGravity(double dx, double dy, double dz, boolean onGround, CallbackInfo ci) {
+        if (!this.jcraft$constructed) {
+            return;
+        }
+        Entity self = (Entity) (Object) this;
+        Direction dir = GravityChangerAPI.getGravityDirection(self);
+        if (dir == Direction.DOWN) {
+            return;
+        }
+        if (!this.touchingUnloadedChunk()) {
+            Vec3 worldDelta = new Vec3(dx, dy, dz);
+            this.checkSupportingBlock(onGround, worldDelta);
+            BlockPos onPos = this.getOnPosLegacy();
+            BlockState blockState = this.level().getBlockState(onPos);
+            double localY = RotationUtil.vecWorldToPlayer(worldDelta, dir).y;
+            this.checkFallDamage(localY, onGround, blockState, onPos);
+        }
+        ci.cancel();
+    }
+
+    @Inject(method = "checkSupportingBlock(ZLnet/minecraft/world/phys/Vec3;)V", at = @At("HEAD"), cancellable = true)
+    private void jcraft$checkSupportingBlockForGravity(boolean onGround, @Nullable Vec3 movement, CallbackInfo ci) {
+        if (!this.jcraft$constructed) {
+            return;
+        }
+        Entity self = (Entity) (Object) this;
+        Direction dir = GravityChangerAPI.getGravityDirection(self);
+        if (dir == Direction.DOWN) {
+            return;
+        }
+        if (onGround) {
+            AABB bb = self.getBoundingBox();
+            AABB feetBox = switch (dir) {
+                case UP -> new AABB(bb.minX, bb.maxY, bb.minZ, bb.maxX, bb.maxY + 1.0E-6, bb.maxZ);
+                case NORTH -> new AABB(bb.minX, bb.minY, bb.minZ - 1.0E-6, bb.maxX, bb.maxY, bb.minZ);
+                case SOUTH -> new AABB(bb.minX, bb.minY, bb.maxZ, bb.maxX, bb.maxY, bb.maxZ + 1.0E-6);
+                case WEST -> new AABB(bb.minX - 1.0E-6, bb.minY, bb.minZ, bb.minX, bb.maxY, bb.maxZ);
+                case EAST -> new AABB(bb.maxX, bb.minY, bb.minZ, bb.maxX + 1.0E-6, bb.maxY, bb.maxZ);
+                case DOWN -> new AABB(bb.minX, bb.minY - 1.0E-6, bb.minZ, bb.maxX, bb.minY, bb.maxZ);
+            };
+            Optional<BlockPos> opt = this.level().findSupportingBlock(self, feetBox);
+            if (opt.isPresent() || this.onGroundNoBlocks) {
+                this.mainSupportingBlockPos = opt;
+            } else if (movement != null) {
+                Vec3 localM = RotationUtil.vecWorldToPlayer(movement, dir);
+                Vec3 tangBack = RotationUtil.vecPlayerToWorld(-localM.x, 0.0, -localM.z, dir);
+                opt = this.level().findSupportingBlock(self, feetBox.move(tangBack));
+                this.mainSupportingBlockPos = opt;
+            } else {
+                this.mainSupportingBlockPos = Optional.empty();
+            }
+            this.onGroundNoBlocks = opt.isEmpty();
+        } else {
+            this.onGroundNoBlocks = false;
+            if (this.mainSupportingBlockPos.isPresent()) {
+                this.mainSupportingBlockPos = Optional.empty();
+            }
+        }
+        ci.cancel();
+    }
+
+    @Inject(method = "collide(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;", at = @At("HEAD"), cancellable = true)
+    private void jcraft$collideWithDirectionalStepUp(Vec3 worldMove, CallbackInfoReturnable<Vec3> cir) {
+        if (!this.jcraft$constructed) {
+            return;
+        }
+        Entity self = (Entity) (Object) this;
+        Direction dir = GravityChangerAPI.getGravityDirection(self);
+        if (dir == Direction.DOWN) {
+            return;
+        }
+        AABB bb = self.getBoundingBox();
+        Vec3 localUp = RotationUtil.vecPlayerToWorld(0.0, this.maxUpStep(), 0.0, dir);
+        List<VoxelShape> entityCols = this.level().getEntityCollisions(self, bb.expandTowards(worldMove).expandTowards(localUp));
+        Vec3 collided = worldMove.lengthSqr() == 0.0
+                ? worldMove
+                : collideBoundingBox(self, worldMove, bb, this.level(), entityCols);
+
+        Vec3 localWanted = RotationUtil.vecWorldToPlayer(worldMove, dir);
+        Vec3 localCollided = RotationUtil.vecWorldToPlayer(collided, dir);
+        boolean hitX = !Mth.equal(localWanted.x, localCollided.x);
+        boolean hitY = !Mth.equal(localWanted.y, localCollided.y);
+        boolean hitZ = !Mth.equal(localWanted.z, localCollided.z);
+        boolean hitDown = hitY && localWanted.y < 0.0;
+
+        if (this.maxUpStep() > 0.0F && (hitDown || this.onGround()) && (hitX || hitZ)) {
+            Vec3 stepUp = collideBoundingBox(self, localUp, bb, this.level(), entityCols);
+            Vec3 horizWorld = RotationUtil.vecPlayerToWorld(localWanted.x, 0.0, localWanted.z, dir);
+            Vec3 steppedHoriz = collideBoundingBox(self, horizWorld, bb.move(stepUp), this.level(), entityCols);
+            Vec3 stepDown = collideBoundingBox(self, stepUp.scale(-1.0), bb.move(stepUp).move(steppedHoriz), this.level(), entityCols);
+            Vec3 totalStep = stepUp.add(steppedHoriz).add(stepDown);
+            Vec3 localTotal = RotationUtil.vecWorldToPlayer(totalStep, dir);
+            double steppedDistSq = localTotal.x * localTotal.x + localTotal.z * localTotal.z;
+            double flatDistSq = localCollided.x * localCollided.x + localCollided.z * localCollided.z;
+            if (steppedDistSq > flatDistSq) {
+                cir.setReturnValue(totalStep);
+                return;
+            }
+        }
+        cir.setReturnValue(collided);
+    }
+
+    @Inject(method = "spawnSprintParticle()V", at = @At("HEAD"), cancellable = true)
+    private void jcraft$spawnSprintParticleWithGravity(CallbackInfo ci) {
+        if (!this.jcraft$constructed || this.dimensions == null) {
+            return;
+        }
+        Entity self = (Entity) (Object) this;
+        Direction dir = GravityChangerAPI.getGravityDirection(self);
+        if (dir == Direction.DOWN) {
+            return;
+        }
+        BlockPos onPos = this.getOnPosLegacy();
+        BlockState blockState = this.level().getBlockState(onPos);
+        if (blockState.getRenderShape() != RenderShape.INVISIBLE) {
+            Vec3 localVel = this.getDeltaMovement();
+            Vec3 worldOffset = RotationUtil.vecPlayerToWorld(
+                    (this.random.nextDouble() - 0.5) * this.dimensions.width(),
+                    0.1,
+                    (this.random.nextDouble() - 0.5) * this.dimensions.width(),
+                    dir
+            );
+            Vec3 worldParticleVel = RotationUtil.vecPlayerToWorld(
+                    -localVel.x * 4.0,
+                    1.5,
+                    -localVel.z * 4.0,
+                    dir
+            );
+            this.level().addParticle(
+                    new BlockParticleOption(ParticleTypes.BLOCK, blockState),
+                    self.getX() + worldOffset.x,
+                    self.getY() + worldOffset.y,
+                    self.getZ() + worldOffset.z,
+                    worldParticleVel.x,
+                    worldParticleVel.y,
+                    worldParticleVel.z
+            );
+        }
+        ci.cancel();
+    }
+
+    @WrapOperation(
+            method = "isInWall()Z",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/phys/AABB;ofSize(Lnet/minecraft/world/phys/Vec3;DDD)Lnet/minecraft/world/phys/AABB;")
+    )
+    private AABB jcraft$rotateIsInWallBox(Vec3 center, double xSize, double ySize, double zSize, Operation<AABB> original) {
+        if (this.jcraft$constructed) {
+            Direction dir = GravityChangerAPI.getGravityDirection((Entity) (Object) this);
+            if (dir != Direction.DOWN) {
+                Vec3 rotated = RotationUtil.maskPlayerToWorld(xSize, ySize, zSize, dir);
+                return original.call(center, rotated.x, rotated.y, rotated.z);
+            }
+        }
+        return original.call(center, xSize, ySize, zSize);
     }
 
     @Inject(

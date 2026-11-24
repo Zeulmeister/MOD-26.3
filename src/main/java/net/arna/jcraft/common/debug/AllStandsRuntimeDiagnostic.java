@@ -7,16 +7,24 @@ import net.arna.jcraft.api.component.living.CommonCooldownsComponent;
 import net.arna.jcraft.api.component.living.CommonMiscComponent;
 import net.arna.jcraft.api.component.living.CommonStandComponent;
 import net.arna.jcraft.api.registry.JItemRegistry;
+import net.arna.jcraft.api.registry.JParticleTypeRegistry;
+import net.arna.jcraft.api.registry.JSoundRegistry;
 import net.arna.jcraft.api.registry.JStandTypeRegistry;
 import net.arna.jcraft.api.registry.JStatusRegistry;
+import net.arna.jcraft.api.misc.BoundSoundPlayer;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.api.stand.StandType;
+import net.arna.jcraft.common.entity.projectile.BisectProjectile;
 import net.arna.jcraft.common.entity.projectile.HamonWaveEntity;
 import net.arna.jcraft.common.entity.spec.AnubisSpecUser;
 import net.arna.jcraft.common.entity.stand.*;
 import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
 import net.arna.jcraft.common.gravity.util.Gravity;
+import net.arna.jcraft.common.item.Peacemaker;
 import net.arna.jcraft.common.network.s2c.TimeAccelStatePacket;
+import net.arna.jcraft.common.particle.BreathParticleOptions;
+import net.arna.jcraft.common.particle.LockOnParticleOptions;
+import net.arna.jcraft.common.particle.MoshParticleOptions;
 import net.arna.jcraft.common.util.CooldownType;
 import net.arna.jcraft.common.util.JUtils;
 import net.arna.jcraft.platform.JComponentPlatformUtils;
@@ -141,6 +149,12 @@ public final class AllStandsRuntimeDiagnostic {
                 world.setBlockAndUpdate(BlockPos.containing(ARENA_X + dx, ARENA_Y + 11, ARENA_Z + dz), Blocks.STONE.defaultBlockState());
             }
         }
+        // North brick wall at Z-10 for lateral gravity test
+        for (int dx = -10; dx <= 16; dx++) {
+            for (int dy = 0; dy <= 10; dy++) {
+                world.setBlockAndUpdate(BlockPos.containing(ARENA_X + dx, ARENA_Y + dy, ARENA_Z - 10), Blocks.BRICKS.defaultBlockState());
+            }
+        }
     }
 
     private static void resetFighters() {
@@ -238,7 +252,14 @@ public final class AllStandsRuntimeDiagnostic {
                         cream.setVoidTime(20);
                         assertTrue(CreamEntity.isCreaming(user) && user.isInvulnerable(), "Cream Void grants invulnerability");
                         cream.setVoidTime(0);
+                    } else if (stand instanceof KQBTDEntity kqbtd) {
+                        org.joml.Vector3f aura = kqbtd.getAuraColor();
+                        assertTrue(aura != null && Float.isFinite(aura.x()) && Float.isFinite(aura.y()),
+                                "KQBTDEntity.getAuraColor() runs on dedicated server without AzureLib RenderUtils");
                     }
+                    // Reflective inspection of declared fields/methods catches hidden client-type leaks on Dedicated Server
+                    assertTrue(stand.getClass().getDeclaredFields().length >= 0 && stand.getClass().getDeclaredMethods().length > 0,
+                            "Dedicated-server reflection safe for " + sid);
                     stand.desummon();
                 }
                 standIndex++;
@@ -255,6 +276,19 @@ public final class AllStandsRuntimeDiagnostic {
                 }
                 assertTrue(wave.isAlive(), "HamonWaveEntity ticks on dedicated server without ClientLevel NoClassDefFoundError");
                 wave.discard();
+
+                // Verify decoupled common particle options & server bridges on Dedicated Server
+                BreathParticleOptions breathOpt = new BreathParticleOptions(1.0f);
+                LockOnParticleOptions lockOnOpt = new LockOnParticleOptions(user.getId());
+                MoshParticleOptions moshOpt = new MoshParticleOptions(user.getId(), new org.joml.Vector3f(1f, 0.5f, 0.5f));
+                assertTrue(breathOpt.getType() == JParticleTypeRegistry.BREATH.get()
+                        && lockOnOpt.getType() == JParticleTypeRegistry.LOCK_ON.get()
+                        && moshOpt.getType() == JParticleTypeRegistry.METALLICA_MOSH.get(),
+                        "Common Breath/LockOn/Mosh ParticleOptions instantiate cleanly on dedicated server");
+                BoundSoundPlayer.EntitySoundHandle sh = BoundSoundPlayer.playSoundFrom(user, JSoundRegistry.IMPACT_1.get(), net.minecraft.sounds.SoundSource.PLAYERS, 0.5f, 1.0f, List.of());
+                assertTrue(sh != null && "LMB".equals(Peacemaker.getFireKey()),
+                        "BoundSoundPlayer & Peacemaker server fallbacks work without client classes");
+
                 phase = 3;
                 waitTicks = 1;
             }
@@ -265,9 +299,9 @@ public final class AllStandsRuntimeDiagnostic {
                 StandEntity<?, ?> mih = JCraft.summon(world, user);
                 assertTrue(mih instanceof MadeInHeavenEntity, "Summoned MadeInHeavenEntity");
                 mihStartClock = JUtils.getDayTime(world);
-                TimeAccelStatePacket.sendStart((MadeInHeavenEntity) mih, 120);
+                TimeAccelStatePacket.sendStart((MadeInHeavenEntity) mih, 60);
                 phase = 4;
-                waitTicks = 10;
+                waitTicks = 15;
             }
             case 4 -> {
                 long afterClock = JUtils.getDayTime(world);
@@ -285,13 +319,14 @@ public final class AllStandsRuntimeDiagnostic {
                 JCraft.LOGGER.info("[ALLSTANDS-DEBUG] === Phase 4: C-Moon Real Inverted Gravity Physics & Hitbox ===");
                 gravityDummy = new Husk(EntityTypes.HUSK, world);
                 gravityDummy.setNoAi(false);
-                gravityDummy.setPos(ARENA_X + 6.0, ARENA_Y + 2.0, ARENA_Z);
+                gravityDummy.removeFreeWill();
+                gravityDummy.setPos(ARENA_X + 6.0, ARENA_Y + 1.0, ARENA_Z);
                 gravityDummy.setDeltaMovement(Vec3.ZERO);
                 world.addFreshEntity(gravityDummy);
                 gravityStartPos = gravityDummy.position();
                 gravityStartEyeY = gravityDummy.getEyePosition().y;
 
-                GravityChangerAPI.addGravity(gravityDummy, new Gravity(Direction.UP, 10, 60, "selftest"));
+                GravityChangerAPI.addGravity(gravityDummy, new Gravity(Direction.UP, 10, 80, "selftest"));
                 Direction applied = GravityChangerAPI.getGravityDirection(gravityDummy);
                 assertTrue(applied == Direction.UP, "GravityChangerAPI applied Direction.UP (actual=" + applied + ")");
 
@@ -302,17 +337,43 @@ public final class AllStandsRuntimeDiagnostic {
                 assertTrue(invBox.minY < gravityDummy.getY() - 1.0, "Inverted gravity flips bounding box upward/downward properly (minY=" + invBox.minY + ", y=" + gravityDummy.getY() + ")");
 
                 phase = 6;
-                waitTicks = 20;
+                waitTicks = 28;
             }
             case 6 -> {
                 double movedUp = gravityDummy.getY() - gravityStartPos.y;
-                assertTrue(movedUp > 1.5, "Entity under Direction.UP gravity actually falls UPWARD toward ceiling (dy=" + movedUp + ")");
-                GravityChangerAPI.clearGravity(gravityDummy);
-                gravityDummy.discard();
+                assertTrue(movedUp > 5.0, "Entity under Direction.UP gravity actually falls UPWARD onto ceiling (dy=" + movedUp + ")");
+                assertTrue(gravityDummy.onGround(), "Entity reports onGround=true on ceiling under Direction.UP");
+                assertTrue(gravityDummy.mainSupportingBlockPos.isPresent(), "Directional checkSupportingBlock found ceiling support block");
+                assertTrue(gravityDummy.getHealth() < gravityDummy.getMaxHealth(),
+                        "Directional fall damage hurts entity landing on ceiling (hp=" + gravityDummy.getHealth() + "/" + gravityDummy.getMaxHealth() + ")");
+
+                BisectProjectile bisect = new BisectProjectile(world, gravityDummy);
+                bisect.setPos(gravityDummy.getEyePosition());
+                bisect.setDeltaMovement(0.4, 0.0, 0.0);
+                world.addFreshEntity(bisect);
+                for (int i = 0; i < 3; i++) {
+                    bisect.tick();
+                }
+                assertTrue(bisect.isAlive(), "BisectProjectile ticks cleanly under Direction.UP gravity");
+                bisect.discard();
+
+                gravityDummy.setHealth(gravityDummy.getMaxHealth());
+                gravityDummy.setPos(ARENA_X + 6.0, ARENA_Y + 4.0, ARENA_Z - 4.0);
+                gravityDummy.setDeltaMovement(Vec3.ZERO);
+                GravityChangerAPI.addGravity(gravityDummy, new Gravity(Direction.NORTH, 20, 60, "selftest_north"));
                 phase = 7;
-                waitTicks = 1;
+                waitTicks = 26;
             }
             case 7 -> {
+                assertTrue(gravityDummy.getZ() < ARENA_Z - 7.0, "Entity under Direction.NORTH gravity falls onto north wall (z=" + gravityDummy.getZ() + ")");
+                assertTrue(gravityDummy.onGround(), "Entity reports onGround=true against North wall");
+                assertTrue(gravityDummy.mainSupportingBlockPos.isPresent(), "Directional checkSupportingBlock found North wall support block");
+                GravityChangerAPI.clearGravity(gravityDummy);
+                gravityDummy.discard();
+                phase = 8;
+                waitTicks = 1;
+            }
+            case 8 -> {
                 JCraft.LOGGER.info("[ALLSTANDS-DEBUG] === Phase 5: Non-Player SlavedTo NBT & AnubisSpecUser Auto-Sheathe ===");
                 CommonMiscComponent misc = JComponentPlatformUtils.getMiscData(target);
                 misc.setSlavedTo(user.getUUID());

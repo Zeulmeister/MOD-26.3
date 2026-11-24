@@ -126,10 +126,32 @@ public class JCraftClient {
     // public static KeyMapping menuKey;
     public static boolean comboStarted = false;
     public static int framesSinceComboStarted = 0;
+    public static volatile int gravityTerrainInvalidations = 0;
 
     public static void init() {
         JCraft.setClientEntityHandler(ClientEntityHandlerImpl.INSTANCE);
         net.arna.jcraft.common.tickable.Timestops.setClientTsRangeChecker(net.arna.jcraft.client.util.JClientUtils::isInTSRange);
+        net.arna.jcraft.api.misc.ConditionalFlightHandler.setClientTimestopChecker(net.arna.jcraft.client.util.JClientUtils::isUserOfActiveTimestop);
+        dev.architectury.event.events.client.ClientTickEvent.CLIENT_POST.register(client -> {
+            net.arna.jcraft.api.misc.ConditionalFlightHandler.tickClientPlayer(client.player);
+            if (!client.hasSingleplayerServer()) {
+                net.arna.jcraft.common.network.s2c.TimeAccelStatePacket.tickClient();
+            }
+        });
+        net.arna.jcraft.api.misc.BoundSoundPlayer.setClientPlayHandler(
+                buf -> BoundSoundClient.onBoundSoundPacket(Minecraft.getInstance(), buf));
+        net.arna.jcraft.common.item.Peacemaker.setClientKeySuppliers(
+                () -> Minecraft.getInstance().options.keyAttack.getTranslatedKeyMessage().getString(),
+                () -> Minecraft.getInstance().options.keyUse.getTranslatedKeyMessage().getString(),
+                () -> Minecraft.getInstance().options.keyPickItem.getTranslatedKeyMessage().getString()
+        );
+        net.arna.jcraft.common.gravity.RotationAnimation.setOnClientRotationStep(() -> {
+            gravityTerrainInvalidations++;
+            Minecraft mc = Minecraft.getInstance();
+            if (mc != null && mc.levelRenderer != null) {
+                mc.levelRenderer.sectionOcclusionGraph().invalidate();
+            }
+        });
 
         AutoConfig.register(JClientConfig.class, JanksonConfigSerializer::new);
         JClientConfig.load();

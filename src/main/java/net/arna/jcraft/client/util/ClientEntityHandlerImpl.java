@@ -7,7 +7,7 @@ import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.client.JClientConfig;
 import net.arna.jcraft.client.particle.AuraArcParticle;
 import net.arna.jcraft.client.particle.AuraBlobParticle;
-import net.arna.jcraft.client.particle.MoshParticle;
+import net.arna.jcraft.common.particle.MoshParticleOptions;
 import net.arna.jcraft.common.entity.SheerHeartAttackEntity;
 import net.arna.jcraft.common.entity.projectile.BlockProjectile;
 import net.arna.jcraft.common.entity.stand.*;
@@ -80,13 +80,14 @@ public class ClientEntityHandlerImpl implements IClientEntityHandler {
 
         final RandomSource random = clientWorld.getRandom();
 
-        //TODO: fix bomb particle rendering in other gravities
         if (bombData.isEntity) {
+            final AABB bombBox = bombData.bombEntity != null ? bombData.bombEntity.getBoundingBox() : null;
+            final Vec3 center = bombBox != null ? bombBox.getCenter() : bombPos;
             for (int h = 0; h < 16; ++h) {
                 clientWorld.addParticle(particleType,
-                        bombPos.x + random.triangle(0, 1) * xLength,
-                        bombPos.y + random.triangle(0, 1) * yLength,
-                        bombPos.z + random.triangle(0, 1) * zLength,
+                        center.x + random.triangle(0, 1) * (xLength * 0.5),
+                        center.y + random.triangle(0, 1) * (yLength * 0.5),
+                        center.z + random.triangle(0, 1) * (zLength * 0.5),
                         0, 0, 0);
             }
         }
@@ -230,7 +231,7 @@ public class ClientEntityHandlerImpl implements IClientEntityHandler {
                                       Vector3f maxBox, int count, Vector3f color) {
         final Vec3 pos = entity.position();
         for (int i = 0; i < count; i++) {
-            clientWorld.addParticle(new MoshParticle.Options(entity.getId(), color), true, true,
+            clientWorld.addParticle(new MoshParticleOptions(entity.getId(), color), true, true,
                     pos.x + maxBox.x() * random.triangle(0, 2),
                     pos.y + maxBox.y() * random.triangle(0.5, 0.5),
                     pos.z + maxBox.z() * random.triangle(0, 2),
@@ -263,7 +264,7 @@ public class ClientEntityHandlerImpl implements IClientEntityHandler {
         final Vector3f color = metallica.getMoshColor();
         final ClientLevel clientWorld = (ClientLevel) projectile.level();
         final RandomSource random = clientWorld.getRandom();
-        clientWorld.addParticle(new MoshParticle.Options(projectile.getId(), color), false, true,
+        clientWorld.addParticle(new MoshParticleOptions(projectile.getId(), color), false, true,
                 pos.x + random.triangle(0, 0.2),
                 pos.y + 0.5 + random.triangle(0, 0.2),
                 pos.z + random.triangle(0, 0.2),

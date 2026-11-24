@@ -15,7 +15,7 @@ import net.arna.jcraft.api.misc.BoundSoundPlayer;
 import net.arna.jcraft.api.registry.JSoundRegistry;
 import net.arna.jcraft.api.registry.JStatusRegistry;
 import net.arna.jcraft.api.registry.JTagRegistry;
-import net.arna.jcraft.client.particle.BreathParticle;
+import net.arna.jcraft.common.particle.BreathParticleOptions;
 import net.arna.jcraft.common.attack.core.data.BaseMoveExtras;
 import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
 import net.arna.jcraft.common.util.JUtils;
@@ -198,7 +198,7 @@ public class BreathXrayMove<A extends IAttacker<? extends A, ?>> extends Abstrac
 
     public static void displayBreathParticle(@NonNull final ServerPlayer serverPlayer, @NonNull final Vec3 target,
                                              final float scale) {
-        serverPlayer.level().sendParticles(serverPlayer, new BreathParticle.Options(scale),
+        serverPlayer.level().sendParticles(serverPlayer, new BreathParticleOptions(scale),
                 true, true, target.x, target.y, target.z, 1, 0.0, 0.0, 0.0, 0.0);
     }
 

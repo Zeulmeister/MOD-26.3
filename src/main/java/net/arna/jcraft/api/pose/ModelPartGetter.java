@@ -1,9 +1,12 @@
 package net.arna.jcraft.api.pose;
 
 import com.mojang.serialization.Codec;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.model.Model;
 import net.minecraft.client.model.geom.ModelPart;
 
+@Environment(EnvType.CLIENT)
 public record ModelPartGetter(String partName) {
     public static final Codec<ModelPartGetter> CODEC = Codec.STRING.xmap(ModelPartGetter::new, ModelPartGetter::partName);
 

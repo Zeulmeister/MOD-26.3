@@ -11,10 +11,6 @@ import net.arna.jcraft.api.attack.MoveSet;
 import net.arna.jcraft.api.attack.MoveSetManager;
 import net.arna.jcraft.api.attack.enums.MoveClass;
 import net.arna.jcraft.api.component.living.CommonHitPropertyComponent;
-import net.arna.jcraft.api.pose.ModifierCondition;
-import net.arna.jcraft.api.pose.PoseModifiers;
-import net.arna.jcraft.api.pose.modifier.IPoseModifier;
-import net.arna.jcraft.api.pose.modifier.PoseModifierGroup;
 import net.arna.jcraft.api.registry.JSoundRegistry;
 import net.arna.jcraft.api.registry.JStandTypeRegistry;
 import net.arna.jcraft.api.stand.StandData;
@@ -64,35 +60,6 @@ public final class TheWorldEntity extends AbstractTheWorldEntity<TheWorldEntity,
                     .skinName(Component.literal("Greatest High"))
                     .build())
             .summonData(SummonData.of(JSoundRegistry.TW_SUMMON))
-            .build();
-    // Arms near hips, the DIO pose in HFTF
-    public static final Supplier<IPoseModifier> POSE = () -> PoseModifierGroup.builder()
-            .modifier(PoseModifiers.parse("""
-                    leftArm.yRot = 15deg;
-                    leftArm.zRot = 2deg;
-                    """, ModifierCondition.LEFT_ARM_EMPTY))
-            .modifier(PoseModifiers.parse("""
-                    rightArm.yRot = -15deg;
-                    rightArm.zRot = -2deg;
-                    """, ModifierCondition.RIGHT_ARM_EMPTY))
-            .modifier(PoseModifierGroup.builder()
-                    .condition(ModifierCondition.USER_NOT_SPRINTING)
-                    .modifier(PoseModifiers.parse("""
-                            leftArm.xRot -= 10deg;
-                            leftArm.z += 0.25;
-                            leftArm.x += 0.5;
-                            """, ModifierCondition.LEFT_ARM_EMPTY))
-                    .modifier(PoseModifiers.parse("""
-                            rightArm.xRot -= 10deg;
-                            rightArm.z += 0.25;
-                            rightArm.x -= 0.5;
-                            """, ModifierCondition.RIGHT_ARM_EMPTY))
-                    .modifier(PoseModifiers.parse("""
-                            body.xRot -= 10deg;
-                            leftLeg.z -= 2;
-                            rightLeg.z -= 2;
-                            """))
-                    .build())
             .build();
 
     public static final SimpleAttack<TheWorldEntity> LOW_KICK = new SimpleAttack<TheWorldEntity>(0, 8, 14, 0.75f,

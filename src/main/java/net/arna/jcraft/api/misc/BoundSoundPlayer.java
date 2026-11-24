@@ -21,15 +21,19 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
  * A class to play sounds bound to entities or at positions that can later be cancelled using a handle.
- *
- * @see BoundSoundClient
  */
 @UtilityClass
 public class BoundSoundPlayer {
+    private static volatile Consumer<FriendlyByteBuf> clientPlayHandler = buf -> {};
+
+    public static void setClientPlayHandler(Consumer<FriendlyByteBuf> handler) {
+        clientPlayHandler = handler != null ? handler : buf -> {};
+    }
 
     /**
      * Plays the given sound and binds it to the given entity, moving with it and stopping when it dies/is removed.
@@ -134,20 +138,13 @@ public class BoundSoundPlayer {
 
     private static void startSoundHandle(Level level, SoundHandle handle) {
         if (level.isClientSide()) {
-            ClientDispatch.play(handle);
+            FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+            handle.write(buf);
+            clientPlayHandler.accept(buf);
             return;
         }
 
         handle.play();
-    }
-
-    private static final class ClientDispatch {
-        static void play(SoundHandle handle) {
-            FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-            handle.write(buf);
-            net.arna.jcraft.client.sound.BoundSoundClient.onBoundSoundPacket(
-                    net.minecraft.client.Minecraft.getInstance(), buf);
-        }
     }
 
     /**

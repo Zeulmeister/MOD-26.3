@@ -14,6 +14,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Util;
 import net.minecraft.world.entity.AreaEffectCloud;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
@@ -94,11 +95,15 @@ public abstract class CommonGravityComponentImpl implements CommonGravityCompone
     // The real velocity is this tick position subtract last tick position
     private Vec3 getRealWorldVelocity(final Entity entity, final Direction prevGravityDirection) {
         if (entity.isLocalInstanceAuthoritative()) {
-            return new Vec3(
+            Vec3 posDelta = new Vec3(
                     entity.getX() - entity.xo,
                     entity.getY() - entity.yo,
                     entity.getZ() - entity.zo
             );
+            // Large single-tick displacements are teleports, not real momentum.
+            if (posDelta.lengthSqr() <= 4.0) {
+                return posDelta;
+            }
         }
 
         return RotationUtil.vecPlayerToWorld(entity.getDeltaMovement(), prevGravityDirection);
@@ -221,7 +226,7 @@ public abstract class CommonGravityComponentImpl implements CommonGravityCompone
             Direction newGravity = getActualGravityDirection();
             Direction oldGravity = gravityDirection;
             if (oldGravity != newGravity) {
-                long timeMs = entity.level().getGameTime() * 50;
+                long timeMs = Util.getMillis();
                 if (entity.level().isClientSide()) {
                     animation.applyRotationAnimation(
                             newGravity, oldGravity,

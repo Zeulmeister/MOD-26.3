@@ -12,10 +12,6 @@ import net.arna.jcraft.api.attack.StateContainer;
 import net.arna.jcraft.api.attack.enums.BlockableType;
 import net.arna.jcraft.api.attack.enums.MoveClass;
 import net.arna.jcraft.api.component.living.CommonHitPropertyComponent;
-import net.arna.jcraft.api.pose.ModifierCondition;
-import net.arna.jcraft.api.pose.PoseModifiers;
-import net.arna.jcraft.api.pose.modifier.IPoseModifier;
-import net.arna.jcraft.api.pose.modifier.PoseModifierGroup;
 import net.arna.jcraft.api.registry.JSoundRegistry;
 import net.arna.jcraft.api.registry.JStandTypeRegistry;
 import net.arna.jcraft.api.stand.StandData;
@@ -72,13 +68,6 @@ public final class StarPlatinumEntity extends AbstractStarPlatinumEntity<StarPla
                     .skinName(Component.literal("OVA"))
                     .build())
             .summonData(SummonData.of(JSoundRegistry.STAR_PLATINUM_SUMMON))
-            .build();
-    public static final Supplier<IPoseModifier> POSE = () -> PoseModifierGroup.builder()
-            .modifier(PoseModifiers.parse("""
-                    leftArm.xRot = 0;
-                    leftArm.yRot = -15deg;
-                    leftArm.zRot = 5deg;
-                    """, ModifierCondition.LEFT_ARM_EMPTY))
             .build();
 
     public static final SimpleUppercutAttack<StarPlatinumEntity> UPPERCUT = new SimpleUppercutAttack<StarPlatinumEntity>(JCraft.LIGHT_COOLDOWN,

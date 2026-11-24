@@ -197,7 +197,7 @@ public final class JCraftConfigScreen extends Screen {
         rows.add(clientFloat("text.autoconfig.jcraft.option.firstPersonStandOpacityMult", "1st-Person Opacity Mult", cfg::getFirstPersonStandOpacityMult, cfg::setFirstPersonStandOpacityMult, 0.05f, 0.25f, 0.0f, 1.0f, 1.0f, "x"));
         rows.add(clientBool("text.autoconfig.jcraft.option.showStandUserWarningPlayer", "Stand Warning (Players)", cfg::isShowStandUserWarningPlayer, cfg::setShowStandUserWarningPlayer, true));
         rows.add(clientBool("text.autoconfig.jcraft.option.showStandUserWarningMob", "Stand Warning (Mobs)", cfg::isShowStandUserWarningMob, cfg::setShowStandUserWarningMob, true));
-        rows.add(clientBool("text.autoconfig.jcraft.option.disableMihAfterimages", "Disable MiH Afterimages", cfg::isDisableMihAfterimages, cfg::setDisableMihAfterimages, true));
+        rows.add(clientBool("text.autoconfig.jcraft.option.disableMihAfterimages", "Disable MiH Afterimages", cfg::isDisableMihAfterimages, cfg::setDisableMihAfterimages, false));
         return rows;
     }
 

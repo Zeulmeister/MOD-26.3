@@ -5,11 +5,14 @@ import net.arna.jcraft.api.pose.modifier.IPoseModifier;
 import net.arna.jcraft.api.pose.modifier.LevitationPoseModifier;
 import net.arna.jcraft.api.pose.modifier.CustomPoseModifier;
 import net.arna.jcraft.api.pose.modifier.PoseModifierGroup;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Environment(EnvType.CLIENT)
 public class PoseModifiers {
     private static final Pattern MODIFIER_PATTERN = Pattern.compile(
             "([a-zA-Z_\\d]+)" + // Model part
@@ -42,8 +45,7 @@ public class PoseModifiers {
      * Parses a pose modifier from a string.
      * The string is expected to be java-like code that would modify a pose.
      * <p>
-     * For examples, check {@link net.arna.jcraft.common.entity.stand.StarPlatinumEntity#POSE StarPlatinumEntity.POSE} or
-     * {@link net.arna.jcraft.common.entity.stand.KingCrimsonEntity#POSE KingCrimson.POSE}.
+     * For examples, check the JSON definitions under {@code assets/jcraft/poses/<stand>/humanoid.json}.
      * @param modifiers The string containing the modifiers.
      * @param conditions Optional conditions to apply to the modifier.
      *                   Will be applied to the whole group if 'modifiers' contains more than one modifier.

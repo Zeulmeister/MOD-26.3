@@ -9,8 +9,6 @@ import net.arna.jcraft.api.attack.MoveMap;
 import net.arna.jcraft.api.attack.MoveSet;
 import net.arna.jcraft.api.attack.MoveSetManager;
 import net.arna.jcraft.api.attack.enums.MoveClass;
-import net.arna.jcraft.api.pose.modifier.IPoseModifier;
-import net.arna.jcraft.api.pose.modifier.LevitationPoseModifier;
 import net.arna.jcraft.api.registry.JMarkerExtractorRegistry;
 import net.arna.jcraft.api.registry.JMarkerInjectorRegistry;
 import net.arna.jcraft.api.registry.JSoundRegistry;
@@ -73,13 +71,6 @@ public class GEREntity extends StandEntity<GEREntity, GEREntity.State> {
                     .skinName(Component.literal("Cherry Blossom"))
                     .build())
             .build();
-    public static final Supplier<IPoseModifier> POSE = () -> ClientPose.create();
-
-    private static final class ClientPose {
-        private static IPoseModifier create() {
-            return new LevitationPoseModifier();
-        }
-    }
 
     public static final SimpleAttack<GEREntity> LIGHT_FOLLOWUP = new SimpleAttack<GEREntity>(
             0, 6, 13, 0.75f, 6f, 8, 1.5f, 1f, -0.1f)

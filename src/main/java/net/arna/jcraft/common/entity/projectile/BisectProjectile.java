@@ -85,11 +85,14 @@ public class BisectProjectile extends AbstractArrow {
             final DamageSource damageSource = level().damageSources().mobAttack(livingOwner);
             // Recursive hitbox check between current and previous position
             final Vec3 towardsVec = curPos.subtract(new Vec3(xo, yo, zo));
-            //todo: support other gravs?
+            final net.minecraft.core.Direction grav = net.arna.jcraft.common.gravity.api.GravityChangerAPI.getGravityDirection(owner);
+            final Vec3 gravUp = net.arna.jcraft.common.gravity.util.RotationUtil.vecPlayerToWorld(0.0, 1.0, 0.0, grav);
+            final Vec3 fwd = towardsVec.lengthSqr() > 1.0E-6 ? towardsVec.normalize() : getLookAngle();
+            final Vec3 cross = fwd.cross(gravUp);
             final float yaw = (getYRot() + 90.0f) * Mth.DEG_TO_RAD;
-            final Vec3 sideVec = new Vec3(
-                    Mth.sin(yaw), 0, Mth.cos(yaw)
-            );
+            final Vec3 sideVec = cross.lengthSqr() > 1.0E-6
+                    ? cross.normalize()
+                    : net.arna.jcraft.common.gravity.util.RotationUtil.vecPlayerToWorld(Mth.sin(yaw), 0.0, Mth.cos(yaw), grav);
             final Set<LivingEntity> hurtAll = new HashSet<>();
             for (double i = 0; i < 2; i++) {
                 hurtAll.addAll(

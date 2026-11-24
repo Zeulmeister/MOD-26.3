@@ -7,6 +7,8 @@ import net.arna.jcraft.api.spec.JSpec;
 import net.arna.jcraft.common.attack.moves.hamon.ImproviserAttack;
 import net.arna.jcraft.common.config.JServerConfig;
 import net.arna.jcraft.common.food.IFoodData;
+import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
+import net.arna.jcraft.common.gravity.util.RotationUtil;
 import net.arna.jcraft.common.network.s2c.ComboCounterPacket;
 import net.arna.jcraft.common.spec.HamonSpec;
 import net.arna.jcraft.common.util.IComboCounter;
@@ -14,17 +16,22 @@ import net.arna.jcraft.common.util.IOwnable;
 import net.arna.jcraft.common.util.JUtils;
 import net.arna.jcraft.mixin_logic.AbilitiesAddon;
 import net.arna.jcraft.platform.JComponentPlatformUtils;
+import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -46,6 +53,9 @@ public abstract class PlayerMixin implements IComboCounter, IFoodData {
     @Shadow
     @Final
     private Abilities abilities;
+
+    @Shadow
+    protected abstract boolean isStayingOnGroundSurface();
 
     @Unique
     private int jcraft$comboCount = 1;
@@ -184,6 +194,58 @@ public abstract class PlayerMixin implements IComboCounter, IFoodData {
         if (AbstractCounterAttack.handleCounter(self, source, amount)) {
             ci.cancel();
         }
+    }
+
+    @Inject(method = "maybeBackOffFromEdge(Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/entity/MoverType;)Lnet/minecraft/world/phys/Vec3;", at = @At("HEAD"), cancellable = true)
+    private void jcraft$backOffFromEdgeForGravity(Vec3 movement, MoverType type, CallbackInfoReturnable<Vec3> cir) {
+        Player self = (Player) (Object) this;
+        Direction dir = GravityChangerAPI.getGravityDirection(self);
+        if (dir == Direction.DOWN) {
+            return;
+        }
+        Vec3 localMove = RotationUtil.vecWorldToPlayer(movement, dir);
+        if (self.getAbilities().flying
+                || localMove.y > 0.0
+                || (type != MoverType.SELF && type != MoverType.PLAYER)
+                || !this.isStayingOnGroundSurface()) {
+            cir.setReturnValue(movement);
+            return;
+        }
+        double lx = localMove.x;
+        double lz = localMove.z;
+        final double stepDelta = 0.05;
+        final float maxStep = self.maxUpStep();
+        while (lx != 0.0 && self.level().noCollision(self, self.getBoundingBox().move(RotationUtil.vecPlayerToWorld(lx, -maxStep, 0.0, dir)))) {
+            if (lx < stepDelta && lx >= -stepDelta) lx = 0.0;
+            else if (lx > 0.0) lx -= stepDelta;
+            else lx += stepDelta;
+        }
+        while (lz != 0.0 && self.level().noCollision(self, self.getBoundingBox().move(RotationUtil.vecPlayerToWorld(0.0, -maxStep, lz, dir)))) {
+            if (lz < stepDelta && lz >= -stepDelta) lz = 0.0;
+            else if (lz > 0.0) lz -= stepDelta;
+            else lz += stepDelta;
+        }
+        while (lx != 0.0 && lz != 0.0 && self.level().noCollision(self, self.getBoundingBox().move(RotationUtil.vecPlayerToWorld(lx, -maxStep, lz, dir)))) {
+            if (lx < stepDelta && lx >= -stepDelta) lx = 0.0;
+            else if (lx > 0.0) lx -= stepDelta;
+            else lx += stepDelta;
+            if (lz < stepDelta && lz >= -stepDelta) lz = 0.0;
+            else if (lz > 0.0) lz -= stepDelta;
+            else lz += stepDelta;
+        }
+        cir.setReturnValue(RotationUtil.vecPlayerToWorld(lx, localMove.y, lz, dir));
+    }
+
+    @Inject(method = "canPlayerFitWithinBlocksAndEntitiesWhen(Lnet/minecraft/world/entity/Pose;)Z", at = @At("HEAD"), cancellable = true)
+    private void jcraft$canPlayerFitWithGravity(Pose pose, CallbackInfoReturnable<Boolean> cir) {
+        Player self = (Player) (Object) this;
+        Direction dir = GravityChangerAPI.getGravityDirection(self);
+        if (dir == Direction.DOWN) {
+            return;
+        }
+        AABB localBox = self.getDimensions(pose).makeBoundingBox(0.0, 0.0, 0.0);
+        AABB rotatedBox = RotationUtil.boxPlayerToWorld(localBox, dir).move(self.position()).deflate(1.0E-7);
+        cir.setReturnValue(self.level().noCollision(self, rotatedBox));
     }
 
     @Inject(method = "tryToStartFallFlying", at = @At("HEAD"), cancellable = true)

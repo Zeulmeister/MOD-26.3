@@ -12,7 +12,17 @@ import java.util.List;
  * Coordinates native Minecraft 26.3 RenderPearl post_effect shaders for JCraft.
  */
 public final class JPostEffectManager {
+    private static volatile List<Identifier> lastFailedPostEffects = List.of();
+
     private JPostEffectManager() {}
+
+    public static List<Identifier> getLastFailedPostEffects() {
+        return lastFailedPostEffects;
+    }
+
+    public static void setLastFailedPostEffects(List<Identifier> failed) {
+        lastFailedPostEffects = failed == null || failed.isEmpty() ? List.of() : List.copyOf(failed);
+    }
 
     public static List<Identifier> collectActiveEffects(List<Identifier> vanillaRequested) {
         Minecraft mc = Minecraft.getInstance();

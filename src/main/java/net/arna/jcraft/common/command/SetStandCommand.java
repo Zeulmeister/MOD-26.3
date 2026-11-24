@@ -113,7 +113,18 @@ public class SetStandCommand {
                 }
                 else { // i.e. rng != null
                     final RegistryAccess registryAccess = ctx.getSource().registryAccess();
-                    standData.setType(StandTypeUtil.getRandom(rng, true, registryAccess, registryAccess != null, false));
+                    final boolean exclusive = entity instanceof Player && JServerConfig.EXCLUSIVE_STANDS.getValue();
+                    final boolean filterPlayer = entity instanceof Player && registryAccess != null;
+                    final boolean filterMob = !(entity instanceof Player) && registryAccess != null;
+                    final List<StandType> available = StandTypeUtil.streamAllObtainable()
+                            .filter(candidate -> (!filterPlayer || !StandTypeUtil.isIn(candidate, JTagRegistry.PLAYER_STAND_BLACKLIST, registryAccess))
+                                    && (!filterMob || !StandTypeUtil.isIn(candidate, JTagRegistry.MOB_STAND_BLACKLIST, registryAccess))
+                                    && (!exclusive || candidate == standData.getType() || !JCraft.getExclusiveStandsData().isStandUsed(candidate)))
+                            .toList();
+                    final StandType chosen = available.isEmpty()
+                            ? StandTypeUtil.getRandom(rng, true, registryAccess, registryAccess != null, false)
+                            : available.get(rng.nextInt(available.size()));
+                    standData.setType(chosen);
                 }
 
                 livingEntity.unRide();

@@ -1,9 +1,12 @@
 package net.arna.jcraft.api.pose.modifier;
 
 import net.arna.jcraft.api.pose.ModelType;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.model.Model;
 import net.minecraft.world.entity.LivingEntity;
 
+@Environment(EnvType.CLIENT)
 public interface IPoseModifier {
     IPoseModifier EMPTY = new IPoseModifier() {
         @Override

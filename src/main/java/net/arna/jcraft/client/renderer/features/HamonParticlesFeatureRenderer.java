@@ -51,13 +51,16 @@ public class HamonParticlesFeatureRenderer<S extends HumanoidRenderState, M exte
         LAST_EMIT_TICK.put(entity, entity.tickCount);
 
         final RandomSource rand = entity.getRandom();
-        final double ox = (rand.nextDouble() - 0.5) * entity.getBbWidth() * 1.4;
-        final double oy = rand.nextDouble() * entity.getBbHeight();
-        final double oz = (rand.nextDouble() - 0.5) * entity.getBbWidth() * 1.4;
+        final double lx = (rand.nextDouble() - 0.5) * entity.getBbWidth() * 1.4;
+        final double ly = rand.nextDouble() * entity.getBbHeight();
+        final double lz = (rand.nextDouble() - 0.5) * entity.getBbWidth() * 1.4;
+        final var dir = net.arna.jcraft.common.gravity.api.GravityChangerAPI.getGravityDirection(entity);
+        final var offset = net.arna.jcraft.common.gravity.util.RotationUtil.vecPlayerToWorld(lx, ly, lz, dir);
+        final var vel = net.arna.jcraft.common.gravity.util.RotationUtil.vecPlayerToWorld(0.0, 0.03, 0.0, dir);
         entity.level().addParticle(
                 JParticleTypeRegistry.HAMON_SPARK.get(),
-                entity.getX() + ox, entity.getY() + oy, entity.getZ() + oz,
-                0.0, 0.03, 0.0
+                entity.getX() + offset.x, entity.getY() + offset.y, entity.getZ() + offset.z,
+                vel.x, vel.y, vel.z
         );
     }
 

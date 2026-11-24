@@ -6,6 +6,8 @@ import lombok.*;
 import net.arna.jcraft.api.pose.ModelType;
 import net.arna.jcraft.api.pose.ModifierCondition;
 import net.arna.jcraft.common.util.JUtils;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.Model;
 import net.minecraft.util.Mth;
@@ -13,6 +15,7 @@ import net.minecraft.world.entity.LivingEntity;
 
 import static net.minecraft.util.Mth.DEG_TO_RAD;
 
+@Environment(EnvType.CLIENT)
 @Getter
 @RequiredArgsConstructor
 @AllArgsConstructor(access = AccessLevel.PRIVATE)

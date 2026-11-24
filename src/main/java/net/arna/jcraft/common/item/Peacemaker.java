@@ -1,6 +1,5 @@
 package net.arna.jcraft.common.item;
 
-import dev.architectury.platform.Platform;
 import mod.azure.azurelib.animation.dispatch.command.AzCommand;
 import mod.azure.azurelib.animation.play_behavior.AzPlayBehaviors;
 import net.arna.jcraft.JCraft;
@@ -12,7 +11,6 @@ import net.arna.jcraft.common.entity.projectile.BulletProjectile;
 import net.arna.jcraft.common.system.GunAiming;
 import net.arna.jcraft.common.tickable.PeacemakerReload;
 import net.arna.jcraft.common.util.JItemData;
-import net.fabricmc.api.EnvType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -36,6 +34,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class Peacemaker extends Item {
 
@@ -74,28 +73,26 @@ public class Peacemaker extends Item {
         return data.getIntOr(SHOTS_ID, 0);
     }
 
+    private static volatile Supplier<String> fireKeySupplier = () -> "LMB";
+    private static volatile Supplier<String> aimKeySupplier = () -> "RMB";
+    private static volatile Supplier<String> reloadKeySupplier = () -> "MMB";
+
+    public static void setClientKeySuppliers(Supplier<String> fire, Supplier<String> aim, Supplier<String> reload) {
+        fireKeySupplier = fire != null ? fire : () -> "LMB";
+        aimKeySupplier = aim != null ? aim : () -> "RMB";
+        reloadKeySupplier = reload != null ? reload : () -> "MMB";
+    }
+
     public static String getFireKey() {
-        return Platform.getEnv() == EnvType.CLIENT ? ClientKeys.fire() : "LMB";
+        return fireKeySupplier.get();
     }
 
     public static String getAimKey() {
-        return Platform.getEnv() == EnvType.CLIENT ? ClientKeys.aim() : "RMB";
+        return aimKeySupplier.get();
     }
 
     public static String getReloadKey() {
-        return Platform.getEnv() == EnvType.CLIENT ? ClientKeys.reload() : "MMB";
-    }
-
-    private static final class ClientKeys {
-        static String fire() {
-            return net.minecraft.client.Minecraft.getInstance().options.keyAttack.getTranslatedKeyMessage().getString();
-        }
-        static String aim() {
-            return net.minecraft.client.Minecraft.getInstance().options.keyUse.getTranslatedKeyMessage().getString();
-        }
-        static String reload() {
-            return net.minecraft.client.Minecraft.getInstance().options.keyPickItem.getTranslatedKeyMessage().getString();
-        }
+        return reloadKeySupplier.get();
     }
 
     @Override

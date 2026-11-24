@@ -1,9 +1,6 @@
 package net.arna.jcraft.common.network.s2c;
 
-import dev.architectury.event.events.client.ClientTickEvent;
 import dev.architectury.event.events.common.TickEvent;
-import dev.architectury.networking.NetworkManager;
-import dev.architectury.platform.Platform;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -11,7 +8,6 @@ import lombok.Data;
 import lombok.NonNull;
 import net.arna.jcraft.common.entity.stand.MadeInHeavenEntity;
 import net.arna.jcraft.api.registry.JPacketRegistry;
-import net.fabricmc.api.EnvType;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
@@ -37,11 +33,6 @@ public class TimeAccelStatePacket {
     public static void init() {
         // Decrease all durations.
         TickEvent.SERVER_POST.register(TimeAccelStatePacket::tick);
-        if (Platform.getEnv() == EnvType.CLIENT) {
-            ClientTickEvent.CLIENT_POST.register(c -> {
-                if (!c.hasSingleplayerServer()) tick(c);
-            });
-        }
 
         // Handle acceleration on server.
         TickEvent.SERVER_LEVEL_POST.register(world -> {
@@ -51,6 +42,10 @@ public class TimeAccelStatePacket {
 
             applyAcceleration(world, t -> net.arna.jcraft.common.util.JUtils.setDayTime(world, t));
         });
+    }
+
+    public static void tickClient() {
+        tick(null);
     }
 
     public static void addAcceleration(final int mihEntityId, final int duration, final long startTime) {

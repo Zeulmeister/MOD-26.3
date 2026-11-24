@@ -17,7 +17,6 @@ import net.arna.jcraft.api.stand.StandData;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.api.stand.StandInfo;
 import net.arna.jcraft.api.stand.SummonData;
-import net.arna.jcraft.client.renderer.entity.stands.TheSunRenderer;
 import net.arna.jcraft.common.attack.moves.shared.NoOpMove;
 import net.arna.jcraft.common.attack.moves.thesun.FireMeteorAttack;
 import net.arna.jcraft.common.attack.moves.thesun.FireSunBeamAttack;

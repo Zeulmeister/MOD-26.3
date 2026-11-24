@@ -3,8 +3,11 @@ package net.arna.jcraft.api.pose;
 import com.mojang.serialization.Codec;
 import it.unimi.dsi.fastutil.floats.FloatBinaryOperator;
 import net.arna.jcraft.common.util.JCodecUtils;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.model.geom.ModelPart;
 
+@Environment(EnvType.CLIENT)
 public enum ModifierOperation {
     SET((base, value) -> value),
     ADD(Float::sum),

@@ -4,7 +4,6 @@ import it.unimi.dsi.fastutil.ints.IntSet;
 import lombok.NonNull;
 import mod.azure.azurelib.animation.dispatch.command.AzCommand;
 import mod.azure.azurelib.animation.play_behavior.AzPlayBehaviors;
-import mod.azure.azurelib.util.client.RenderUtils;
 import net.arna.jcraft.JCraft;
 import net.arna.jcraft.api.Attacks;
 import net.arna.jcraft.api.attack.MoveMap;
@@ -14,7 +13,6 @@ import net.arna.jcraft.api.attack.StateContainer;
 import net.arna.jcraft.api.attack.enums.BlockableType;
 import net.arna.jcraft.api.attack.enums.MoveClass;
 import net.arna.jcraft.api.attack.enums.StunType;
-import net.arna.jcraft.api.pose.modifier.IPoseModifier;
 import net.arna.jcraft.api.registry.JMarkerExtractorRegistry;
 import net.arna.jcraft.api.registry.JMarkerInjectorRegistry;
 import net.arna.jcraft.api.registry.JSoundRegistry;
@@ -71,7 +69,6 @@ public final class KQBTDEntity extends AbstractKillerQueenEntity<KQBTDEntity, KQ
                     .build())
             .summonData(SummonData.of(JSoundRegistry.KQBTD_SUMMON))
             .build();
-    public static final Supplier<IPoseModifier> POSE = AbstractKillerQueenEntity.POSE;
 
     public static final ElbowAttack<KQBTDEntity> ELBOW = new ElbowAttack<KQBTDEntity>(0, 5, 9, 0.75f,
             7.5f, 10, 1f, 1.1f, 0f)
@@ -150,7 +147,7 @@ public final class KQBTDEntity extends AbstractKillerQueenEntity<KQBTDEntity, KQ
     @Override
     public Vector3f getAuraColor() {
         final int skin = getSkin();
-        final float deltaTick = (float) RenderUtils.getCurrentTick() * 50 % 2.0f;
+        final float deltaTick = (float) ((net.minecraft.util.Util.getNanos() / 1_000_000.0) % 2.0);
         return switch (skin) {
             case 1 ->
                 new Vector3f(auraColors[skin]).mul(1.0f, deltaTick, 1.0f);

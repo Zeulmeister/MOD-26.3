@@ -3,6 +3,8 @@ package net.arna.jcraft.api.pose;
 import com.mojang.serialization.Codec;
 import net.arna.jcraft.common.util.JCodecUtils;
 import net.arna.jcraft.common.util.JUtils;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.model.Model;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
@@ -15,6 +17,7 @@ import net.minecraft.world.item.Items;
 import java.util.List;
 import java.util.function.BiPredicate;
 
+@Environment(EnvType.CLIENT)
 public enum ModifierCondition {
     LEFT_ARM_EMPTY((model, user) -> isArmEmptyAndFree(user, HumanoidArm.LEFT)),
     RIGHT_ARM_EMPTY((model, user) -> isArmEmptyAndFree(user, HumanoidArm.RIGHT)),

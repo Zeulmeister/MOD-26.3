@@ -103,11 +103,21 @@ public abstract class CameraMixin {
                                                   Operation<Void> original, float partialTick) {
         if (this.entity != null) {
             Direction dir = GravityChangerAPI.getGravityDirection(this.entity);
-            if (dir != Direction.DOWN) {
+            Optional<RotationAnimation> animOpt = GravityChangerAPI.getGravityAnimation(this.entity);
+            boolean animating = animOpt.map(RotationAnimation::isInAnimation).orElse(false);
+            if (dir != Direction.DOWN || animating) {
                 float eh = Mth.lerp(partialTick, this.eyeHeightOld, this.eyeHeight);
                 Vec3 base = this.entity.getPosition(partialTick);
-                Vec3 eyeOffset = RotationUtil.vecPlayerToWorld(0.0, eh, 0.0, dir);
-                original.call(instance, base.x + eyeOffset.x, base.y + eyeOffset.y, base.z + eyeOffset.z);
+                Vector3f eyeVec;
+                if (animating) {
+                    Quaternionf worldQuat = animOpt.get().getCurrentGravityRotation(dir, Util.getMillis());
+                    Quaternionf camQuat = new Quaternionf(worldQuat).conjugate();
+                    eyeVec = new Vector3f(0.0f, eh, 0.0f).rotate(camQuat);
+                } else {
+                    Vec3 rotated = RotationUtil.vecPlayerToWorld(0.0, eh, 0.0, dir);
+                    eyeVec = new Vector3f((float) rotated.x, (float) rotated.y, (float) rotated.z);
+                }
+                original.call(instance, base.x + eyeVec.x, base.y + eyeVec.y, base.z + eyeVec.z);
                 return;
             }
         }

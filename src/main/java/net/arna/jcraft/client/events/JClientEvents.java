@@ -218,6 +218,9 @@ public class JClientEvents {
     }
 
     public static void tickClient(final Minecraft client) {
+        if (net.arna.jcraft.client.debug.ClientVisualDiagnostic.ENABLED) {
+            net.arna.jcraft.client.debug.ClientVisualDiagnostic.tick(client);
+        }
         final LocalPlayer player = client.player;
         if (player == null) {
             net.arna.jcraft.client.remote.StandRemoteControlHandler.resetCamera(client);

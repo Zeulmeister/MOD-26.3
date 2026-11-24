@@ -5,11 +5,14 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Builder;
 import lombok.Singular;
 import net.arna.jcraft.api.pose.*;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.model.Model;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.List;
 
+@Environment(EnvType.CLIENT)
 @Builder
 public record CustomPoseModifier(@Singular List<ModifierCondition> conditions, ModifierOperation operation,
                                  ModelPartGetter part, ModelPartProperty property, float value) implements IPoseModifier {
