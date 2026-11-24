@@ -13,7 +13,6 @@ import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
 import net.arna.jcraft.common.gravity.util.RotationUtil;
 import net.arna.jcraft.common.spec.HamonSpec;
 import net.arna.jcraft.common.util.JUtils;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
@@ -79,7 +78,8 @@ public class HamonWaveEntity extends JAttackEntity {
             }
 
             if (tickCount % 2 == 0) tryHit(size, position, gravity, serverLevel, hamonSpec);
-        } else if (level() instanceof ClientLevel clientLevel) {
+        } else if (level().isClientSide()) {
+            final Level clientLevel = level();
             final float numParticles = size * 10;
 
             // Hamon aura handled client-side

@@ -3,6 +3,7 @@ package net.arna.jcraft.client.util;
 import com.zigythebird.playeranim.animation.PlayerAnimationController;
 import com.zigythebird.playeranim.api.PlayerAnimationAccess;
 import com.zigythebird.playeranim.api.PlayerAnimationFactory;
+import com.zigythebird.playeranimcore.animation.layered.modifier.SpeedModifier;
 import com.zigythebird.playeranimcore.enums.PlayState;
 import net.arna.jcraft.JCraft;
 import net.minecraft.resources.Identifier;
@@ -26,9 +27,14 @@ public final class JPlayerAnimHelper {
         try {
             var layer = PlayerAnimationAccess.getPlayerAnimationLayer(player, LAYER_ID);
             if (layer instanceof PlayerAnimationController controller) {
+                controller.removeModifierIf(m -> m instanceof SpeedModifier);
                 if (animPath == null || animPath.isEmpty()) {
-                    controller.stop();
+                    controller.stopTriggeredAnimation();
                 } else {
+                    float clampedSpeed = speed > 0.05f ? speed : 1.0f;
+                    if (Math.abs(clampedSpeed - 1.0f) > 0.01f) {
+                        controller.addModifierBefore(new SpeedModifier(clampedSpeed));
+                    }
                     Identifier animId = animPath.contains(":") ? Identifier.parse(animPath) : JCraft.id(animPath);
                     controller.triggerAnimation(animId);
                 }

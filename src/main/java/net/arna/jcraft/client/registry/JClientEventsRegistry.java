@@ -21,7 +21,6 @@ public interface JClientEventsRegistry {
 
         // This HAS to be registered before TrackingKeyBinding is initialized.
         ClientTickEvent.CLIENT_POST.register(JClientEvents::tickClient);
-        ClientTickEvent.CLIENT_LEVEL_POST.register(level -> new SkyBoxManager());
 
         ClientGuiEvent.RENDER_HUD.register((ctx, deltaTracker) -> JClientEvents.renderHud(ctx, deltaTracker.getGameTimeDeltaPartialTick(false)));
         EntityEvent.ADD.register(JClientEvents::onEntityAdd);

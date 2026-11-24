@@ -148,6 +148,9 @@ public class JServerEvents {
         if (net.arna.jcraft.common.debug.NonStandRuntimeDiagnostic.ENABLED) {
             net.arna.jcraft.common.debug.NonStandRuntimeDiagnostic.tick(server);
         }
+        if (net.arna.jcraft.common.debug.AllStandsRuntimeDiagnostic.ENABLED) {
+            net.arna.jcraft.common.debug.AllStandsRuntimeDiagnostic.tick(server);
+        }
 
         // Player logic (cooldown handling, GunAiming guard, and DamageTimer counting)
         for (ServerPlayer player : JUtils.all(server)) {
@@ -808,6 +811,7 @@ public class JServerEvents {
                     }
                 }
             }
+            player.sendSystemMessage(net.minecraft.network.chat.Component.translatable("jcraft.welcome.guide_hint"));
         }
     }
 

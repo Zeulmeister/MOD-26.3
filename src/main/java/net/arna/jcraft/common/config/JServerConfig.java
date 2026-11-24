@@ -76,9 +76,9 @@ public class JServerConfig {
     public static final FloatOption SCALING_PENALTY_PER_HIT = new FloatOption(JCraft.id("scaling_penalty_per_hit"), BALANCE, 0.02f);
     public static final BooleanOption ENABLE_MOVE_COOLDOWNS = new BooleanOption(JCraft.id("enable_move_cooldowns"), BALANCE, true);
     public static final FloatOption COOLDOWN_MULTIPLIER = new FloatOption(JCraft.id("cooldown_multiplier"), BALANCE, 1.0f);
-    public static final BooleanOption ENABLE_IPS = new BooleanOption(JCraft.id("enable_ips"), BALANCE, false);
-    public static final BooleanOption SURVIVAL_CDC = new BooleanOption(JCraft.id("survival_cdc"), BALANCE, false);
-    public static final BooleanOption ENABLE_FRIENDLY_FIRE = new BooleanOption(JCraft.id("enable_friendly_fire"), BALANCE, true);
+    public static final BooleanOption ENABLE_IPS = new BooleanOption(JCraft.id("enable_ips"), BALANCE, true);
+    public static final BooleanOption SURVIVAL_CDC = new BooleanOption(JCraft.id("survival_cdc"), BALANCE, true);
+    public static final BooleanOption ENABLE_FRIENDLY_FIRE = new BooleanOption(JCraft.id("enable_friendly_fire"), BALANCE, false);
     public static final IntOption BASE_AI_LEVEL = new IntOption(JCraft.id("base_ai_level"), BALANCE, IJAttackerBrain.COMPETITIVE_LEVEL, IJAttackerBrain.MIN_LEVEL, IJAttackerBrain.MAX_LEVEL);
 
     private static final Identifier MINECRAFT_REBALANCE = JCraft.id("minecraft_rebalance");

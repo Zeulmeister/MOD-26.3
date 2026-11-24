@@ -36,8 +36,11 @@ public final class JCraftFabricClient implements ClientModInitializer {
             final var matrices = context.poseStack();
             final var collector = context.submitNodeCollector();
             net.arna.jcraft.client.renderer.effects.ShockwaveEffectRenderer.render(matrices, camPos, world, tickDelta, collector);
+            net.arna.jcraft.client.renderer.effects.SplatterEffectRenderer.render(matrices, camPos, world, tickDelta, collector);
+            net.arna.jcraft.client.renderer.effects.AttackHitboxEffectRenderer.render(matrices, camPos, collector);
             net.arna.jcraft.client.renderer.effects.TimeErasePredictionEffectRenderer.render(matrices, camPos, world, tickDelta, collector, camState);
             net.arna.jcraft.client.renderer.effects.TimeAccelerationEffectRenderer.render(world);
+            net.arna.jcraft.client.rendering.MihAfterimageTrail.renderAll(matrices, camPos, world, tickDelta, collector, camState);
         });
     }
 }

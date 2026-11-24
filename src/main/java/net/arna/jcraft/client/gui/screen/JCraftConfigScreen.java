@@ -38,13 +38,13 @@ public final class JCraftConfigScreen extends Screen {
     private static final int CTRL_W = 122;
     private static final int VALUE_W = 78;
 
-    private static final String[] TAB_NAMES = {
-            "⏱ Balance",
-            "🌍 World",
-            "🎮 Game",
-            "🌀 Gravity",
-            "🖥 HUD",
-            "⌨ Keys"
+    private static final String[] TAB_KEYS = {
+            "jcraft.config.tab.balance",
+            "jcraft.config.tab.world",
+            "jcraft.config.tab.game",
+            "jcraft.config.tab.gravity",
+            "jcraft.config.tab.hud",
+            "jcraft.config.tab.keys"
     };
 
     @Nullable
@@ -95,6 +95,22 @@ public final class JCraftConfigScreen extends Screen {
 
     private List<ConfigRow> buildTimeAndBalanceTab() {
         List<ConfigRow> rows = new ArrayList<>();
+        rows.add(new ConfigRow(
+                true,
+                Component.translatable("jcraft.config.presets"),
+                Component.translatable("jcraft.config.presets.tooltip"),
+                this::detectActivePresetLabel,
+                () -> 0xFFFDE047,
+                () -> {
+                    boolean canEdit = canEditServerConfig();
+                    return List.of(
+                            new ButtonSpec(Component.translatable("jcraft.config.preset.coop").getString(), 39, this::applyCoopPreset, canEdit),
+                            new ButtonSpec(Component.translatable("jcraft.config.preset.pvp").getString(), 37, this::applyPvpPreset, canEdit),
+                            new ButtonSpec(Component.translatable("jcraft.config.preset.chaos").getString(), 42, this::applyChaosPreset, canEdit)
+                    );
+                }
+        ));
+
         // Time Stop, Time Erasure & Time Acceleration durations (ticks + seconds)
         rows.add(serverTicks(JServerConfig.TW_TIME_STOP_DURATION, 5, 20, 1200));
         rows.add(serverTicks(JServerConfig.SPTW_TIME_STOP_DURATION, 5, 20, 1200));
@@ -189,11 +205,13 @@ public final class JCraftConfigScreen extends Screen {
         List<ConfigRow> rows = new ArrayList<>();
         rows.add(new ConfigRow(
                 false,
-                Component.literal("Reset All Ability Keybinds"),
-                Component.literal("Restores all 14 JCraft keybinds to conflict-free defaults and unbinds colliding Vanilla non-combat popup keys (G/O/P/X). F3+key debug chords are ignored."),
-                () -> countKeybindConflicts() > 0 ? ("⚠ " + countKeybindConflicts() + " conflict(s)") : "All clean",
+                Component.translatable("jcraft.config.keys.reset_all"),
+                Component.translatable("jcraft.config.keys.reset_all.tooltip"),
+                () -> countKeybindConflicts() > 0
+                        ? Component.translatable("jcraft.config.keys.conflicts", countKeybindConflicts()).getString()
+                        : Component.translatable("jcraft.config.keys.all_clean").getString(),
                 () -> countKeybindConflicts() > 0 ? 0xFFF87171 : 0xFF34D399,
-                () -> List.of(new ButtonSpec("↺ Reset Defaults", CTRL_W, () -> {
+                () -> List.of(new ButtonSpec(Component.translatable("jcraft.config.keys.reset_btn").getString(), CTRL_W, () -> {
                     listeningKey = null;
                     JCraftClient.resetKeyBindingsToDefaults(Minecraft.getInstance());
                 }, true))
@@ -204,12 +222,14 @@ public final class JCraftConfigScreen extends Screen {
             rows.add(new ConfigRow(
                     false,
                     Component.translatable(kb.getName()),
-                    Component.literal("Click the key button to rebind, or press ESC to unbind."),
+                    Component.translatable("jcraft.config.keys.row_tooltip"),
                     () -> {
-                        if (hasJCraftConflict(kb)) return "⚠ Dup";
+                        if (hasJCraftConflict(kb)) return Component.translatable("jcraft.config.keys.dup").getString();
                         String vanillaConflict = findVanillaConflictName(kb);
                         if (vanillaConflict != null) return "⚠ " + vanillaConflict;
-                        return kb.isDefault() ? "Default" : "Custom";
+                        return kb.isDefault()
+                                ? Component.translatable("jcraft.config.keys.default").getString()
+                                : Component.translatable("jcraft.config.keys.custom").getString();
                     },
                     () -> {
                         if (hasJCraftConflict(kb)) return 0xFFF87171;
@@ -498,6 +518,70 @@ public final class JCraftConfigScreen extends Screen {
         dirtyServerOptions.add(opt);
     }
 
+    private void setServerBool(BooleanOption opt, boolean value) {
+        opt.setValue(value);
+        dirtyServerOptions.add(opt);
+    }
+
+    private void applyCoopPreset() {
+        setServerBool(JServerConfig.ENABLE_IPS, true);
+        setServerBool(JServerConfig.SURVIVAL_CDC, true);
+        setServerBool(JServerConfig.ENABLE_FRIENDLY_FIRE, false);
+        setServerFloat(JServerConfig.STAND_DAMAGE_MULTIPLIER, 1.0f);
+        setServerFloat(JServerConfig.COOLDOWN_MULTIPLIER, 1.0f);
+        setServerBool(JServerConfig.HEALTH_TO_DAMAGE_SCALING, true);
+        setServerBool(JServerConfig.KILL_VAMPIRISM, false);
+        setServerBool(JServerConfig.DISABLE_COMBAT_ELYTRA, true);
+        setServerBool(JServerConfig.MINING_BARRAGE, false);
+    }
+
+    private void applyPvpPreset() {
+        setServerBool(JServerConfig.ENABLE_IPS, true);
+        setServerBool(JServerConfig.SURVIVAL_CDC, false);
+        setServerBool(JServerConfig.ENABLE_FRIENDLY_FIRE, true);
+        setServerFloat(JServerConfig.STAND_DAMAGE_MULTIPLIER, 1.0f);
+        setServerFloat(JServerConfig.COOLDOWN_MULTIPLIER, 1.0f);
+        setServerBool(JServerConfig.HEALTH_TO_DAMAGE_SCALING, true);
+        setServerBool(JServerConfig.KILL_VAMPIRISM, true);
+        setServerBool(JServerConfig.DISABLE_COMBAT_ELYTRA, true);
+    }
+
+    private void applyChaosPreset() {
+        setServerBool(JServerConfig.ENABLE_IPS, false);
+        setServerBool(JServerConfig.SURVIVAL_CDC, true);
+        setServerBool(JServerConfig.ENABLE_FRIENDLY_FIRE, true);
+        setServerFloat(JServerConfig.STAND_DAMAGE_MULTIPLIER, 1.5f);
+        setServerFloat(JServerConfig.COOLDOWN_MULTIPLIER, 0.6f);
+        setServerBool(JServerConfig.HEALTH_TO_DAMAGE_SCALING, false);
+        setServerBool(JServerConfig.KILL_VAMPIRISM, true);
+        setServerBool(JServerConfig.MINING_BARRAGE, true);
+    }
+
+    private String detectActivePresetLabel() {
+        if (JServerConfig.ENABLE_IPS.getValue()
+                && JServerConfig.SURVIVAL_CDC.getValue()
+                && !JServerConfig.ENABLE_FRIENDLY_FIRE.getValue()
+                && !JServerConfig.KILL_VAMPIRISM.getValue()
+                && Math.abs(JServerConfig.COOLDOWN_MULTIPLIER.getValue() - 1.0f) < 0.01f) {
+            return Component.translatable("jcraft.config.preset.coop").getString();
+        }
+        if (JServerConfig.ENABLE_IPS.getValue()
+                && !JServerConfig.SURVIVAL_CDC.getValue()
+                && JServerConfig.ENABLE_FRIENDLY_FIRE.getValue()
+                && JServerConfig.KILL_VAMPIRISM.getValue()
+                && Math.abs(JServerConfig.COOLDOWN_MULTIPLIER.getValue() - 1.0f) < 0.01f) {
+            return Component.translatable("jcraft.config.preset.pvp").getString();
+        }
+        if (!JServerConfig.ENABLE_IPS.getValue()
+                && JServerConfig.SURVIVAL_CDC.getValue()
+                && JServerConfig.ENABLE_FRIENDLY_FIRE.getValue()
+                && JServerConfig.STAND_DAMAGE_MULTIPLIER.getValue() >= 1.49f
+                && JServerConfig.COOLDOWN_MULTIPLIER.getValue() <= 0.61f) {
+            return Component.translatable("jcraft.config.preset.chaos").getString();
+        }
+        return Component.translatable("jcraft.config.keys.custom").getString();
+    }
+
     private static float round2(float v) {
         return Math.round(v * 100.0f) / 100.0f;
     }
@@ -519,13 +603,13 @@ public final class JCraftConfigScreen extends Screen {
         this.panelTop = (this.height - this.panelH) / 2;
 
         // 6 top category tabs
-        int tabCount = TAB_NAMES.length;
+        int tabCount = TAB_KEYS.length;
         int tabGap = 4;
         int tabW = (this.panelW - 16 - tabGap * (tabCount - 1)) / tabCount;
         int tabY = this.panelTop + 18;
         for (int t = 0; t < tabCount; t++) {
             final int tabIdx = t;
-            String title = TAB_NAMES[t];
+            String title = Component.translatable(TAB_KEYS[t]).getString();
             if (tabIdx == activeTab) {
                 title = "§e" + title;
             }
@@ -572,14 +656,14 @@ public final class JCraftConfigScreen extends Screen {
         int navW = Math.min(58, (footW - 16) / 6);
         int clothW = (footW - navW * 2 - 48) / 2;
 
-        Button prevBtn = Button.builder(Component.literal("◀ Prev"), b -> {
+        Button prevBtn = Button.builder(Component.translatable("jcraft.config.nav.prev"), b -> {
             scrollOffset = Math.max(0, scrollOffset - rowsPerPage);
             this.init();
         }).bounds(this.panelLeft + 8, footerTop, navW, 18).build();
         prevBtn.active = scrollOffset > 0;
         this.addRenderableWidget(prevBtn);
 
-        Button nextBtn = Button.builder(Component.literal("Next ▶"), b -> {
+        Button nextBtn = Button.builder(Component.translatable("jcraft.config.nav.next"), b -> {
             scrollOffset = Math.min(maxStart, scrollOffset + rowsPerPage);
             this.init();
         }).bounds(this.panelLeft + 12 + navW, footerTop, navW, 18).build();
@@ -587,21 +671,27 @@ public final class JCraftConfigScreen extends Screen {
         this.addRenderableWidget(nextBtn);
 
         int clothStartX = this.panelLeft + this.panelW - 8 - clothW * 2 - 4;
-        this.addRenderableWidget(Button.builder(Component.literal("Server Config (Cloth UI)"), b -> {
+        this.addRenderableWidget(Button.builder(Component.translatable("jcraft.config.cloth.server"), b -> {
             Minecraft.getInstance().gui.setScreen(ServerConfigUI.buildScreen(this, canEditServerConfig()));
         }).bounds(clothStartX, footerTop, clothW, 18).build());
 
-        this.addRenderableWidget(Button.builder(Component.literal("Client Config (Cloth UI)"), b -> {
+        this.addRenderableWidget(Button.builder(Component.translatable("jcraft.config.cloth.client"), b -> {
             try {
                 Screen cloth = AutoConfigClient.getConfigScreen(JClientConfig.class, this).get();
                 Minecraft.getInstance().gui.setScreen(cloth);
             } catch (Throwable ignored) {}
         }).bounds(clothStartX + clothW + 4, footerTop, clothW, 18).build());
 
-        // Bottom controls row 2: Done
-        int doneW = Math.min(180, this.panelW / 3);
+        // Bottom controls row 2: Guide + Done
+        int guideW = Math.min(92, this.panelW / 5);
+        int doneW = Math.min(132, this.panelW / 4);
+        int bottomPairStart = this.panelLeft + (this.panelW - (guideW + 6 + doneW)) / 2;
+        this.addRenderableWidget(Button.builder(Component.translatable("jcraft.config.open_guide"),
+                        b -> Minecraft.getInstance().gui.setScreen(new StandGuideScreen(this)))
+                .bounds(bottomPairStart, footerTop + 21, guideW, 18)
+                .build());
         this.addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> saveAndClose(true))
-                .bounds(this.panelLeft + (this.panelW - doneW) / 2, footerTop + 21, doneW, 18)
+                .bounds(bottomPairStart + guideW + 6, footerTop + 21, doneW, 18)
                 .build());
     }
 
@@ -683,7 +773,7 @@ public final class JCraftConfigScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor gui, int mouseX, int mouseY, float partialTick) {
         super.extractRenderState(gui, mouseX, mouseY, partialTick);
 
-        gui.centeredText(this.font, Component.literal("★ JCraft Config — JoJo 26.3 ★"), this.panelLeft + this.panelW / 2, this.panelTop + 6, 0xFFFDE68A);
+        gui.centeredText(this.font, Component.translatable("jcraft.config.screen_title"), this.panelLeft + this.panelW / 2, this.panelTop + 6, 0xFFFDE68A);
 
         List<ConfigRow> activeRows = tabs.get(activeTab);
         int endIdx = Math.min(activeRows.size(), scrollOffset + rowsPerPage);
@@ -733,13 +823,17 @@ public final class JCraftConfigScreen extends Screen {
         gui.text(this.font, rangeInfo, this.panelLeft + 10, footerY, 0xFFC4B5FD, false);
 
         if (activeTab < 4 && !canEditServerConfig()) {
-            gui.text(this.font, "OP required to edit", this.panelLeft + this.panelW - 115, footerY, 0xFFF87171, false);
+            String opMsg = Component.translatable("jcraft.config.footer.op_required").getString();
+            gui.text(this.font, opMsg, this.panelLeft + this.panelW - this.font.width(opMsg) - 10, footerY, 0xFFF87171, false);
         } else if (activeTab == 5) {
-            String keyHint = listeningKey != null ? "Press any key/mouse (ESC=unbind)" : "Click key to rebind";
+            String keyHint = listeningKey != null
+                    ? Component.translatable("jcraft.config.footer.press_key").getString()
+                    : Component.translatable("jcraft.config.footer.click_rebind").getString();
             gui.text(this.font, keyHint, this.panelLeft + this.panelW - this.font.width(keyHint) - 10, footerY,
                     listeningKey != null ? 0xFFFDE047 : 0xFF93C5FD, false);
         } else if (!dirtyServerOptions.isEmpty()) {
-            gui.text(this.font, dirtyServerOptions.size() + " modified", this.panelLeft + this.panelW - 76, footerY, 0xFF34D399, false);
+            String modMsg = Component.translatable("jcraft.config.footer.modified", dirtyServerOptions.size()).getString();
+            gui.text(this.font, modMsg, this.panelLeft + this.panelW - this.font.width(modMsg) - 10, footerY, 0xFF34D399, false);
         }
 
         // Tooltip popup for hovered row

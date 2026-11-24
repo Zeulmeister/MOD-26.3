@@ -24,6 +24,8 @@ public final class JoJoRadialWheelScreen extends Screen {
     private static final int RADIUS = 76;
     private int hoveredSlice = -1;
 
+    private boolean hoveringCenter = false;
+
     private static final String[] SLICE_KEYS = {
             "jcraft.radial.skin0",
             "jcraft.radial.skin1",
@@ -64,7 +66,13 @@ public final class JoJoRadialWheelScreen extends Screen {
         double dy = mouseY - cy;
         double dist = Math.hypot(dx, dy);
 
-        if (dist >= 18.0) {
+        boolean prevCenter = hoveringCenter;
+        hoveringCenter = Math.abs(dx) <= 30 && Math.abs(dy) <= 15;
+        if (hoveringCenter && !prevCenter && Minecraft.getInstance().player != null) {
+            Minecraft.getInstance().player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.25F, 1.6F);
+        }
+
+        if (!hoveringCenter && dist >= 22.0) {
             double angle = Math.atan2(dy, dx) + Math.PI / 2.0;
             if (angle < 0) angle += Math.PI * 2.0;
             int newSlice = ((int) Math.floor((angle + Math.PI / SLICE_COUNT) / (Math.PI * 2.0 / SLICE_COUNT))) % SLICE_COUNT;
@@ -76,10 +84,13 @@ public final class JoJoRadialWheelScreen extends Screen {
             hoveredSlice = -1;
         }
 
-        // Center medallion
-        graphics.fill(cx - 28, cy - 14, cx + 28, cy + 14, 0xDD1A0B2E);
-        graphics.outline(cx - 28, cy - 14, 56, 28, 0xFFD4AF37);
-        graphics.centeredText(this.font, "★ JOJO ★", cx, cy - 4, 0xFFFDE68A);
+        // Interactive center medallion -> Opens Stand & Gameplay Guide on click
+        int medBg = hoveringCenter ? 0xEE3B0764 : 0xDD1A0B2E;
+        int medBorder = hoveringCenter ? 0xFFFDE047 : 0xFFD4AF37;
+        graphics.fill(cx - 30, cy - 14, cx + 30, cy + 14, medBg);
+        graphics.outline(cx - 30, cy - 14, 60, 28, medBorder);
+        graphics.centeredText(this.font, Component.translatable("jcraft.radial.guide_center"), cx, cy - 4,
+                hoveringCenter ? 0xFFFDE047 : 0xFFFDE68A);
 
         // 8 radial cards arranged around the center
         for (int i = 0; i < SLICE_COUNT; i++) {
@@ -100,7 +111,9 @@ public final class JoJoRadialWheelScreen extends Screen {
             graphics.centeredText(this.font, SLICE_ICONS[i], sx, sy - 4, selected ? 0xFFFDE047 : 0xFFE9D5FF);
         }
 
-        if (hoveredSlice >= 0 && hoveredSlice < SLICE_COUNT) {
+        if (hoveringCenter) {
+            graphics.centeredText(this.font, Component.translatable("jcraft.radial.open_guide"), cx, cy + RADIUS + 24, 0xFFFDE047);
+        } else if (hoveredSlice >= 0 && hoveredSlice < SLICE_COUNT) {
             graphics.centeredText(this.font, Component.translatable(SLICE_KEYS[hoveredSlice]), cx, cy + RADIUS + 24, 0xFFFDE68A);
         } else {
             graphics.centeredText(this.font, Component.translatable("jcraft.radial.hint"), cx, cy + RADIUS + 24, 0xFFC4B5FD);
@@ -109,9 +122,15 @@ public final class JoJoRadialWheelScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == 0 && hoveredSlice >= 0) {
-            executeSlice(hoveredSlice);
-            return true;
+        if (event.button() == 0) {
+            if (hoveringCenter) {
+                Minecraft.getInstance().gui.setScreen(new StandGuideScreen(null));
+                return true;
+            }
+            if (hoveredSlice >= 0) {
+                executeSlice(hoveredSlice);
+                return true;
+            }
         }
         return super.mouseClicked(event, doubleClick);
     }

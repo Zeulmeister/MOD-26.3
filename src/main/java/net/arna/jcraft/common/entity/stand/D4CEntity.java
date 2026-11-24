@@ -279,10 +279,10 @@ public class D4CEntity extends StandEntity<D4CEntity, D4CEntity.State> {
     @Override
     protected @NonNull AABB makeBoundingBox(net.minecraft.world.phys.Vec3 _bbPos) {
         if (getState() == State.FLAG) {
-            final double x = getX(), y = getY(), z = getZ();
+            final double x = _bbPos.x, y = _bbPos.y, z = _bbPos.z;
             return new AABB(x + 0.5, y + 0.5, z + 0.5, x - 0.5, y, z - 0.5);
         }
-        return super.makeBoundingBox();
+        return super.makeBoundingBox(_bbPos);
     }
 
     /* -- OLD GUN THROW CODE

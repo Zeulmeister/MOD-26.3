@@ -380,10 +380,10 @@ public class KingCrimsonEntity extends StandEntity<KingCrimsonEntity, KingCrimso
     @Override
     protected @NonNull AABB makeBoundingBox(net.minecraft.world.phys.Vec3 _bbPos) {
         if (getTETime() > 0) {
-            final double x = getX(), y = getY(), z = getZ();
+            final double x = _bbPos.x, y = _bbPos.y, z = _bbPos.z;
             return new AABB(x, y, z, x, y + 0.1, z);
         }
-        return super.makeBoundingBox();
+        return super.makeBoundingBox(_bbPos);
     }
 
     public TimeEraseMove getTimeEraseMove() {

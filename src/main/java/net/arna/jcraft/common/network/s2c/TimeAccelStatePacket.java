@@ -49,7 +49,7 @@ public class TimeAccelStatePacket {
                 return;
             }
 
-            applyAcceleration(world, t -> {});
+            applyAcceleration(world, t -> net.arna.jcraft.common.util.JUtils.setDayTime(world, t));
         });
     }
 

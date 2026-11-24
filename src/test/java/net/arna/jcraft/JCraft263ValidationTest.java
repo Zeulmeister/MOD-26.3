@@ -227,7 +227,7 @@ public final class JCraft263ValidationTest {
                 totalMixins++;
             }
         }
-        checkEquals(31, totalMixins, "All 31 common + client Mixins must be registered and bytecode-verified");
+        checkEquals(36, totalMixins, "All 36 common + client Mixins must be registered and bytecode-verified");
     }
 
     static void verifyKineticTimeStopPhysicsMath() {
@@ -521,7 +521,7 @@ public final class JCraft263ValidationTest {
         verifyMc263AssetsWorldgenTradesAndTranslations();
         System.out.println("[PASS] 223 Items, 4 RenderPearl 26.3 Post-Effects + GLSL 330 std140 Shaders, Trades & Translations verified.");
         verifyFabricModJsonEntrypointsAndMixins();
-        System.out.println("[PASS] fabric.mod.json, 16 CCA Components, 5 Entrypoints & all 31 Java 25 Mixins verified.");
+        System.out.println("[PASS] fabric.mod.json, 16 CCA Components, 5 Entrypoints & all 36 Java 25 Mixins verified.");
         verifyKineticTimeStopPhysicsMath();
         System.out.println("[PASS] Kinetic Time Stop Deceleration & +25% Momentum Release Physics verified.");
         verifySmartCombatInputBufferWindowAndExpiry();
@@ -536,7 +536,111 @@ public final class JCraft263ValidationTest {
         System.out.println("[PASS] Stand User Poses, Star Platinum Right Arm & HumanoidModelMixin Arm Safety verified.");
         verifyTimeStopOnlyFlightKeybindsAndCleanHud();
         System.out.println("[PASS] Time-Stop-Only Flight, Debug-Chord-Safe Keybinds & Clean Stand Ability Dock verified.");
+        verifyGameplayAndGameDesignUpgrades();
+        System.out.println("[PASS] Gameplay & Game Design (AU Terrain, ItemToss, StandGuideScreen, Presets & PT-BR Parity) verified.");
+        verifyStandAndSpecMechanicsUpgrades();
+        System.out.println("[PASS] Stand/Spec Mechanics (37/37 Icons & Poses, Gauges, Stealth/Pilot Mixins, NPC Anims & Fixes) verified.");
+        verifyReverseEngineeringFixesAllFourBatches();
+        System.out.println("[PASS] Brutal Reverse-Engineering Fixes (Lotes 1-4: MIH Clock, Hamon Server Safety, Equipment, Features, TS, Gravity C-Moon) verified.");
         System.out.println("=== ALL " + passedAssertions + " ASSERTIONS PASSED SUCCESSFULLY ===");
+    }
+
+    static void verifyGameplayAndGameDesignUpgrades() throws Exception {
+        ClassLoader cl = JCraft263ValidationTest.class.getClassLoader();
+
+        // 1. Complete EN/PT-BR key parity & presence of Gameplay/Guide/Preset keys
+        JsonObject enJson = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/en_us.json"));
+        JsonObject ptJson = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/pt_br.json"));
+        checkEquals(enJson.size(), ptJson.size(), "en_us.json and pt_br.json must have identical key counts");
+        for (String key : enJson.keySet()) {
+            check(ptJson.has(key), "pt_br.json missing translation key: " + key);
+        }
+        for (String requiredKey : List.of(
+                "jcraft.guide.title", "jcraft.guide.tab.moveset", "jcraft.guide.tab.evolutions",
+                "jcraft.guide.tab.combat", "jcraft.guide.tab.progression", "jcraft.radial.guide_center",
+                "jcraft.radial.open_guide", "jcraft.welcome.guide_hint", "jcraft.about.moves",
+                "jcraft.config.presets", "jcraft.config.preset.coop", "jcraft.config.preset.pvp",
+                "jcraft.config.preset.chaos", "jcraft.config.open_guide")) {
+            check(enJson.has(requiredKey) && ptJson.has(requiredKey), "Missing required lang key: " + requiredKey);
+        }
+
+        // 2. Improved Survival/Co-op balance defaults in compiled JServerConfig.<clinit> bytecode
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/common/config/JServerConfig.class")) {
+            check(in != null, "JServerConfig.class must exist");
+            ClassReader cr = new ClassReader(in);
+            ClassNode cn = new ClassNode();
+            cr.accept(cn, 0);
+            var clinit = cn.methods.stream().filter(m -> "<clinit>".equals(m.name)).findFirst().orElseThrow();
+            Integer prevConst = null;
+            Boolean ipsDefault = null, cdcDefault = null, ffDefault = null;
+            for (var insn = clinit.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                if (insn.getOpcode() == org.objectweb.asm.Opcodes.ICONST_0) prevConst = 0;
+                else if (insn.getOpcode() == org.objectweb.asm.Opcodes.ICONST_1) prevConst = 1;
+                if (insn instanceof org.objectweb.asm.tree.FieldInsnNode fi && fi.getOpcode() == org.objectweb.asm.Opcodes.PUTSTATIC) {
+                    if ("ENABLE_IPS".equals(fi.name)) ipsDefault = Integer.valueOf(1).equals(prevConst);
+                    else if ("SURVIVAL_CDC".equals(fi.name)) cdcDefault = Integer.valueOf(1).equals(prevConst);
+                    else if ("ENABLE_FRIENDLY_FIRE".equals(fi.name)) ffDefault = Integer.valueOf(1).equals(prevConst);
+                }
+            }
+            checkEquals(Boolean.TRUE, ipsDefault, "JServerConfig.ENABLE_IPS bytecode default must be true");
+            checkEquals(Boolean.TRUE, cdcDefault, "JServerConfig.SURVIVAL_CDC bytecode default must be true");
+            checkEquals(Boolean.FALSE, ffDefault, "JServerConfig.ENABLE_FRIENDLY_FIRE bytecode default must be false");
+        }
+
+        // 3. DimensionalHopMove implements copyTerrainToAU and no longer has dead fixLightInAU stub
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/common/attack/moves/dirtydeedsdonedirtcheap/DimensionalHopMove.class")) {
+            check(in != null, "DimensionalHopMove.class must exist");
+            ClassReader cr = new ClassReader(in);
+            ClassNode cn = new ClassNode();
+            cr.accept(cn, 0);
+            check(cn.methods.stream().anyMatch(m -> "copyTerrainToAU".equals(m.name)),
+                    "DimensionalHopMove must define copyTerrainToAU");
+            check(cn.methods.stream().noneMatch(m -> "fixLightInAU".equals(m.name)),
+                    "DimensionalHopMove must remove dead fixLightInAU stub");
+        }
+
+        // 4. ItemTossProjectile includes log-stripping & durability/drop helpers
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/common/entity/projectile/ItemTossProjectile.class")) {
+            check(in != null, "ItemTossProjectile.class must exist");
+            ClassReader cr = new ClassReader(in);
+            ClassNode cn = new ClassNode();
+            cr.accept(cn, 0);
+            check(cn.methods.stream().anyMatch(m -> "getStrippedState".equals(m.name)),
+                    "ItemTossProjectile must implement getStrippedState");
+            check(cn.methods.stream().anyMatch(m -> "damageCopyOne".equals(m.name)),
+                    "ItemTossProjectile must implement damageCopyOne");
+        }
+
+        // 5. StandGuideScreen exists and is wired from JoJoRadialWheelScreen and JCraftConfigScreen
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/client/gui/screen/StandGuideScreen.class")) {
+            check(in != null, "StandGuideScreen.class must exist");
+        }
+        // 6. TWOH & GER isolate LevitationPoseModifier into lazy ClientPose holder for dedicated-server safety
+        for (String holder : List.of(
+                "net/arna/jcraft/common/entity/stand/TheWorldOverHeavenEntity$ClientPose.class",
+                "net/arna/jcraft/common/entity/stand/GEREntity$ClientPose.class")) {
+            check(cl.getResource(holder) != null, "Dedicated-server pose isolation class must exist: " + holder);
+        }
+        for (String caller : List.of(
+                "net/arna/jcraft/client/gui/screen/JoJoRadialWheelScreen.class",
+                "net/arna/jcraft/client/gui/screen/JCraftConfigScreen.class")) {
+            try (InputStream in = cl.getResourceAsStream(caller)) {
+                check(in != null, caller + " must exist");
+                ClassReader cr = new ClassReader(in);
+                ClassNode cn = new ClassNode();
+                cr.accept(cn, 0);
+                boolean opensGuide = cn.methods.stream().anyMatch(m -> {
+                    for (var insn = m.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                        if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi
+                                && "net/arna/jcraft/client/gui/screen/StandGuideScreen".equals(mi.owner)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
+                check(opensGuide, caller + " must open StandGuideScreen");
+            }
+        }
     }
 
     static void verifyTimeStopOnlyFlightKeybindsAndCleanHud() throws Exception {
@@ -633,6 +737,199 @@ public final class JCraft263ValidationTest {
             cr.accept(cn, 0);
             check(cn.methods.stream().anyMatch(m -> "renderAbilityTile".equals(m.name)),
                     "JCraftAbilityHud must define renderAbilityTile");
+        }
+    }
+
+    static void verifyStandAndSpecMechanicsUpgrades() throws Exception {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+
+        // 1. All 36 non-NONE Stand icon folders + silver_chariot_possessed + fallback must have all 8 ability icons
+        List<String> expectedIconDirs = List.of(
+                "star_platinum", "the_world", "king_crimson", "d4c", "cream", "killer_queen",
+                "white_snake", "silver_chariot", "magicians_red", "the_fool", "gold_experience",
+                "hierophant_green", "the_sun", "purple_haze", "c_moon", "made_in_heaven",
+                "the_world_over_heaven", "killer_queen_bites_the_dust", "gold_experience_requiem",
+                "star_platinum_the_world", "purple_haze_distortion", "horus", "cinderella", "osiris",
+                "atum", "chariot_requiem", "diver_down", "dragons_dream", "foo_fighters",
+                "goo_goo_dolls", "shadow_the_world", "metallica", "the_hand", "mandom",
+                "crazy_diamond", "aerosmith", "silver_chariot_possessed", "fallback"
+        );
+        Path iconsRoot = RESOURCES_ROOT.resolve("assets/jcraft/textures/gui/ability_icons");
+        List<String> fullSlots = List.of("light.png", "heavy.png", "barrage.png", "special1.png", "special2.png", "special3.png", "ult.png", "utility.png");
+        List<String> mandomSlots = List.of("ult.png", "utility.png");
+        for (String standDir : expectedIconDirs) {
+            List<String> expectedForStand = "mandom".equals(standDir) ? mandomSlots : fullSlots;
+            for (String slot : expectedForStand) {
+                Path png = iconsRoot.resolve(standDir).resolve(slot);
+                check(Files.exists(png) && Files.size(png) > 0, "Missing or empty ability icon: " + standDir + "/" + slot);
+            }
+        }
+
+        // 2. All 35 pose folders (covering 36 non-NONE Stands via SPTW inheriting star_platinum) must parse cleanly
+        //    and all newly generated pose JSONs must gate arm edits behind RIGHT_ARM_EMPTY / LEFT_ARM_EMPTY
+        List<String> expectedPoseDirs = List.of(
+                "star_platinum", "the_world", "king_crimson", "d4c", "cream", "killer_queen",
+                "white_snake", "silver_chariot", "magicians_red", "the_fool", "gold_experience",
+                "hierophant_green", "the_sun", "purple_haze", "c_moon", "made_in_heaven",
+                "the_world_over_heaven", "killer_queen_bites_the_dust", "gold_experience_requiem",
+                "purple_haze_distortion", "horus", "cinderella", "osiris", "atum",
+                "chariot_requiem", "diver_down", "dragons_dream", "foo_fighters", "goo_goo_dolls",
+                "shadow_the_world", "metallica", "the_hand", "mandom", "crazy_diamond", "aerosmith"
+        );
+        Path posesRoot = RESOURCES_ROOT.resolve("assets/jcraft/poses");
+        for (String poseDir : expectedPoseDirs) {
+            Path poseFile = posesRoot.resolve(poseDir).resolve("humanoid.json");
+            check(Files.exists(poseFile), "Missing Stand user pose humanoid.json: " + poseDir);
+            JsonObject obj = parseJsonObject(poseFile);
+            check(net.arna.jcraft.api.pose.PoseModifiers.CODEC.parse(com.mojang.serialization.JsonOps.INSTANCE, obj)
+                    .result().isPresent(), "Invalid PoseModifiers JSON for " + poseDir);
+            String raw = Files.readString(poseFile, StandardCharsets.UTF_8);
+            if (!List.of("the_world", "the_world_over_heaven", "king_crimson", "killer_queen",
+                    "killer_queen_bites_the_dust", "gold_experience_requiem", "star_platinum").contains(poseDir)) {
+                check(raw.contains("\"RIGHT_ARM_EMPTY\"") && raw.contains("\"LEFT_ARM_EMPTY\""),
+                        "New pose for " + poseDir + " must keep both arms gated by EMPTY conditions");
+            }
+        }
+
+        // 3. spec_user.animation.json contains both Metallica (mtl.*) and merged Ranger (rgr.*) animations
+        JsonObject specAnimRoot = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/animations/spec/spec_user.animation.json"));
+        JsonObject specAnims = specAnimRoot.getAsJsonObject("animations");
+        for (String animKey : List.of("mtl.brg", "mtl.bsc", "an.pom", "an.slsh", "stw.cntr", "rgr.roll", "rgr.slide", "rgr.whip", "rgr.bash", "rgr.buts")) {
+            check(specAnims.has(animKey), "spec_user.animation.json missing animation key: " + animKey);
+        }
+
+        // 4. Bytecode checks: JCraftHudOverlay registered, stealth mixins wired, PredictionMove lifecycle cleanup
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/client/gui/hud/JCraftHudOverlay.class")) {
+            check(in != null, "JCraftHudOverlay.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            check(cn.methods.stream().anyMatch(m -> "init".equals(m.name)), "JCraftHudOverlay must expose init()");
+            check(cn.methods.stream().anyMatch(m -> "render".equals(m.name)), "JCraftHudOverlay must expose render()");
+        }
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/client/JCraftClient.class")) {
+            check(in != null, "JCraftClient.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            boolean registersOverlay = cn.methods.stream().anyMatch(m -> {
+                for (var insn = m.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                    if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi
+                            && mi.owner.endsWith("JCraftHudOverlay") && "init".equals(mi.name)) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            check(registersOverlay, "JCraftClient must call JCraftHudOverlay.init()");
+        }
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/mixin/client/LevelExtractorMixin.class")) {
+            check(in != null, "LevelExtractorMixin.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            check(cn.methods.stream().anyMatch(m -> "jcraft$hideStealthEntities".equals(m.name)),
+                    "LevelExtractorMixin must inject jcraft$hideStealthEntities");
+        }
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/mixin/client/GameRendererMixin.class")) {
+            check(in != null, "GameRendererMixin.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            check(cn.methods.stream().anyMatch(m -> "jcraft$hideFirstPersonHandWhenStealthedOrPiloting".equals(m.name)),
+                    "GameRendererMixin must inject jcraft$hideFirstPersonHandWhenStealthedOrPiloting");
+        }
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/common/attack/moves/kingcrimson/PredictionMove.class")) {
+            check(in != null, "PredictionMove.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            check(cn.methods.stream().anyMatch(m -> "onCancel".equals(m.name)), "PredictionMove must override onCancel");
+            check(cn.methods.stream().anyMatch(m -> "onDeactivate".equals(m.name)), "PredictionMove must override onDeactivate");
+        }
+
+        // 5. Gauge i18n keys parity between en_us.json and pt_br.json
+        JsonObject enUs = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/en_us.json"));
+        JsonObject ptBr = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/pt_br.json"));
+        checkEquals(enUs.keySet(), ptBr.keySet(), "en_us.json and pt_br.json keys must stay 100% in parity");
+        for (String key : List.of("jcraft.hud.gauge.iron", "jcraft.hud.gauge.overheat", "jcraft.hud.gauge.obedience",
+                "jcraft.hud.gauge.speedometer", "jcraft.hud.gauge.marker", "jcraft.hud.gauge.bloodlust",
+                "jcraft.hud.gauge.focus", "jcraft.hud.phd.mode.harming", "jcraft.hud.phd.mode.nullifying",
+                "jcraft.hud.phd.mode.debilitating")) {
+            check(enUs.has(key) && ptBr.has(key), "Missing HUD gauge localization key: " + key);
+        }
+    }
+
+    static void verifyReverseEngineeringFixesAllFourBatches() throws Exception {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+
+        // Lote 1: Equipment textures exist, duplicate player_animation/ removed, HamonWaveEntity has no ClientLevel ref
+        for (String eq : List.of("cinderella_mask.png", "stone_mask.png", "red_hat.png")) {
+            Path p = RESOURCES_ROOT.resolve("assets/jcraft/textures/entity/equipment/humanoid/" + eq);
+            check(Files.exists(p) && Files.size(p) > 0, "Missing MC 26.3 equipment texture: " + eq);
+        }
+        check(!Files.exists(RESOURCES_ROOT.resolve("assets/jcraft/player_animation")),
+                "Duplicate assets/jcraft/player_animation/ folder must remain deleted");
+
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/common/entity/projectile/HamonWaveEntity.class")) {
+            check(in != null, "HamonWaveEntity.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            boolean leaksClientLevel = cn.methods.stream().anyMatch(m -> {
+                for (var insn = m.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                    if (insn instanceof org.objectweb.asm.tree.TypeInsnNode ti && ti.desc.contains("ClientLevel")) return true;
+                    if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi && mi.owner.contains("ClientLevel")) return true;
+                }
+                return false;
+            });
+            check(!leaksClientLevel, "HamonWaveEntity must not reference ClientLevel on dedicated servers");
+        }
+
+        // Lote 1: MIH TimeAccelStatePacket calls JUtils.setDayTime (no empty lambda)
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/common/network/s2c/TimeAccelStatePacket.class")) {
+            check(in != null, "TimeAccelStatePacket.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            boolean callsSetDayTime = cn.methods.stream().anyMatch(m -> {
+                for (var insn = m.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                    if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi && "setDayTime".equals(mi.name)) return true;
+                }
+                return false;
+            });
+            check(callsSetDayTime, "TimeAccelStatePacket must invoke JUtils.setDayTime");
+        }
+
+        // Lote 2: FeatureRenderers extend RenderLayer, world effects + Time Stop mixins present
+        for (String feat : List.of(
+                "net/arna/jcraft/client/renderer/features/ArmoredMoveFeatureRenderer.class",
+                "net/arna/jcraft/client/renderer/features/StuckKnivesFeatureRenderer.class",
+                "net/arna/jcraft/client/renderer/features/HamonParticlesFeatureRenderer.class")) {
+            try (InputStream in = cl.getResourceAsStream(feat)) {
+                check(in != null, feat + " must exist");
+                ClassNode cn = new ClassNode();
+                new ClassReader(in).accept(cn, 0);
+                check(cn.superName.endsWith("RenderLayer"), feat + " must extend MC 26.3 RenderLayer");
+            }
+        }
+        for (String mixinCls : List.of(
+                "net/arna/jcraft/mixin/client/AvatarRendererMixin.class",
+                "net/arna/jcraft/mixin/client/AzurelibTimestopMixin.class",
+                "net/arna/jcraft/mixin/client/ParticleGroupMixin.class",
+                "net/arna/jcraft/mixin/client/LivingEntityRendererMixin.class")) {
+            check(cl.getResource(mixinCls) != null, "New 26.3 mixin class must exist: " + mixinCls);
+        }
+
+        // Lote 3 & 4: AllStandsRuntimeDiagnostic + Gravity physics hooks in EntityMixin & CameraMixin
+        check(cl.getResource("net/arna/jcraft/common/debug/AllStandsRuntimeDiagnostic.class") != null,
+                "AllStandsRuntimeDiagnostic must compile cleanly");
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/mixin/EntityMixin.class")) {
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            check(cn.methods.stream().anyMatch(m -> "jcraft$rotateGravityBoundingBox".equals(m.name)),
+                    "EntityMixin must apply directional gravity bounding box");
+            check(cn.methods.stream().anyMatch(m -> "jcraft$transformMoveToWorldGravity".equals(m.name)),
+                    "EntityMixin must transform movement to world gravity");
+        }
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/mixin/client/CameraMixin.class")) {
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            check(cn.methods.stream().anyMatch(m -> "jcraft$applyGravityCameraRotation".equals(m.name)),
+                    "CameraMixin must rotate camera quaternion for C-Moon gravity");
         }
     }
 }

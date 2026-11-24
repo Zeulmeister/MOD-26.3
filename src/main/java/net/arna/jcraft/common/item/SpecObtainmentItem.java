@@ -40,6 +40,19 @@ public abstract class SpecObtainmentItem extends Item {
         return true;
     }
 
+    /**
+     * Applies this spec directly when thrown at a player who currently has no spec.
+     */
+    public boolean tryApplyOnToss(Player target) {
+        if (target == null || target.level().isClientSide()) {
+            return false;
+        }
+        if (JUtils.getSpec(target) != null) {
+            return false;
+        }
+        return setSpec(target);
+    }
+
     protected boolean tryGetSpec(Player player) {
         JSpec<?, ?> spec = JUtils.getSpec(player);
         if (spec != null) { // If the player already has a spec

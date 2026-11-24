@@ -19,7 +19,6 @@ import net.minecraft.network.chat.ComponentContents;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 
-// TODO: better client-facing docs for stands and gameplay in general
 public class AboutStandCommand {
     public static void register(final CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("stand")
@@ -45,7 +44,8 @@ public class AboutStandCommand {
 
         // Name
         resp.append(Component.empty()
-                .append(Component.literal("Name: "))
+                .append(Component.translatable("jcraft.about.name"))
+                .append(Component.literal(" "))
                 .append(stand.getName().copy().withStyle(ChatFormatting.YELLOW))
                 .append(Component.literal("\n")));
 
@@ -57,7 +57,7 @@ public class AboutStandCommand {
 
         // Pros & Cons
         MutableComponent pros = Component.empty()
-                .append(Component.literal("PROS:").withStyle(ChatFormatting.DARK_AQUA))
+                .append(Component.translatable("jcraft.about.pros").withStyle(ChatFormatting.DARK_AQUA))
                 .append(Component.literal("\n"));
         for (int p = 1; p <= info.getProCount(); p++) {
             pros
@@ -68,7 +68,7 @@ public class AboutStandCommand {
         resp.append(pros);
 
         MutableComponent cons = Component.empty()
-                .append(Component.literal("CONS:").withStyle(ChatFormatting.DARK_RED))
+                .append(Component.translatable("jcraft.about.cons").withStyle(ChatFormatting.DARK_RED))
                 .append(Component.literal("\n"));
         for (int c = 1; c <= info.getConCount(); c++) {
             cons
@@ -82,7 +82,7 @@ public class AboutStandCommand {
 
         // Moves
         MutableComponent moves = Component.empty()
-                .append(Component.literal("MOVES:").withStyle(ChatFormatting.DARK_GREEN))
+                .append(Component.translatable("jcraft.about.moves").withStyle(ChatFormatting.DARK_GREEN))
                 .append(Component.literal("\n"));
 
         MoveMap<?, ?> moveMap = stand.getMoveMap();
@@ -93,12 +93,16 @@ public class AboutStandCommand {
 
                 // Crouching variant
                 if (entry.getCrouchingVariant() != null) {
-                    appendMove(entry.getCrouchingVariant(), moves, Component.literal("  ● CROUCHING ").withStyle(ChatFormatting.DARK_AQUA), true);
+                    appendMove(entry.getCrouchingVariant(), moves,
+                            Component.literal("  ● ").append(Component.translatable("jcraft.about.crouching")).append(Component.literal(" ")).withStyle(ChatFormatting.DARK_AQUA),
+                            true);
                 }
 
                 // Aerial variant
                 if (entry.getAerialVariant() != null) {
-                    appendMove(entry.getAerialVariant(), moves, Component.literal("  ● AERIAL ").withStyle(ChatFormatting.GOLD), true);
+                    appendMove(entry.getAerialVariant(), moves,
+                            Component.literal("  ● ").append(Component.translatable("jcraft.about.aerial")).append(Component.literal(" ")).withStyle(ChatFormatting.GOLD),
+                            true);
                 }
             }
         }
@@ -109,6 +113,9 @@ public class AboutStandCommand {
             resp.append(Component.literal("\n"));
             resp.append(info.getFreeSpace());
         }
+
+        resp.append(Component.literal("\n"))
+                .append(Component.translatable("jcraft.about.guide_tip").withStyle(ChatFormatting.GRAY));
 
         context.getSource().sendSuccess(() -> resp, false);
         return 1;

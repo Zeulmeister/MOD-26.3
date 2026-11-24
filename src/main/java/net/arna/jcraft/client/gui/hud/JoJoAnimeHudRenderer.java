@@ -87,9 +87,11 @@ public final class JoJoAnimeHudRenderer {
         if (vamp.isVampire()) {
             float bloodRatio = Mth.clamp(vamp.getBlood() / 20.0F, 0.0F, 1.0F);
             drawMicroSpecBar(ctx, font, specBarX, specBarY, specBarW, bloodRatio, 0xCCDC2626, "BLOOD");
-        } else if (hamon.getHamonCharge() > 0.01F) {
+        } else if (hamon.getHamonCharge() > 0.01F || hamon.isHamonizeReady()) {
             float hamonRatio = Mth.clamp(hamon.getHamonCharge() / 100.0F, 0.0F, 1.0F);
-            drawMicroSpecBar(ctx, font, specBarX, specBarY, specBarW, hamonRatio, 0xCCFACC15, "HAMON");
+            int hamonColor = hamon.isHamonizeReady() ? 0xFFFDE047 : 0xCCFACC15;
+            String hamonLabel = hamon.isHamonizeReady() ? "HAMON ★" : "HAMON";
+            drawMicroSpecBar(ctx, font, specBarX, specBarY, specBarW, hamonRatio, hamonColor, hamonLabel);
         }
 
         // 4. Active Time Stop Slim Top-Center Pill + Kinetic Projectile Counter
@@ -182,10 +184,18 @@ public final class JoJoAnimeHudRenderer {
         ctx.text(font, fitted, 0, 0, 0xDCEAE4FF, true);
         pose.popMatrix();
 
-        float ratio = Mth.clamp(stand.getStandGauge() / Math.max(1.0F, stand.getMaxStandGauge()), 0.0F, 1.0F);
+        float ratio;
+        int barColor;
+        if (stand instanceof net.arna.jcraft.common.entity.stand.TheSunEntity theSun) {
+            float sunSpan = Math.max(0.1F, net.arna.jcraft.common.entity.stand.TheSunEntity.MAX_SCALE - net.arna.jcraft.common.entity.stand.TheSunEntity.MIN_SCALE);
+            ratio = Mth.clamp((theSun.getRawScale() - net.arna.jcraft.common.entity.stand.TheSunEntity.MIN_SCALE) / sunSpan, 0.05F, 1.0F);
+            barColor = theSun.isPassive() ? 0xCC92400E : 0xCCF59E0B;
+        } else {
+            ratio = Mth.clamp(stand.getStandGauge() / Math.max(1.0F, stand.getMaxStandGauge()), 0.0F, 1.0F);
+            barColor = ratio > 0.5F ? 0xCC34D399 : (ratio > 0.25F ? 0xCCFBBF24 : 0xCCEF4444);
+        }
         int barY = y + 8;
         ctx.fill(x, barY, x + width, barY + 3, 0x660E0B16);
-        int barColor = ratio > 0.5F ? 0xCC34D399 : (ratio > 0.25F ? 0xCCFBBF24 : 0xCCEF4444);
         int fillW = Math.round(width * ratio);
         if (fillW > 0) {
             ctx.fill(x, barY, x + fillW, barY + 3, barColor);

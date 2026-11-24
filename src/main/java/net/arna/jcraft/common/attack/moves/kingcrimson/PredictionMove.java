@@ -132,6 +132,18 @@ public final class PredictionMove<A extends StandEntity<? extends A, ?>> extends
         cancelPrediction(attacker, predictionInfo);
     }
 
+    @Override
+    public void onCancel(final A attacker) {
+        super.onCancel(attacker);
+        cancelPrediction(attacker);
+    }
+
+    @Override
+    public void onDeactivate(final A attacker) {
+        super.onDeactivate(attacker);
+        cancelPrediction(attacker);
+    }
+
     public static void cancelPrediction(final StandEntity<?, ?> attacker, final Map<Entity, Vec3> predictionInfo) {
         if (attacker.getUser() instanceof ServerPlayer player) {
             net.arna.jcraft.common.network.JNetwork.sendToPlayer(player, JPacketRegistry.S2C_EPITAPH_STATE, new FriendlyByteBuf(Unpooled.buffer().writeBoolean(false)));
@@ -159,75 +171,67 @@ public final class PredictionMove<A extends StandEntity<? extends A, ?>> extends
 
     public static void updatePredictions(final Map<Entity, Vec3> predictions, final int ticksLeft) {
         final Set<Entity> updated = new HashSet<>();
-        for (Map.Entry<Entity, Vec3> prediction : predictions.entrySet()) {
-            updatePrediction(predictions, prediction, updated, ticksLeft);
+        for (Entity entity : new ArrayList<>(predictions.keySet())) {
+            updatePrediction(predictions, entity, updated, ticksLeft);
         }
     }
 
-    //todo: fixme
-    private static void updatePrediction(final Map<Entity, Vec3> predictions, final Map.Entry<Entity, Vec3> prediction,
+    private static void updatePrediction(final Map<Entity, Vec3> predictions, final Entity entity,
                                          final Set<Entity> updated, final int ticksLeft) {
-        final Entity entity = prediction.getKey();
-        if (updated.contains(entity)) {
+        if (entity == null || !updated.add(entity)) {
             return;
         }
-
-        updated.add(entity);
-        if (entity == null || !entity.isAlive()) {
+        if (!entity.isAlive() || ticksLeft <= 0) {
+            if (entity != null && entity.isAlive()) {
+                predictions.put(entity, entity.position());
+            }
             return;
         }
 
         final Level world = entity.level();
+        final Vec3 currentPos = entity.position();
+        final int simTicks = Math.min(ticksLeft, 40);
 
-        final Vec3 currentPos = entity.position().add(0, 0.1, 0);
+        Vec3 velocity = entity instanceof Player player
+                ? JComponentPlatformUtils.getMiscData(player).getDesiredVelocity()
+                : entity.getDeltaMovement();
+
+        final Vec3i gravityDir = GravityChangerAPI.getGravityDirection(entity).getUnitVec3i();
+        final Vec3 gravityPerTick = new Vec3(gravityDir.getX(), gravityDir.getY(), gravityDir.getZ()).scale(0.08);
+        final boolean inLiquid = entity.isInWater() || entity.isInLava();
+
         Vec3 futurePos = currentPos;
-        boolean changed = false;
-
-        final Vec3i gravity = GravityChangerAPI.getGravityDirection(entity).getUnitVec3i();
-        final Vec3 drop = new Vec3(gravity.getX(), gravity.getY(), gravity.getZ()).scale(9.81 / 400 * ticksLeft * ticksLeft);
-
-        // If in air and not in a liquid, account for drop
-        if (!entity.onGround() && !entity.isUnderWater() && !entity.isInLava()) {
-            //JCraft.LOGGER.info("Target is in air");
-            futurePos = futurePos.add(drop);
-            changed = true;
-        }
-
-        // If moving faster than 0.01 m/s, account for distance traveled
-        Vec3 velocity = entity.getDeltaMovement();
-        if (entity instanceof Player player) // EXTREMELY cursed implementation of player velocity because NOTHING ELSE WORKS
-        {
-            velocity = JComponentPlatformUtils.getMiscData(player).getDesiredVelocity();
-        }
-        //JCraft.LOGGER.info("Target is moving at a velocity of: " + velocity);
-        if (velocity.lengthSqr() > 0.0001) {
-            Vec3 velocityComp = new Vec3(velocity.x * ticksLeft, Math.max(0, velocity.y * ticksLeft), velocity.z * ticksLeft);
-            //JCraft.LOGGER.info("Modified velocity: " + velocityComp);
-            futurePos = futurePos.add(velocityComp);
-            changed = true;
-        }
-
-        Entity vehicle = entity.getVehicle();
-        if (vehicle != null) {
-            if (!predictions.containsKey(vehicle)) {
-                return;
+        Vec3 simVel = velocity;
+        for (int t = 0; t < simTicks; t++) {
+            if (!entity.onGround() && !inLiquid && !entity.isNoGravity()) {
+                simVel = simVel.add(gravityPerTick);
             }
-
-            // Ensure vehicle is updated.
-            Map.Entry<Entity, Vec3> vehiclePrediction = new AbstractMap.SimpleEntry<>(vehicle, predictions.get(vehicle));
-            updatePrediction(predictions, vehiclePrediction, updated, ticksLeft);
-            // Account for change in position of vehicle.
-            futurePos = futurePos.add(vehiclePrediction.getValue().subtract(vehiclePrediction.getKey().position()));
+            futurePos = futurePos.add(simVel);
+            simVel = new Vec3(simVel.x * 0.91, simVel.y * 0.98, simVel.z * 0.91);
         }
 
-        // Collision check between current and extrapolated future position
-        if (!changed) {
+        final Entity vehicle = entity.getVehicle();
+        if (vehicle != null && vehicle.isAlive()) {
+            updatePrediction(predictions, vehicle, updated, ticksLeft);
+            Vec3 vehiclePred = predictions.get(vehicle);
+            if (vehiclePred != null) {
+                futurePos = vehiclePred.add(0.0, entity.getY() - vehicle.getY(), 0.0);
+            }
+        }
+
+        final Vec3 probeStart = currentPos.add(0.0, 0.1, 0.0);
+        final Vec3 probeEnd = futurePos.add(0.0, 0.1, 0.0);
+        if (probeStart.distanceToSqr(probeEnd) < 1.0E-6) {
+            predictions.put(entity, currentPos);
             return;
         }
 
-        //JCraft.LOGGER.info("Predicted position changed, time left: " + timeLeft);
-        BlockHitResult hitResult = world.clip(new ClipContext(currentPos, futurePos, ClipContext.Block.COLLIDER, ClipContext.Fluid.SOURCE_ONLY, entity));
-        prediction.setValue(hitResult.getLocation());
+        BlockHitResult hitResult = world.clip(new ClipContext(
+                probeStart, probeEnd, ClipContext.Block.COLLIDER, ClipContext.Fluid.SOURCE_ONLY, entity));
+        Vec3 resolved = hitResult.getType() == BlockHitResult.Type.MISS
+                ? futurePos
+                : hitResult.getLocation().subtract(0.0, 0.1, 0.0);
+        predictions.put(entity, resolved);
     }
 
     @Override

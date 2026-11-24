@@ -10,6 +10,7 @@ import net.arna.jcraft.common.entity.stand.MetallicaEntity;
 import net.arna.jcraft.api.registry.JSoundRegistry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -144,10 +145,14 @@ public abstract class CommonMiscComponentImpl implements CommonMiscComponent {
         }
 
         if (slavedTo != null) {
-            if (master == null) {
+            if (master == null || !master.isAlive()) {
                 if (entity.tickCount % 20 == 0) {
-                    //TODO: make SlavedTo properly load from NBT for non-players
-                    master = entity.level().getPlayerByUUID(slavedTo);
+                    if (entity.level() instanceof ServerLevel serverLevel
+                            && serverLevel.getEntity(slavedTo) instanceof LivingEntity livingMaster) {
+                        master = livingMaster;
+                    } else {
+                        master = entity.level().getPlayerByUUID(slavedTo);
+                    }
                 }
             } else {
                 if (entity instanceof Mob mob) { // Targeting and movement for mobs
@@ -158,21 +163,21 @@ public abstract class CommonMiscComponentImpl implements CommonMiscComponent {
                     LivingEntity victim = master.getLastHurtMob();
                     if (victim == null) {
                         LivingEntity adv = master.getKillCredit();
-                        if (adv != null && adv.isAlive()) {
+                        if (adv != null && adv.isAlive() && adv != entity) {
                             mob.setTarget(adv);
                         }
-                    } else if (victim.isAlive()) {
+                    } else if (victim.isAlive() && victim != entity) {
                         mob.setTarget(victim);
                     }
 
-                    if (mob.distanceToSqr(entity) > 256) {
-                        mob.getNavigation().moveTo(entity, 1);
+                    if (mob.distanceToSqr(master) > 256) {
+                        mob.getNavigation().moveTo(master, 1);
                     }
                 }
             }
         }
 
-        if (stuckKnifeCount <= 0) {
+        if (stuckKnifeCount > 0) {
             if (--knifeTimer <= 0) {
                 stuckKnifeCount--;
                 updateKnifeTimer();
@@ -242,7 +247,7 @@ public abstract class CommonMiscComponentImpl implements CommonMiscComponent {
         CompoundTag dvComp = tag.getCompoundOrEmpty("DesiredVelocity");
         desiredVelocity = new Vec3(dvComp.getDoubleOr("X", 0.0), dvComp.getDoubleOr("Y", 0.0), dvComp.getDoubleOr("Z", 0.0));
         damageTimer = tag.getIntOr("DamageTimer", 0);
-        metallicaIron = tag.getFloatOr("MetallicaIron", 0f);
+        metallicaIron = tag.getFloatOr("MetallicaIron", MetallicaEntity.IRON_MAX);
         aerosmithOverheat = tag.getFloatOr("AerosmithOverheat", 0f);
 
         if (JValueIO.hasUUID(tag, "SlavedTo")) {

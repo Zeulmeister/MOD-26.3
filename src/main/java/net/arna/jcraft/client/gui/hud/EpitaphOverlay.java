@@ -45,7 +45,7 @@ public class EpitaphOverlay {
 
     public static void preload() {
         final TextureManager texMan = Minecraft.getInstance().getTextureManager();
-        final ExecutorService executor = Executors.newCachedThreadPool();
+        final Executor executor = Runnable::run;
         for (State state : State.values()) {
             state.preload(texMan, executor);
         }

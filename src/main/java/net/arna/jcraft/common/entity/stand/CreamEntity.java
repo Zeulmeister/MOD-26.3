@@ -388,7 +388,7 @@ public class CreamEntity extends StandEntity<CreamEntity, CreamEntity.State> {
 
     @Override
     protected @NonNull AABB makeBoundingBox(net.minecraft.world.phys.Vec3 _bbPos) {
-        final double x = getX(), y = getY(), z = getZ();
+        final double x = _bbPos.x, y = _bbPos.y, z = _bbPos.z;
 
         if (isHalfBall()) {
             return new AABB(x - 0.6, y + 0.0, z - 0.6, x + 0.6, y + 1.4, z + 0.6);
@@ -396,7 +396,7 @@ public class CreamEntity extends StandEntity<CreamEntity, CreamEntity.State> {
         if (getState() == State.SURPRISE) {
             return new AABB(x - 0.6, y + 0, z - 0.6, x + 0.6, y + 0.3, z + 0.6);
         }
-        return super.makeBoundingBox();
+        return super.makeBoundingBox(_bbPos);
     }
 
     @Override

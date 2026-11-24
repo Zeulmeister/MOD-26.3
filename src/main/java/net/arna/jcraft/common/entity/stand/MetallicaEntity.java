@@ -367,7 +367,7 @@ public class MetallicaEntity extends StandEntity<MetallicaEntity, MetallicaEntit
 
     @Override
     protected @NonNull AABB makeBoundingBox(net.minecraft.world.phys.Vec3 _bbPos) {
-        return AABB.ofSize(getPosition(0f).add(0,0.5,0),0.5,1,0.5);
+        return AABB.ofSize(_bbPos.add(0, 0.5, 0), 0.5, 1, 0.5);
     }
 
     @Override

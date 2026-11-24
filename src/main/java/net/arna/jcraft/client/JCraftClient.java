@@ -23,6 +23,7 @@ import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.client.aim.GunAimHandler;
 import net.arna.jcraft.client.gravity.util.GravityChannelClient;
 import net.arna.jcraft.client.gui.hud.JCraftAbilityHud;
+import net.arna.jcraft.client.gui.hud.JCraftHudOverlay;
 import net.arna.jcraft.client.input.AerialKeyBinding;
 import net.arna.jcraft.client.input.CrouchKeyBinding;
 import net.arna.jcraft.client.input.IJKeyBinding;
@@ -147,6 +148,7 @@ public class JCraftClient {
         
         JClientEventsRegistry.registerClientEvents();
         JCraftAbilityHud.init();
+        JCraftHudOverlay.init();
         PoseModifiers.register();
 
         AzArmorRendererRegistry.register(ArmorRenderer.simple("stone_mask"), JItemRegistry.STONE_MASK.get());

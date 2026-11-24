@@ -27,6 +27,8 @@
     "VillagerEntityMixin"
   ],
   "client": [
+    "client.AvatarRendererMixin",
+    "client.AzurelibTimestopMixin",
     "client.CameraMixin",
     "client.ClientLevelMixin",
     "client.EntityClientTurnMixin",
@@ -37,7 +39,10 @@
     "client.HumanoidRenderStateMixin",
     "client.KeyMappingMixin",
     "client.LevelExtractorMixin",
+    "client.LivingEntityRendererMixin",
     "client.LocalPlayerMixin",
+    "client.ParticleAccessor",
+    "client.ParticleGroupMixin",
     "client.RenderTargetMixin",
     "client.SoundEngineMixin"
   ],

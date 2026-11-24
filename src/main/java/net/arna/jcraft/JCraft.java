@@ -256,8 +256,6 @@ public final class JCraft {
 
         TimeAccelStatePacket.init(); // register event handlers for time acceleration
 
-        // TODO: Loot Table registration is currently only finalized on Fabric, which @Ayutac needs to fix
-
         JServerConfig.init();
 
         JStatRegistry.init();

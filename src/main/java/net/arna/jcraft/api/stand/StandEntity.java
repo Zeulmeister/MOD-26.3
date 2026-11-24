@@ -79,8 +79,6 @@ import static net.arna.jcraft.api.Attacks.damageLogic;
 public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S> & StandAnimationState<E>>
         extends Mob implements IAttacker<E, S>, ICustomDamageHandler, MoveSet.ReloadListener<E, S> {
 
-    // TODO: finish custom player idle poses for all stands
-
     private MoveSet<E, S> moveSet;
     @Getter
     private final @NonNull MoveMap<E, S> moveMap = new MoveMapImpl<>();

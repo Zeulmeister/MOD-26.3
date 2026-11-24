@@ -73,7 +73,13 @@ public class TheWorldOverHeavenEntity extends StandEntity<TheWorldOverHeavenEnti
                     .animDuration(29)
                     .build())
             .build();
-    public static final Supplier<IPoseModifier> POSE = LevitationPoseModifier::new;
+    public static final Supplier<IPoseModifier> POSE = () -> ClientPose.create();
+
+    private static final class ClientPose {
+        private static IPoseModifier create() {
+            return new LevitationPoseModifier();
+        }
+    }
 
     public static final LungeAttack<TheWorldOverHeavenEntity> LUNGE = new LungeAttack<TheWorldOverHeavenEntity>(0, 10, 16, 0.75f,
             8f, 10, 1.75f, 1f, 0f, 11, 5)

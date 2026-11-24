@@ -200,11 +200,6 @@ public class PlayerInputPacket {
         ServerLevel world = (ServerLevel) player.level();
         switch (type) {
             case STAND_SUMMON -> {
-                FriendlyByteBuf buf2 = new FriendlyByteBuf(Unpooled.buffer());
-                buf2.writeShort(6);
-                buf2.writeInt(0);
-                ServerChannelFeedbackPacket.send(player, buf2);
-
                 CommonStandComponent standData = JComponentPlatformUtils.getStandComponent(player);
                 StandEntity<?, ?> stand = standData.getStand();
                 if (stand != null) {

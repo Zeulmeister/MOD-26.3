@@ -306,7 +306,7 @@ public interface Attacks {
 
         if (JServerConfig.ENABLE_IPS.getValue()) {
             float scaling = comboTracker.jcraft$getDamageScaling();
-            stunTicks *= (int) (scaling * 0.2 + 0.8);
+            stunTicks = Math.max(1, (int) Math.round(stunTicks * (scaling * 0.2 + 0.8)));
         }
 
         LivingEntity livingAttacker = null;

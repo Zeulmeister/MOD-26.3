@@ -7,23 +7,31 @@ import lombok.Getter;
 import lombok.NonNull;
 import net.arna.jcraft.JCraft;
 import net.arna.jcraft.api.component.living.CommonBombTrackerComponent;
+import net.arna.jcraft.api.component.player.CommonSpecComponent;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.api.stand.StandType;
 import net.arna.jcraft.api.stand.StandTypeUtil;
 import net.arna.jcraft.api.component.living.CommonStandComponent;
+import net.arna.jcraft.api.spec.SpecType;
+import net.arna.jcraft.api.spec.SpecTypeUtil;
 import net.arna.jcraft.common.entity.stand.AbstractKillerQueenEntity;
 import net.arna.jcraft.common.entity.stand.WhiteSnakeEntity;
+import net.arna.jcraft.common.item.SpecDiscItem;
+import net.arna.jcraft.common.item.SpecObtainmentItem;
 import net.arna.jcraft.common.util.JUtils;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.arna.jcraft.platform.JComponentPlatformUtils;
 import net.arna.jcraft.api.registry.JEntityTypeRegistry;
 import net.arna.jcraft.api.registry.JItemRegistry;
+import net.arna.jcraft.api.registry.JSoundRegistry;
 import net.arna.jcraft.api.registry.JTagRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -44,20 +52,21 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownSplashPotion;
 import net.minecraft.world.item.*;
-import net.minecraft.world.item.alchemy.Potion;
-import net.minecraft.world.item.alchemy.Potions;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BaseFireBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.JukeboxBlock;
+import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.JukeboxBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -65,8 +74,6 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
 
 public class ItemTossProjectile extends AbstractArrow {
 
@@ -296,22 +303,47 @@ public class ItemTossProjectile extends AbstractArrow {
             effectActivated = true;
         }
 
-        // TODO spec obtainment items
+        // WhiteSnake can also throw Spec Discs into players who have no Spec
+        if (entity instanceof Player targetPlayer && getOwner() instanceof WhiteSnakeEntity
+                && getItem().is(JItemRegistry.SPEC_DISC.get())) {
+            SpecType itemSpec = SpecDiscItem.getSpecType(getItem());
+            if (itemSpec != null && !SpecTypeUtil.isNone(itemSpec)) {
+                final CommonSpecComponent specData = JComponentPlatformUtils.getSpecData(targetPlayer);
+                if (SpecTypeUtil.isNone(specData.getType())) {
+                    specData.setType(itemSpec);
+                    effectActivated = true;
+                }
+            }
+        }
 
-        // force feed
+        // Spec obtainment items (Boxing Gloves, Holster, Sheathed Anubis) grant their Spec to Spec-less players
+        if (!effectActivated && entity instanceof Player targetPlayer
+                && getItem().getItem() instanceof SpecObtainmentItem specItem) {
+            if (specItem.tryApplyOnToss(targetPlayer)) {
+                if (getItem().is(JItemRegistry.ANUBIS_SHEATHED.get()) && level() instanceof ServerLevel sl) {
+                    JUtils.serverPlaySound(JSoundRegistry.ANUBIS_UNSHEATHE.get(), sl, targetPlayer.position());
+                    JUtils.serverPlaySound(JSoundRegistry.ANUBIS_SPECCHANGE.get(), sl, targetPlayer.position());
+                    ItemStack unsheathed = new ItemStack(JItemRegistry.ANUBIS.get());
+                    if (!targetPlayer.getInventory().add(unsheathed)) {
+                        dropStackAt(targetPlayer.position(), unsheathed);
+                    }
+                }
+                effectActivated = true;
+            }
+        }
+
+        // force feed (including proper UseRemainder handling for bowls, bottles, buckets, etc.)
         if (entity instanceof LivingEntity livingEntity && getItem().has(DataComponents.FOOD)) {
             if (!JComponentPlatformUtils.getVampirism(livingEntity).isVampire()) {
-                boolean canEat = true;
-
-                if (livingEntity instanceof Player player)
-                    canEat = player.getFoodData().needsFood();
+                boolean canEat = !(livingEntity instanceof Player player) || player.getFoodData().needsFood();
 
                 if (canEat) {
-                    getItem().finishUsingItem(level(), livingEntity);
+                    ItemStack foodCopy = getItem().copy();
+                    boolean hadRemainder = foodCopy.has(DataComponents.USE_REMAINDER);
+                    ItemStack remainder = foodCopy.finishUsingItem(level(), livingEntity);
 
-                    if (getItem().has(DataComponents.USE_REMAINDER)) {
-                        setItem(Items.BOWL.getDefaultInstance());
-                        dropItem(result.getLocation()); // FIXME doesn't work?
+                    if (!remainder.isEmpty() && (hadRemainder || !ItemStack.isSameItemSameComponents(remainder, getItem()))) {
+                        dropStackAt(result.getLocation(), remainder);
                     }
 
                     effectActivated = true;
@@ -319,7 +351,7 @@ public class ItemTossProjectile extends AbstractArrow {
             }
         }
 
-        // force drink potions
+        // force drink potions & drop empty glass bottle
         if (entity instanceof LivingEntity living && getItem().getItem() instanceof PotionItem) {
             for (MobEffectInstance mobEffectInstance : getItem().getOrDefault(DataComponents.POTION_CONTENTS, PotionContents.EMPTY).getAllEffects()) {
                 if (mobEffectInstance.getEffect().value().isInstantaneous()) {
@@ -328,6 +360,8 @@ public class ItemTossProjectile extends AbstractArrow {
                     living.addEffect(new MobEffectInstance(mobEffectInstance));
                 }
             }
+            this.playSound(SoundEvents.GENERIC_DRINK.value(), 0.7F, 1.0F);
+            dropStackAt(result.getLocation(), Items.GLASS_BOTTLE.getDefaultInstance());
             effectActivated = true;
         }
 
@@ -356,7 +390,33 @@ public class ItemTossProjectile extends AbstractArrow {
             effectActivated = true;
         }
 
-        // TODO also, what about throwing a sword, bone meal, fire charge, shears,
+        // Fire charge ignites hit entity and deals bonus fire damage
+        if (getItem().is(Items.FIRE_CHARGE)) {
+            entity.igniteForSeconds(5);
+            entity.hurt(this.damageSources().onFire(), 4.0f);
+            this.playSound(SoundEvents.FIRECHARGE_USE, 1.0F, 1.0F);
+            effectActivated = true;
+        }
+
+        // Shears shear ready Shearable mobs (sheep, mooshroom, snow golem, bogged) and lose 1 durability
+        if (getItem().is(Items.SHEARS) && entity instanceof Shearable shearable && shearable.readyForShearing()
+                && level() instanceof ServerLevel sl) {
+            ItemStack shearsCopy = getItem().copy();
+            shearable.shear(sl, SoundSource.PLAYERS, shearsCopy);
+            if (damageCopyOne(shearsCopy)) {
+                effectActivated = true;
+            } else {
+                setItem(shearsCopy);
+            }
+        } else if (!effectActivated && getItem().isDamageableItem()) {
+            // Thrown swords/tools lose 1 durability on entity impact
+            ItemStack damagedCopy = getItem().copy();
+            if (damageCopyOne(damagedCopy)) {
+                effectActivated = true;
+            } else {
+                setItem(damagedCopy);
+            }
+        }
 
         // end of inspired part
         if (!this.level().isClientSide() && getItem().is(JTagRegistry.EXPLODES_ON_IMPACT)) {
@@ -371,23 +431,35 @@ public class ItemTossProjectile extends AbstractArrow {
                     getItem().is(JTagRegistry.EXPLODES_ON_IMPACT) ||
                     getItem().is(JTagRegistry.SLOWS_ON_IMPACT) ||
                     getItem().is(JTagRegistry.POISONS_ON_IMPACT))) {
-                // drop at owner position so the item doesn't land on the target and get picked up
-                final Vec3 dropTarget = entity2 != null ? entity2.position() : result.getLocation();
-                dropItem(dropTarget);
+                // drop at owner position so the item doesn't land on the target and get picked up by the enemy
+                if (entity2 != null) {
+                    dropStackAt(entity2.position().add(0.0, 0.25, 0.0), getItem());
+                } else {
+                    dropItem(result.getLocation());
+                }
             }
             this.discard();
         }
     }
 
     private float calculateDamage(final Entity target) {
-        float damage = (float)this.baseDamage;
+        float damage = (float) this.baseDamage;
+        final ItemStack stack = getItem();
+        if (stack.has(DataComponents.ATTRIBUTE_MODIFIERS)) {
+            double weaponDamage = stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY)
+                    .compute(Attributes.ATTACK_DAMAGE, 1.0, EquipmentSlot.MAINHAND);
+            if (weaponDamage > 1.0) {
+                damage = Math.max(damage, (float) weaponDamage);
+            }
+        }
         if (!(target instanceof final LivingEntity livingTarget)
-                || !(JUtils.getUserIfStand(getOwner()) instanceof final LivingEntity owner)
-                /*|| !(getItem().getItem() instanceof final TieredItem tieredItem)*/) {
+                || !(JUtils.getUserIfStand(getOwner()) instanceof final LivingEntity owner)) {
             return damage;
         }
-        damage = (float)owner.getAttributeValue(Attributes.ATTACK_DAMAGE);
-        if (level() instanceof ServerLevel sl) { damage = EnchantmentHelper.modifyDamage(sl, getItem(), livingTarget, this.damageSources().arrow(this, owner), damage); }
+        damage = Math.max(damage, (float) owner.getAttributeValue(Attributes.ATTACK_DAMAGE));
+        if (level() instanceof ServerLevel sl) {
+            damage = EnchantmentHelper.modifyDamage(sl, stack, livingTarget, this.damageSources().arrow(this, owner), damage);
+        }
         return damage;
     }
 
@@ -441,44 +513,105 @@ public class ItemTossProjectile extends AbstractArrow {
 
         // hit the ground
         final ItemStack item = getItem();
+        final LivingEntity actor = JUtils.getUserIfStand(getOwner()) instanceof LivingEntity living ? living : null;
+        final boolean standGriefAllowed = !(getOwner() instanceof StandEntity<?, ?>)
+                || ((ServerLevel) level()).getGameRules().get(JCraft.STAND_GRIEFING);
         // blocks get placed if possible
         final BlockPos pos = result.getBlockPos().relative(result.getDirection());
         if (item.getItem() instanceof BlockItem block && !item.is(Items.POINTED_DRIPSTONE)) {
-            final LivingEntity placer = JUtils.getUserIfStand(getOwner()) instanceof LivingEntity living ? living : null;
             if (item.is(JTagRegistry.BRITTLE) && hardness >= Blocks.STONE.defaultDestroyTime()) {
                 // brittle things get destroyed
-            } else if (!JUtils.mayAlter(level(), placer, pos, null)) {
+            } else if (!JUtils.mayAlter(level(), actor, pos, null)) {
                 // the stand's user may not build where the block landed, so drop it as an item instead of placing
                 dropItem(result.getLocation());
-            } else if ((!(getOwner() instanceof StandEntity<?,?>) || ((net.minecraft.server.level.ServerLevel) level()).getGameRules().get(JCraft.STAND_GRIEFING)) &&
-                    InteractionResult.SUCCESS != block.place(new BlockPlaceContext(new UseOnContext(level(), null, InteractionHand.MAIN_HAND, item, result)))) {
+            } else if (!standGriefAllowed ||
+                    InteractionResult.SUCCESS != block.place(new BlockPlaceContext(new UseOnContext(level(), null, InteractionHand.MAIN_HAND, item.copy(), result)))) {
                 dropItem(result.getLocation());
             }
         }
-        // axe get used
+        // axes strip logs/stems/bamboo
         else if (item.is(ItemTags.AXES)) {
             BlockState blockState = level().getBlockState(result.getBlockPos());
-            Optional<BlockState> stripped = Optional.empty();
-            if (stripped.isPresent()) {
+            Optional<BlockState> stripped = getStrippedState(blockState);
+            boolean broke = false;
+            if (stripped.isPresent() && standGriefAllowed && JUtils.mayAlter(level(), actor, result.getBlockPos(), null)) {
                 level().setBlockAndUpdate(result.getBlockPos(), stripped.get());
-                if (getOwner() instanceof LivingEntity lo) { item.hurtAndBreak(1, lo, EquipmentSlot.MAINHAND); }
+                this.playSound(SoundEvents.AXE_STRIP.value(), 1.0F, 1.0F);
+                ItemStack axeCopy = item.copy();
+                broke = damageCopyOne(axeCopy);
+                if (!broke) {
+                    setItem(axeCopy);
+                }
             }
-            stickOrDrop(result.getLocation());
+            if (!broke) {
+                stickOrDrop(result.getLocation());
+            }
         }
-        // hoe get used
+        // hoes till dirt/grass
         else if (item.is(ItemTags.HOES)) {
-            final UseOnContext context = new UseOnContext(level(), null, InteractionHand.MAIN_HAND, item, result);
-            net.minecraft.world.level.block.Block hitBlk = level().getBlockState(result.getBlockPos()).getBlock();
-            if (result.getDirection() != net.minecraft.core.Direction.DOWN && level().getBlockState(result.getBlockPos().above()).isAir()
+            Block hitBlk = level().getBlockState(result.getBlockPos()).getBlock();
+            boolean broke = false;
+            if (standGriefAllowed && JUtils.mayAlter(level(), actor, result.getBlockPos(), null)
+                    && result.getDirection() != net.minecraft.core.Direction.DOWN
+                    && level().getBlockState(result.getBlockPos().above()).isAir()
                     && (hitBlk == Blocks.GRASS_BLOCK || hitBlk == Blocks.DIRT_PATH || hitBlk == Blocks.DIRT)) {
                 level().setBlock(result.getBlockPos(), Blocks.FARMLAND.defaultBlockState(), 11);
-                // tilled
+                ItemStack hoeCopy = item.copy();
+                broke = damageCopyOne(hoeCopy);
+                if (!broke) {
+                    setItem(hoeCopy);
+                }
             }
-            stickOrDrop(result.getLocation());
+            if (!broke) {
+                stickOrDrop(result.getLocation());
+            }
+        }
+        // fire charges ignite impacted surfaces
+        else if (item.is(Items.FIRE_CHARGE)) {
+            if (standGriefAllowed && JUtils.mayAlter(level(), actor, pos, null)
+                    && BaseFireBlock.canBePlacedAt(level(), pos, result.getDirection())) {
+                level().setBlockAndUpdate(pos, BaseFireBlock.getState(level(), pos));
+                this.playSound(SoundEvents.FIRECHARGE_USE, 1.0F, 1.0F);
+            } else {
+                dropItem(result.getLocation());
+            }
+        }
+        // flint & steel ignites impacted surfaces and loses 1 durability
+        else if (item.is(Items.FLINT_AND_STEEL)) {
+            ItemStack flintCopy = item.copy();
+            boolean broke = false;
+            if (standGriefAllowed && JUtils.mayAlter(level(), actor, pos, null)
+                    && BaseFireBlock.canBePlacedAt(level(), pos, result.getDirection())) {
+                level().setBlockAndUpdate(pos, BaseFireBlock.getState(level(), pos));
+                this.playSound(SoundEvents.FLINTANDSTEEL_USE, 1.0F, 1.0F);
+                broke = damageCopyOne(flintCopy);
+            }
+            if (!broke) {
+                setItem(flintCopy);
+                dropItem(result.getLocation());
+            }
+        }
+        // bone meal fertilizes crops, grass, or underwater flora
+        else if (item.is(Items.BONE_MEAL)) {
+            ItemStack mealCopy = item.copy();
+            boolean grew = false;
+            if (standGriefAllowed && JUtils.mayAlter(level(), actor, result.getBlockPos(), null)) {
+                if (BoneMealItem.growCrop(mealCopy, level(), result.getBlockPos())) {
+                    level().levelEvent(1505, result.getBlockPos(), 15);
+                    grew = true;
+                } else if (BoneMealItem.growWaterPlant(mealCopy, level(), pos, result.getDirection())) {
+                    level().levelEvent(1505, pos, 15);
+                    grew = true;
+                }
+            }
+            if (!grew) {
+                dropItem(result.getLocation());
+            }
         }
         // buckets empty their content if any
         else if (item.getItem() instanceof BucketItem bucket && !(item.is(Items.BUCKET))) {
-            if (bucket.emptyContents(null, level(), result.getBlockPos(), result)) {
+            if (standGriefAllowed && JUtils.mayAlter(level(), actor, pos, null)
+                    && bucket.emptyContents(null, level(), result.getBlockPos(), result)) {
                 bucket.checkExtraContent(null, level(), item, pos);
                 setItem(Items.BUCKET.getDefaultInstance());
             }
@@ -500,9 +633,7 @@ public class ItemTossProjectile extends AbstractArrow {
                 dropItem(result.getLocation());
             }
         }
-        // arrows get flinged
-        // TODO implement
-        // potions get activated
+        // potions get activated (arrows are already converted to Arrow entities in JUtils.tossItem)
         else if (item.getItem() instanceof PotionItem) {
             if (level() instanceof ServerLevel sl) {
                 PotionContents contents = item.getOrDefault(DataComponents.POTION_CONTENTS, PotionContents.EMPTY);
@@ -552,6 +683,44 @@ public class ItemTossProjectile extends AbstractArrow {
         }
     }
 
+    private static Optional<BlockState> getStrippedState(final BlockState state) {
+        final Identifier id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        if (id.getPath().startsWith("stripped_")) {
+            return Optional.empty();
+        }
+        final Identifier strippedId = Identifier.fromNamespaceAndPath(id.getNamespace(), "stripped_" + id.getPath());
+        return BuiltInRegistries.BLOCK.getOptional(strippedId).map(strippedBlock -> {
+            BlockState out = strippedBlock.defaultBlockState();
+            if (state.hasProperty(RotatedPillarBlock.AXIS) && out.hasProperty(RotatedPillarBlock.AXIS)) {
+                out = out.setValue(RotatedPillarBlock.AXIS, state.getValue(RotatedPillarBlock.AXIS));
+            }
+            return out;
+        });
+    }
+
+    /**
+     * Applies 1 durability damage to a mutable copy of a damageable item.
+     * Returns true if the item broke completely.
+     */
+    private boolean damageCopyOne(final ItemStack stack) {
+        if (!stack.isDamageableItem()) {
+            return false;
+        }
+        int nextDmg = stack.getDamageValue() + 1;
+        if (nextDmg >= stack.getMaxDamage()) {
+            this.playSound(SoundEvents.ITEM_BREAK.value(), 0.8F, 1.0F);
+            return true;
+        }
+        stack.setDamageValue(nextDmg);
+        return false;
+    }
+
+    private void dropStackAt(final Vec3 pos, final ItemStack stack) {
+        if (!stack.isEmpty()) {
+            Containers.dropItemStack(level(), pos.x, pos.y, pos.z, stack.copy());
+        }
+    }
+
     /**
      * Drops the item, or sticks it in the block if it has durability (axes, swords, pickaxes, etc.).
      * Returns true if sticking, false if dropped.
@@ -566,13 +735,13 @@ public class ItemTossProjectile extends AbstractArrow {
     }
 
     /**
-     * Drops the item behind this projectile at the specified location. Does NOT discard this projectile.
+     * Drops the item slightly backed off from the target impact location so it never clips into blocks.
      */
     private void dropItem(final Vec3 pos) {
-        final Vec3 vec3 = pos.subtract(getX(), getY(), getZ());
-        setDeltaMovement(vec3);
-        final Vec3 vecN = vec3.normalize().scale(0.05d);
-        Containers.dropItemStack(level(), getX() - vecN.x, getY() - vecN.y, getZ() - vecN.z, getItem());
+        final Vec3 toHit = pos.subtract(getX(), getY(), getZ());
+        setDeltaMovement(toHit);
+        final Vec3 backoff = toHit.lengthSqr() > 1.0E-6 ? toHit.normalize().scale(0.05d) : Vec3.ZERO;
+        dropStackAt(new Vec3(pos.x - backoff.x, pos.y - backoff.y, pos.z - backoff.z), getItem());
     }
 
     /**

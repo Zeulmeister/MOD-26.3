@@ -12,6 +12,7 @@ import net.arna.jcraft.common.attack.moves.shared.CounterMissMove;
 import net.arna.jcraft.common.entity.stand.ShadowTheWorldEntity;
 import net.arna.jcraft.common.network.s2c.PlayerAnimPacket;
 import net.arna.jcraft.api.spec.JSpec;
+import net.arna.jcraft.api.spec.SpecUserMob;
 import net.arna.jcraft.common.util.JUtils;
 import net.arna.jcraft.platform.JComponentPlatformUtils;
 import net.arna.jcraft.api.registry.JSoundRegistry;
@@ -47,6 +48,10 @@ public final class STWCounterAttack<A extends StandEntity<? extends A, ?>> exten
 
             JUtils.around((ServerLevel) player.level(), player.position(), 96).forEach(
                     serverPlayer -> PlayerAnimPacket.send(player, serverPlayer, "stw.cntr"));
+        } else if (user instanceof SpecUserMob specUserMob) {
+            final JSpec<?, ?> spec = specUserMob.getSpec();
+            if (spec != null) spec.cancelMove();
+            specUserMob.setAnimation("stw.cntr", 1.0f);
         }
         JCraft.stun(user, 20, 0);
     }

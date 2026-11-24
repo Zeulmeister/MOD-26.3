@@ -514,7 +514,7 @@ public final class TheSunEntity extends StandEntity<TheSunEntity, TheSunEntity.S
 
     @Override
     protected @NonNull AABB makeBoundingBox(net.minecraft.world.phys.Vec3 _bbPos) {
-        final double x = getX(), y = getY(), z = getZ();
+        final double x = _bbPos.x, y = _bbPos.y, z = _bbPos.z;
         final float scale = getRawScale() * 1.5f;
         return newBoundingBox(x, y, z, scale);
     }

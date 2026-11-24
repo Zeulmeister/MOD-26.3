@@ -57,6 +57,10 @@ public class JComponentPlatformUtils {
 
     @SuppressWarnings("unchecked")
     public static Optional<CommonGravityComponent> getGravity(Entity entity) {
+        if (!(entity instanceof org.ladysnake.cca.api.v3.component.ComponentProvider provider)
+                || provider.getComponentContainer() == null) {
+            return Optional.empty();
+        }
         return (Optional<CommonGravityComponent>) (Optional<?>) JComponents.GRAVITY_MODIFIER.maybeGet(entity);
     }
 

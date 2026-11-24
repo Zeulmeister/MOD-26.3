@@ -37,12 +37,25 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
 public class EvolutionItemHandler {
+    private static final List<String> BUNDLED_EVOLUTIONS = List.of(
+            "c_moon_to_made_in_heaven",
+            "gold_experience_to_gold_experience_requiem",
+            "killer_queen_to_killer_queen_bites_the_dust",
+            "shadow_the_world_to_the_world",
+            "star_platinum_to_star_platinum_the_world",
+            "the_world_to_the_world_over_heaven",
+            "white_snake_to_c_moon"
+    );
+
     private static final Multimap<Item, Evolution> evolutions = MultimapBuilder.hashKeys().arrayListValues().build();
+    private static boolean serverLoaded = false;
 
     static {
         InteractionEvent.RIGHT_CLICK_ITEM.register(EvolutionItemHandler::onItemUse);
@@ -50,8 +63,38 @@ public class EvolutionItemHandler {
 
     public static void init() {}
 
+    private static synchronized void ensureBootstrapLoaded() {
+        if (serverLoaded || !evolutions.isEmpty()) {
+            return;
+        }
+        Gson gson = new Gson();
+        for (String name : BUNDLED_EVOLUTIONS) {
+            String path = "/data/jcraft/evolutions/" + name + ".json";
+            try (var stream = EvolutionItemHandler.class.getResourceAsStream(path)) {
+                if (stream == null) {
+                    continue;
+                }
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+                    JsonObject obj = gson.fromJson(reader, JsonObject.class);
+                    Evolution.CODEC.parse(JsonOps.INSTANCE, obj)
+                            .result()
+                            .ifPresent(evo -> evolutions.put(evo.item(), evo));
+                }
+            } catch (Exception e) {
+                JCraft.LOGGER.warn("Failed to bootstrap evolution {}: {}", name, e.getMessage());
+            }
+        }
+    }
+
     public static List<Evolution> getEvolutions() {
+        ensureBootstrapLoaded();
         return ImmutableList.copyOf(evolutions.values());
+    }
+
+    public static List<Evolution> getEvolutionsFor(@Nullable StandType current) {
+        return getEvolutions().stream()
+                .filter(e -> e.stand() == null || e.stand() == current)
+                .toList();
     }
 
 
@@ -119,6 +162,7 @@ public class EvolutionItemHandler {
         return CompletableFuture.supplyAsync(() -> readEvolutions(resourceManager), backgroundExecutor)
                 .thenCompose(preparationBarrier::wait)
                 .thenAcceptAsync(evs -> {
+                    serverLoaded = true;
                     evolutions.clear();
                     evs.forEach(e -> evolutions.put(e.item(), e));
                 }, gameExecutor);

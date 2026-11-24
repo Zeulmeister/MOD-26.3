@@ -2,6 +2,7 @@ package net.arna.jcraft.mixin.client;
 
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.client.remote.StandRemoteControlHandler;
+import net.arna.jcraft.client.util.JClientUtils;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -21,6 +22,7 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(LevelExtractor.class)
 public abstract class LevelExtractorMixin {
@@ -38,6 +40,21 @@ public abstract class LevelExtractorMixin {
 
     @Invoker("extractEntity")
     protected abstract EntityRenderState jcraft$extractEntity(Entity entity, float partialTick);
+
+    @Inject(method = "isEntityVisible", at = @At("HEAD"), cancellable = true)
+    private void jcraft$hideStealthEntities(
+            Entity entity,
+            Frustum frustum,
+            double x,
+            double y,
+            double z,
+            float partialTick,
+            long sectionFadeTime,
+            CallbackInfoReturnable<Boolean> cir) {
+        if (JClientUtils.shouldNotRender(entity)) {
+            cir.setReturnValue(false);
+        }
+    }
 
     /**
      * Vanilla MC 26.3 skips extracting LocalPlayer whenever {@code camera.entity() != player}.

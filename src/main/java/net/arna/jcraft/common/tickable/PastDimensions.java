@@ -176,7 +176,6 @@ public class PastDimensions {
      * Used when PastDimensions does not have a return DimensionData specified for a player in the jcraft:audim
      */
     public static void safeReturn(ServerPlayer serverPlayer) {
-        //todo: implement NBT saving for PastDimensions!
         JCraft.LOGGER.warn("PastDimensions.safeReturn called on " + serverPlayer);
         var respawnCfg = serverPlayer.getRespawnConfig();
         BlockPos spawnPos = respawnCfg != null ? respawnCfg.respawnData().pos() : serverPlayer.blockPosition();

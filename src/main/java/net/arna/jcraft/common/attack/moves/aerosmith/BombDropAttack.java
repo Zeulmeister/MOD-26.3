@@ -80,7 +80,7 @@ public class BombDropAttack extends AbstractMove<BombDropAttack, AerosmithEntity
 
         // drop is always vertical
         if (horizontalDistSqr <= rangeSqr && pos.y >= dropLocation.y && !attacker.isInWall()) {
-            // TODO play the animation
+            AerosmithEntity.State.BOMB.playAnimation(attacker);
             attacker.playSound(JSoundRegistry.AS_BOMB_DROP.get());
             dropBomb(attacker);
             dropLocation = null;

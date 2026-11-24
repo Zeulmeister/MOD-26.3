@@ -55,7 +55,7 @@ public class ItemDropAttack extends AbstractMove<ItemDropAttack, AerosmithEntity
     public @NonNull Set<LivingEntity> perform(final AerosmithEntity attacker, final LivingEntity user) {
         if (user != null) {
             final ItemStack itemStack = user.getItemInHand(InteractionHand.MAIN_HAND);
-            if (itemStack.isEmpty() && !itemStack.is(JTagRegistry.UNTHROWABLE)) {
+            if (itemStack.isEmpty() || itemStack.is(JTagRegistry.UNTHROWABLE)) {
                 return Set.of();
             }
             attacker.setHeldItem(itemStack.copyWithCount(1));
@@ -98,7 +98,7 @@ public class ItemDropAttack extends AbstractMove<ItemDropAttack, AerosmithEntity
 
         // drop is always vertical
         if (dx * dx + dz * dz <= rangeSqr && pos.y >= dropLocation.y) {
-            // TODO play the animation
+            AerosmithEntity.State.BOMB.playAnimation(attacker);
             attacker.playSound(JSoundRegistry.AS_BOMB_DROP.get());
             dropItem(attacker);
             dropLocation = null;

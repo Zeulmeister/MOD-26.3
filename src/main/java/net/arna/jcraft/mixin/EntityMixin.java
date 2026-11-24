@@ -1,26 +1,38 @@
 package net.arna.jcraft.mixin;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.effects.FlammableEffect;
 import net.arna.jcraft.common.entity.stand.CreamEntity;
 import net.arna.jcraft.common.entity.stand.KingCrimsonEntity;
 import net.arna.jcraft.common.events.EntityTickEvent;
 import net.arna.jcraft.common.events.JEntityEvents;
+import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
+import net.arna.jcraft.common.gravity.util.RotationUtil;
 import net.arna.jcraft.common.util.JUtils;
 import net.arna.jcraft.mixin_logic.EntityAddon;
 import net.arna.jcraft.mixin_logic.EntityMixinLogic;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.level.portal.TeleportTransition;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -31,8 +43,179 @@ public abstract class EntityMixin implements EntityAddon {
     @Shadow
     private int id;
 
+    @Shadow
+    private EntityDimensions dimensions;
+
+    @Shadow
+    public boolean horizontalCollision;
+
+    @Shadow
+    public boolean verticalCollision;
+
+    @Shadow
+    public boolean verticalCollisionBelow;
+
+    @Shadow
+    public abstract Vec3 position();
+
+    @Shadow
+    public abstract Vec3 getPosition(float partialTick);
+
+    @Shadow
+    public abstract float getEyeHeight();
+
+    @Shadow
+    public abstract Vec3 getDeltaMovement();
+
+    @Shadow
+    public abstract void setDeltaMovement(Vec3 motion);
+
+    @Unique
+    private boolean jcraft$constructed = false;
+
     @Unique
     private boolean jcraft$fromSpawner = false;
+
+    @Unique
+    private Vec3 jcraft$preMoveWantedLocal = null;
+
+    @Unique
+    private Vec3 jcraft$preMoveDeltaLocal = null;
+
+    @Unique
+    private Vec3 jcraft$postMoveActualWorld = null;
+
+    @Inject(method = "<init>", at = @At("TAIL"))
+    private void jcraft$markConstructed(CallbackInfo ci) {
+        this.jcraft$constructed = true;
+    }
+
+    // ===== C-Moon / Gravity Changer Directional Physics (zero overhead when Direction.DOWN) =====
+
+    @Inject(method = "makeBoundingBox(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/AABB;", at = @At("RETURN"), cancellable = true)
+    private void jcraft$rotateGravityBoundingBox(Vec3 pos, CallbackInfoReturnable<AABB> cir) {
+        if (!this.jcraft$constructed || this.dimensions == null) {
+            return;
+        }
+        Direction dir = GravityChangerAPI.getGravityDirection((Entity) (Object) this);
+        if (dir != Direction.DOWN) {
+            AABB localBox = this.dimensions.makeBoundingBox(0.0, 0.0, 0.0);
+            cir.setReturnValue(RotationUtil.boxPlayerToWorld(localBox, dir).move(pos));
+        }
+    }
+
+    @Inject(method = "getEyePosition()Lnet/minecraft/world/phys/Vec3;", at = @At("HEAD"), cancellable = true)
+    private void jcraft$rotateEyePosition(CallbackInfoReturnable<Vec3> cir) {
+        if (!this.jcraft$constructed) {
+            return;
+        }
+        Direction dir = GravityChangerAPI.getGravityDirection((Entity) (Object) this);
+        if (dir != Direction.DOWN) {
+            cir.setReturnValue(this.position().add(RotationUtil.vecPlayerToWorld(0.0, this.getEyeHeight(), 0.0, dir)));
+        }
+    }
+
+    @Inject(method = "getEyePosition(F)Lnet/minecraft/world/phys/Vec3;", at = @At("HEAD"), cancellable = true)
+    private void jcraft$rotateEyePositionPartial(float partialTick, CallbackInfoReturnable<Vec3> cir) {
+        if (!this.jcraft$constructed) {
+            return;
+        }
+        Direction dir = GravityChangerAPI.getGravityDirection((Entity) (Object) this);
+        if (dir != Direction.DOWN) {
+            cir.setReturnValue(this.getPosition(partialTick).add(RotationUtil.vecPlayerToWorld(0.0, this.getEyeHeight(), 0.0, dir)));
+        }
+    }
+
+    @Inject(method = "getViewVector(F)Lnet/minecraft/world/phys/Vec3;", at = @At("RETURN"), cancellable = true)
+    private void jcraft$rotateViewVector(float partialTick, CallbackInfoReturnable<Vec3> cir) {
+        if (!this.jcraft$constructed) {
+            return;
+        }
+        Direction dir = GravityChangerAPI.getGravityDirection((Entity) (Object) this);
+        if (dir != Direction.DOWN) {
+            cir.setReturnValue(RotationUtil.vecPlayerToWorld(cir.getReturnValue(), dir));
+        }
+    }
+
+    @Inject(method = "getOnPos(F)Lnet/minecraft/core/BlockPos;", at = @At("HEAD"), cancellable = true)
+    private void jcraft$rotateOnPos(float yOffset, CallbackInfoReturnable<BlockPos> cir) {
+        if (!this.jcraft$constructed) {
+            return;
+        }
+        Direction dir = GravityChangerAPI.getGravityDirection((Entity) (Object) this);
+        if (dir != Direction.DOWN) {
+            Vec3 belowFeet = this.position().add(RotationUtil.vecPlayerToWorld(0.0, -yOffset, 0.0, dir));
+            cir.setReturnValue(BlockPos.containing(belowFeet));
+        }
+    }
+
+    @ModifyVariable(method = "move(Lnet/minecraft/world/entity/MoverType;Lnet/minecraft/world/phys/Vec3;)V", at = @At("HEAD"), argsOnly = true)
+    private Vec3 jcraft$transformMoveToWorldGravity(Vec3 movement) {
+        if (!this.jcraft$constructed) {
+            return movement;
+        }
+        Direction dir = GravityChangerAPI.getGravityDirection((Entity) (Object) this);
+        if (dir == Direction.DOWN) {
+            this.jcraft$preMoveWantedLocal = null;
+            this.jcraft$preMoveDeltaLocal = null;
+            this.jcraft$postMoveActualWorld = null;
+            return movement;
+        }
+        this.jcraft$preMoveWantedLocal = movement;
+        this.jcraft$preMoveDeltaLocal = this.getDeltaMovement();
+        this.jcraft$postMoveActualWorld = null;
+        return RotationUtil.vecPlayerToWorld(movement, dir);
+    }
+
+    @WrapOperation(
+            method = "move(Lnet/minecraft/world/entity/MoverType;Lnet/minecraft/world/phys/Vec3;)V",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;setOnGroundWithMovement(ZZLnet/minecraft/world/phys/Vec3;)V")
+    )
+    private void jcraft$resolveDirectionalGroundCollision(
+            Entity instance,
+            boolean onGround,
+            boolean horizontalCollision,
+            Vec3 actualWorldMove,
+            Operation<Void> original) {
+        Direction dir = GravityChangerAPI.getGravityDirection(instance);
+        if (dir == Direction.DOWN || this.jcraft$preMoveWantedLocal == null) {
+            original.call(instance, onGround, horizontalCollision, actualWorldMove);
+            return;
+        }
+        this.jcraft$postMoveActualWorld = actualWorldMove;
+        Vec3 localActual = RotationUtil.vecWorldToPlayer(actualWorldMove, dir);
+        Vec3 wanted = this.jcraft$preMoveWantedLocal;
+        boolean localXHit = !Mth.equal(wanted.x, localActual.x);
+        boolean localYHit = !Mth.equal(wanted.y, localActual.y);
+        boolean localZHit = !Mth.equal(wanted.z, localActual.z);
+        boolean localHoriz = localXHit || localZHit;
+        boolean localOnGround = localYHit && wanted.y < 0.0;
+
+        this.horizontalCollision = localHoriz;
+        this.verticalCollision = localYHit;
+        this.verticalCollisionBelow = localOnGround;
+        original.call(instance, localOnGround, localHoriz, actualWorldMove);
+    }
+
+    @Inject(method = "move(Lnet/minecraft/world/entity/MoverType;Lnet/minecraft/world/phys/Vec3;)V", at = @At("TAIL"))
+    private void jcraft$preserveLocalVelocityAxesOnCollision(MoverType type, Vec3 worldMovement, CallbackInfo ci) {
+        if (this.jcraft$preMoveWantedLocal == null || this.jcraft$preMoveDeltaLocal == null) {
+            return;
+        }
+        Direction dir = GravityChangerAPI.getGravityDirection((Entity) (Object) this);
+        if (dir != Direction.DOWN && this.jcraft$postMoveActualWorld != null) {
+            Vec3 localActual = RotationUtil.vecWorldToPlayer(this.jcraft$postMoveActualWorld, dir);
+            Vec3 wanted = this.jcraft$preMoveWantedLocal;
+            Vec3 pre = this.jcraft$preMoveDeltaLocal;
+            double vx = Mth.equal(wanted.x, localActual.x) ? pre.x : 0.0;
+            double vy = Mth.equal(wanted.y, localActual.y) ? pre.y : 0.0;
+            double vz = Mth.equal(wanted.z, localActual.z) ? pre.z : 0.0;
+            this.setDeltaMovement(new Vec3(vx, vy, vz));
+        }
+        this.jcraft$preMoveWantedLocal = null;
+        this.jcraft$preMoveDeltaLocal = null;
+        this.jcraft$postMoveActualWorld = null;
+    }
 
     @Inject(
             method = "positionRider(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/entity/Entity$MoveFunction;)V",

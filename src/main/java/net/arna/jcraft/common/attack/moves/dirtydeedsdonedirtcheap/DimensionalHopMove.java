@@ -2,39 +2,37 @@ package net.arna.jcraft.common.attack.moves.dirtydeedsdonedirtcheap;
 
 import com.mojang.datafixers.kinds.App;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import io.netty.buffer.Unpooled;
 import lombok.Getter;
 import lombok.NonNull;
 import net.arna.jcraft.JCraft;
 import net.arna.jcraft.api.attack.IAttacker;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.moves.AbstractSimpleAttack;
+import net.arna.jcraft.api.registry.JDimensionRegistry;
 import net.arna.jcraft.api.registry.JTagRegistry;
 import net.arna.jcraft.common.tickable.PastDimensions;
-import net.arna.jcraft.api.registry.JDimensionRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ThreadedLevelLightEngine;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.chunk.DataLayer;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
-import net.minecraft.world.level.lighting.DataLayerStorageMap;
-import net.minecraft.world.level.lighting.LevelLightEngine;
+import net.minecraft.world.level.levelgen.Heightmap;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashSet;
-import java.util.Objects;
+import java.util.List;
 import java.util.Set;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 public final class DimensionalHopMove<A extends IAttacker<? extends A, ?>> extends AbstractSimpleAttack<DimensionalHopMove<A>, A> {
 
@@ -100,7 +98,7 @@ public final class DimensionalHopMove<A extends IAttacker<? extends A, ?>> exten
         }
 
         final LivingEntity baseEntity = attacker.getBaseEntity();
-        fixLightInAU(baseEntity, world, JCraft.auWorld);
+        copyTerrainToAU(baseEntity, world, JCraft.auWorld);
 
         Set<LivingEntity> toHop = new HashSet<>(targets);
         toHop.add(user);
@@ -112,12 +110,133 @@ public final class DimensionalHopMove<A extends IAttacker<? extends A, ?>> exten
         return targets;
     }
 
-    static final boolean enableLightingFix = false;
+    private static void copyTerrainToAU(final LivingEntity attacker, final ServerLevel world, final ServerLevel auWorld) {
+        if (auWorld == null || world == auWorld) {
+            return;
+        }
 
-    //todo: fix fixLightInAU() crashing the server repeatedly (its currently not called)
-    @SuppressWarnings("DataFlowIssue") // There is no issue
-    private static void fixLightInAU(final LivingEntity attacker, final ServerLevel world, final ServerLevel auWorld) {
-        if (auWorld == null) return;
+        final int radius = 2;
+        final ChunkPos origin = attacker.chunkPosition();
+        final int heightOffset = (auWorld.getHeight() - world.getHeight()) / 2;
+        final boolean sectionAligned = (heightOffset & 15) == 0;
+        final ThreadedLevelLightEngine lightEngine = auWorld.getChunkSource().getLightEngine();
+        final EnumSet<Heightmap.Types> heightmapsToPrime = EnumSet.of(
+                Heightmap.Types.MOTION_BLOCKING,
+                Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                Heightmap.Types.OCEAN_FLOOR,
+                Heightmap.Types.WORLD_SURFACE
+        );
+
+        final BlockPos.MutableBlockPos srcCursor = new BlockPos.MutableBlockPos();
+        final BlockState air = Blocks.AIR.defaultBlockState();
+        final List<LevelChunk> copiedChunks = new ArrayList<>((radius * 2 + 1) * (radius * 2 + 1));
+
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                final int cx = origin.x() + dx;
+                final int cz = origin.z() + dz;
+                final ChunkPos chunkPos = new ChunkPos(cx, cz);
+
+                JCraft.preloadChunk(auWorld, cx, cz);
+
+                final LevelChunk srcChunk = world.getChunk(cx, cz);
+                final LevelChunk dstChunk = auWorld.getChunk(cx, cz);
+
+                for (BlockPos bePos : new ArrayList<>(dstChunk.getBlockEntitiesPos())) {
+                    dstChunk.removeBlockEntity(bePos);
+                }
+
+                final LevelChunkSection[] srcSections = srcChunk.getSections();
+                final LevelChunkSection[] dstSections = dstChunk.getSections();
+
+                for (int dstIdx = 0; dstIdx < dstSections.length; dstIdx++) {
+                    final LevelChunkSection dstSec = dstSections[dstIdx];
+                    final int dstMinY = dstChunk.getSectionYFromSectionIndex(dstIdx) << 4;
+
+                    if (sectionAligned) {
+                        final int srcIdx = srcChunk.getSectionIndex(dstMinY + heightOffset);
+                        if (srcIdx < 0 || srcIdx >= srcSections.length || srcSections[srcIdx].hasOnlyAir()) {
+                            if (!dstSec.hasOnlyAir()) {
+                                clearSection(dstSec, air);
+                            }
+                            continue;
+                        }
+                        final LevelChunkSection srcSec = srcSections[srcIdx];
+                        for (int y = 0; y < 16; y++) {
+                            for (int z = 0; z < 16; z++) {
+                                for (int x = 0; x < 16; x++) {
+                                    BlockState state = srcSec.getBlockState(x, y, z);
+                                    if (state.is(JTagRegistry.AU_REPLACED_WITH_AIR)) {
+                                        state = air;
+                                    }
+                                    dstSec.setBlockState(x, y, z, state, false);
+                                }
+                            }
+                        }
+                        dstSec.recalcBlockCounts();
+                    } else {
+                        for (int y = 0; y < 16; y++) {
+                            final int srcY = dstMinY + y + heightOffset;
+                            final boolean validY = !world.isOutsideBuildHeight(srcY);
+                            for (int z = 0; z < 16; z++) {
+                                for (int x = 0; x < 16; x++) {
+                                    BlockState state = air;
+                                    if (validY) {
+                                        srcCursor.set((cx << 4) + x, srcY, (cz << 4) + z);
+                                        state = srcChunk.getBlockState(srcCursor);
+                                        if (state.is(JTagRegistry.AU_REPLACED_WITH_AIR)) {
+                                            state = air;
+                                        }
+                                    }
+                                    dstSec.setBlockState(x, y, z, state, false);
+                                }
+                            }
+                        }
+                        dstSec.recalcBlockCounts();
+                    }
+                }
+
+                Heightmap.primeHeightmaps(dstChunk, heightmapsToPrime);
+                dstChunk.setLightCorrect(false);
+                dstChunk.initializeLightSources();
+                dstChunk.markUnsaved();
+
+                lightEngine.setLightEnabled(chunkPos, true);
+                for (int dstIdx = 0; dstIdx < dstSections.length; dstIdx++) {
+                    lightEngine.updateSectionStatus(
+                            SectionPos.of(chunkPos, dstChunk.getSectionYFromSectionIndex(dstIdx)),
+                            dstSections[dstIdx].hasOnlyAir()
+                    );
+                }
+                lightEngine.propagateLightSources(chunkPos);
+                copiedChunks.add(dstChunk);
+            }
+        }
+
+        for (final LevelChunk dstChunk : copiedChunks) {
+            final ChunkPos chunkPos = dstChunk.getPos();
+            lightEngine.lightChunk(dstChunk, false).thenRunAsync(() -> {
+                final List<ServerPlayer> watchers = auWorld.getChunkSource().chunkMap.getPlayers(chunkPos, false);
+                if (!watchers.isEmpty()) {
+                    final ClientboundLevelChunkWithLightPacket packet =
+                            new ClientboundLevelChunkWithLightPacket(dstChunk, lightEngine, null, null);
+                    for (ServerPlayer watcher : watchers) {
+                        watcher.connection.send(packet);
+                    }
+                }
+            }, auWorld.getServer());
+        }
+    }
+
+    private static void clearSection(final LevelChunkSection section, final BlockState air) {
+        for (int y = 0; y < 16; y++) {
+            for (int z = 0; z < 16; z++) {
+                for (int x = 0; x < 16; x++) {
+                    section.setBlockState(x, y, z, air, false);
+                }
+            }
+        }
+        section.recalcBlockCounts();
     }
 
     @Override

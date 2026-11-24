@@ -1,6 +1,17 @@
 package net.arna.jcraft.client.rendering;
 
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.arna.jcraft.client.JClientConfig;
+import net.arna.jcraft.common.entity.stand.MadeInHeavenEntity;
+import net.arna.jcraft.common.util.JUtils;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Map;
@@ -9,7 +20,7 @@ import java.util.WeakHashMap;
 /**
  * Per-entity ring buffer of recent world positions, used to draw the Made In Heaven afterimage along the path the user
  * actually travelled (so the copies trail out of the player instead of snapping to fixed offsets). Sampled once per
- * game tick; the renderer interpolates between samples for smooth motion.
+ * game tick; rendered natively through MC 26.3 SubmitNodeCollector.
  */
 public class MihAfterimageTrail {
     private static final Map<LivingEntity, MihAfterimageTrail> TRAILS = new WeakHashMap<>();
@@ -26,10 +37,6 @@ public class MihAfterimageTrail {
         return TRAILS.computeIfAbsent(entity, e -> new MihAfterimageTrail(capacity));
     }
 
-    /**
-     * Records the position once per tick; a gap in ticks (stopped ramping) restarts the trail to avoid a stale streak.
-     * @return true if a new sample was recorded this call (i.e. the game tick advanced), false otherwise.
-     */
     public boolean sample(final int tick, final Vec3 position) {
         if (tick == lastTick) {
             return false;
@@ -48,8 +55,37 @@ public class MihAfterimageTrail {
         return true;
     }
 
-    /** @return the position {@code index} ticks ago, or null if the trail isn't that long yet. */
     public Vec3 at(final int index) {
         return index >= 0 && index < size ? positions[index] : null;
+    }
+
+    public static void renderAll(final PoseStack stack, final Vec3 camPos, final ClientLevel world, final float tickDelta,
+                                 final SubmitNodeCollector collector, final CameraRenderState cameraState) {
+        if (world == null || collector == null || JClientConfig.getInstance().isDisableMihAfterimages()) {
+            return;
+        }
+        final Minecraft mc = Minecraft.getInstance();
+        final EntityRenderDispatcher dispatcher = mc.getEntityRenderDispatcher();
+        for (final Player player : world.players()) {
+            if (player == null || !player.isAlive() || player.isSpectator()) {
+                continue;
+            }
+            if (!(JUtils.getStand(player) instanceof MadeInHeavenEntity mih)
+                    || mih.getAccelTime() <= 0 || mih.getSpeedometer() < 2) {
+                continue;
+            }
+            final MihAfterimageTrail trail = get(player, 10);
+            trail.sample(player.tickCount, player.position());
+
+            final EntityRenderState state = dispatcher.extractEntity(player, tickDelta);
+            for (int idx : new int[]{2, 5, 8}) {
+                final Vec3 ghostPos = trail.at(idx);
+                if (ghostPos == null || ghostPos.distanceToSqr(player.position()) < 0.04) {
+                    continue;
+                }
+                final Vec3 rel = ghostPos.subtract(camPos);
+                dispatcher.submit(state, cameraState, rel.x, rel.y, rel.z, stack, collector);
+            }
+        }
     }
 }

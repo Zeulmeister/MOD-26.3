@@ -1,13 +1,13 @@
 package net.arna.jcraft.mixin.client;
 
 import net.arna.jcraft.client.rendering.IJCraftEntityRenderStateHolder;
-import net.minecraft.client.renderer.entity.state.HumanoidRenderState;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.world.entity.LivingEntity;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
-@Mixin(HumanoidRenderState.class)
+@Mixin(LivingEntityRenderState.class)
 public class HumanoidRenderStateMixin implements IJCraftEntityRenderStateHolder {
 
     @Unique

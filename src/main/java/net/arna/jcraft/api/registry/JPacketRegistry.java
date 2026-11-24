@@ -48,5 +48,4 @@ public interface JPacketRegistry {
     Identifier S2C_KINETIC_TS_COUNT = JCraft.id("ts_kin");
 
     Identifier S2C_SYNC = JCraft.id("s2c_sync");
-    Identifier C2S_SYNC = JCraft.id("c2s_sync");
 }

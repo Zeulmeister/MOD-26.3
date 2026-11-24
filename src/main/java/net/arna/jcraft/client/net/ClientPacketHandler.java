@@ -593,6 +593,11 @@ public class ClientPacketHandler {
                 crimsonShaderHandler.shouldRender = false;
                 crimsonShaderHandler.renderingEffect = false;
             });
+            case MANDOM_REWIND -> client.execute(() -> {
+                MandomRewindShaderHandler mandomHandler = MandomRewindShaderHandler.INSTANCE;
+                mandomHandler.shouldRender = false;
+                mandomHandler.renderingEffect = false;
+            });
         }
     }
 

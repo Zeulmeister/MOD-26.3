@@ -7,9 +7,7 @@ import lombok.Synchronized;
 import lombok.experimental.UtilityClass;
 import net.arna.jcraft.api.registry.JPacketRegistry;
 import net.arna.jcraft.api.stand.StandEntity;
-import net.arna.jcraft.client.sound.BoundSoundClient;
 import net.arna.jcraft.common.util.JUtils;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceKey;
@@ -136,17 +134,20 @@ public class BoundSoundPlayer {
 
     private static void startSoundHandle(Level level, SoundHandle handle) {
         if (level.isClientSide()) {
-            startSoundHandleClient(handle);
+            ClientDispatch.play(handle);
             return;
         }
 
         handle.play();
     }
 
-    private static void startSoundHandleClient(SoundHandle handle) {
-        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-        handle.write(buf);
-        BoundSoundClient.onBoundSoundPacket(Minecraft.getInstance(), buf);
+    private static final class ClientDispatch {
+        static void play(SoundHandle handle) {
+            FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+            handle.write(buf);
+            net.arna.jcraft.client.sound.BoundSoundClient.onBoundSoundPacket(
+                    net.minecraft.client.Minecraft.getInstance(), buf);
+        }
     }
 
     /**

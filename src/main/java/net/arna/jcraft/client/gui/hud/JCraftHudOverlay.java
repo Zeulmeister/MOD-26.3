@@ -1,179 +1,195 @@
 package net.arna.jcraft.client.gui.hud;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import dev.architectury.event.events.client.ClientGuiEvent;
 import net.arna.jcraft.JCraft;
 import net.arna.jcraft.api.attack.moves.BlockMarkerMove;
-import net.arna.jcraft.common.entity.stand.*;
-import net.arna.jcraft.api.stand.StandEntity;
-import net.arna.jcraft.common.spec.AnubisSpec;
+import net.arna.jcraft.api.component.living.CommonGunslingerComponent;
+import net.arna.jcraft.api.component.living.CommonHamonComponent;
+import net.arna.jcraft.api.component.living.CommonMiscComponent;
+import net.arna.jcraft.api.component.living.CommonVampireComponent;
 import net.arna.jcraft.api.spec.JSpec;
-import net.arna.jcraft.common.spec.HamonSpec;
+import net.arna.jcraft.api.stand.StandEntity;
+import net.arna.jcraft.client.JClientConfig;
+import net.arna.jcraft.common.entity.stand.AbstractPurpleHazeEntity;
+import net.arna.jcraft.common.entity.stand.AerosmithEntity;
+import net.arna.jcraft.common.entity.stand.MadeInHeavenEntity;
+import net.arna.jcraft.common.entity.stand.MetallicaEntity;
+import net.arna.jcraft.common.entity.stand.PurpleHazeDistortionEntity;
+import net.arna.jcraft.common.entity.stand.PurpleHazeEntity;
+import net.arna.jcraft.common.spec.AnubisSpec;
 import net.arna.jcraft.common.spec.RangerSpec;
 import net.arna.jcraft.common.util.JUtils;
 import net.arna.jcraft.platform.JComponentPlatformUtils;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import org.joml.Vector3f;
+import net.minecraft.util.Mth;
 
+import java.util.Locale;
+
+/**
+ * Renders sleek, contextual Stand & Spec micro-gauges (Metallica Iron, Aerosmith Overheat,
+ * Purple Haze Obedience, PHD Virus mode pill, Made in Heaven Speedometer, BlockMarker timers,
+ * Anubis Bloodlust, and Ranger Focus) docked cleanly alongside the main HUD.
+ */
 @Environment(EnvType.CLIENT)
-public class JCraftHudOverlay {
-    private static final Identifier EMPTY_GAUGE = JCraft.id("textures/gui/empty_gauge.png");
-    private static final Identifier FULL_GAUGE = JCraft.id("textures/gui/full_gauge.png");
-
+public final class JCraftHudOverlay {
     private static final Identifier PH_INDICATOR = JCraft.id("textures/gui/purple_haze/indicator.png");
+    private static final int GAUGE_WIDTH = 86;
+    private static final int BAR_HEIGHT = 7;
+    private static final int BAR_STEP = 10;
 
-    private static final int gaugeWidth = 42;
-    private static int gaugeHeightOffset;
-    private static final int GAUGE_HEIGHT_OFFSET_MAX = -65;
-    private static int lastStandGauge = 90;
-    private static int standGaugeFlashTicks = 0;
-    private static final int STAND_GAUGE_FLASH_DURATION = 60;
+    private JCraftHudOverlay() {}
 
-    private static final Vector3f
-            BLOCK_GAUGE_UNDER_THIRD = new Vector3f(0.5f, 0.5f, 1f),
-            BLOCK_GAUGE_OVER_THIRD = new Vector3f(0.55f, 0.8f, 1f),
-            BLOCK_MARKER_MOVE_COLOR = new Vector3f(1f, 0.2f, 0.6f);
-
-    private static final Gauge
-            BLOCK_GAUGE = new Gauge(0.5f, 0.5f, 1f, 90),
-            SUN_SIZE_GAUGE = new Gauge(1f, 0.7f, 0.4f, 30),
-            TIME_ACCEL_GAUGE = new Gauge(1f, 0.8f, 0.0f, MadeInHeavenEntity.MAXIMUM_SPEEDOMETER),
-            BLOODLUST_GAUGE = new Gauge(0.8f, 0.1f, 0.2f, 5),
-            HAMON_GAUGE = new Gauge(0.8f, 0.5f, 0.2f, (int) HamonSpec.MAX_CHARGE),
-            FOCUS_GAUGE = new Gauge(0.4f, 0.75f, 0.5f, (int) RangerSpec.MAX_FOCUS),
-            IRON_GAUGE = new Gauge(0.7f, 0.7f, 0.9f, (int) MetallicaEntity.IRON_MAX),
-            OVERHEAT_GAUGE = new Gauge(0.8f, 0.1f, 0.2f, (int) AerosmithEntity.OVERHEAT_MAX),
-            PH_OBEDIENCE_GAUGE = new Gauge(0.8f, 0.3f, 0.9f, PurpleHazeEntity.MAX_OBEDIENCE);
+    public static void init() {
+        ClientGuiEvent.RENDER_HUD.register((ctx, tickDelta) -> render(ctx));
+    }
 
     public static void render(final GuiGraphicsExtractor ctx) {
         final Minecraft client = Minecraft.getInstance();
-
-        final int width = client.getWindow().getGuiScaledWidth();
-        final int height = client.getWindow().getGuiScaledHeight();
-        final int x = width / 2;
-
         final LocalPlayer player = client.player;
-        
-
-        gaugeHeightOffset = GAUGE_HEIGHT_OFFSET_MAX;
-        final int gaugeX = x - gaugeWidth / 2;
-
-        
-
-        final StandEntity<?, ?> stand = JUtils.getStand(player);
-        if (stand != null) {
-            standGaugeFlashTicks--;
-
-            if (stand instanceof TheSunEntity theSun) { // The Sun has no stand gauge
-                final float darken = (theSun.isPassive() ? 0.4f : 0.0f);
-                SUN_SIZE_GAUGE.render(ctx,
-                        SUN_SIZE_GAUGE.red() - darken,
-                        SUN_SIZE_GAUGE.green() - darken,
-                        SUN_SIZE_GAUGE.blue() - darken,
-                        gaugeX,
-                        height + gaugeHeightOffset,
-                        (int) (theSun.getRawScale() * 10.0F));
-            } else { // regular gauge rendering
-                final float standGauge = stand.getStandGauge();
-                Vector3f color = standGauge > stand.getMaxStandGauge() / 3.0f ?
-                        BLOCK_GAUGE_OVER_THIRD :
-                        BLOCK_GAUGE_UNDER_THIRD;
-
-                color = new Vector3f(color); // Writable copy
-
-                final int intStandGauge = (int) standGauge;
-
-                if (intStandGauge > lastStandGauge) {
-                    standGaugeFlashTicks = STAND_GAUGE_FLASH_DURATION;
-                }
-
-                if (standGaugeFlashTicks > 0) {
-                    float lighten = standGaugeFlashTicks / (float)STAND_GAUGE_FLASH_DURATION;
-                    color.add(lighten, lighten, lighten);
-                }
-
-                BLOCK_GAUGE.render(ctx, color.x, color.y, color.z, gaugeX, height + gaugeHeightOffset, intStandGauge);
-
-                lastStandGauge = intStandGauge;
-            }
-
-            if (stand instanceof MetallicaEntity metallica) {
-                IRON_GAUGE.render(ctx, gaugeX, height + gaugeHeightOffset, (int) metallica.getIron());
-            }
-            else if (stand instanceof AerosmithEntity aerosmith) {
-                OVERHEAT_GAUGE.render(ctx, gaugeX, height + gaugeHeightOffset, (int) aerosmith.getOverheat());
-            }
-            else if (stand instanceof PurpleHazeEntity purpleHaze) {
-                PH_OBEDIENCE_GAUGE.render(ctx, gaugeX, height + gaugeHeightOffset, purpleHaze.getObedience());
-            }
-            else if (stand instanceof PurpleHazeDistortionEntity phd) {
-                
-                ctx.blit(PH_INDICATOR, x + 19, height + gaugeHeightOffset, 0,
-                        phd.getSyncedPoisonType() * 18, 18, 18, 18, 54);
-            }
-            else if (stand instanceof MadeInHeavenEntity madeInHeaven && madeInHeaven.getAccelTime() > 0) {
-                TIME_ACCEL_GAUGE.render(ctx, gaugeX, height + gaugeHeightOffset, madeInHeaven.getSpeedometer());
-            }
-
-            for (final BlockMarkerMove.RecordingTimes recordingTimes : JComponentPlatformUtils.getMiscData(player).viewActiveBlockMarkerMoves()) {
-                if (recordingTimes.getRemaining() > 0) {
-                    new Gauge(BLOCK_MARKER_MOVE_COLOR, recordingTimes.getMax())
-                            .render(ctx, gaugeX, height + gaugeHeightOffset, recordingTimes.getRemaining());
-                }
-            }
-        }
-
-        // don't display spec gauges in spectator
         if (player == null || player.isSpectator()) {
             return;
         }
+
+        final JClientConfig cfg = JClientConfig.getInstance();
+        final int sw = client.getWindow().getGuiScaledWidth();
+        final int sh = client.getWindow().getGuiScaledHeight();
+        final Font font = client.font;
+
+        final StandEntity<?, ?> stand = JUtils.getStand(player);
         final JSpec<?, ?> spec = JUtils.getSpec(player);
-        if (spec instanceof AnubisSpec) {
-            final int displayBloodlust = (int) ((JComponentPlatformUtils.getMiscData(player).getAttackSpeedMult() - 1.0f) * 5);
-            if (displayBloodlust > 0) {
-                BLOODLUST_GAUGE.render(ctx, gaugeX, height + gaugeHeightOffset, displayBloodlust);
+        final CommonMiscComponent misc = JComponentPlatformUtils.getMiscData(player);
+        final CommonVampireComponent vamp = JComponentPlatformUtils.getVampirism(player);
+        final CommonHamonComponent hamon = JComponentPlatformUtils.getHamon(player);
+
+        final int gaugeX = switch (cfg.getUiPosition()) {
+            case LEFT -> 8;
+            case RIGHT -> sw - GAUGE_WIDTH - 8;
+            case MIDDLE -> (sw - GAUGE_WIDTH) / 2;
+        } + cfg.getHorizontalHudOffset();
+
+        final boolean dockVisible = stand != null && cfg.isIconHud() && cfg.getUiDuration() != JClientConfig.UIDuration.NEVER;
+        final boolean hasBottomSpecBar = vamp.isVampire() || hamon.getHamonCharge() > 0.01F || hamon.isHamonizeReady();
+
+        int yCursor;
+        if (cfg.getUiPosition() == JClientConfig.UIPos.MIDDLE) {
+            yCursor = (dockVisible ? sh - 102 : sh - 58) + cfg.getVerticalHudOffset();
+        } else {
+            yCursor = (dockVisible ? sh - 80 : sh - 26) + cfg.getVerticalHudOffset();
+        }
+        if (hasBottomSpecBar) {
+            yCursor -= 11;
+        }
+
+        if (stand instanceof MetallicaEntity metallica) {
+            float ratio = Mth.clamp(metallica.getIron() / MetallicaEntity.IRON_MAX, 0.0F, 1.0F);
+            int color = ratio < 0.25F ? 0xCCEF4444 : 0xCC93C5FD;
+            String label = Component.translatable("jcraft.hud.gauge.iron").getString() + " " + Math.round(metallica.getIron());
+            drawGaugeBar(ctx, font, gaugeX, yCursor, ratio, color, label);
+            yCursor -= BAR_STEP;
+        } else if (stand instanceof AerosmithEntity aerosmith && aerosmith.getOverheat() > 0.05F) {
+            float ratio = Mth.clamp(aerosmith.getOverheat() / AerosmithEntity.OVERHEAT_MAX, 0.0F, 1.0F);
+            int color = ratio > 0.75F ? 0xCCEF4444 : 0xCCF97316;
+            String label = Component.translatable("jcraft.hud.gauge.overheat").getString()
+                    + " " + Math.round(ratio * 100.0F) + "%";
+            drawGaugeBar(ctx, font, gaugeX, yCursor, ratio, color, label);
+            yCursor -= BAR_STEP;
+        } else if (stand instanceof PurpleHazeEntity purpleHaze) {
+            float ratio = Mth.clamp(purpleHaze.getObedience() / (float) PurpleHazeEntity.MAX_OBEDIENCE, 0.0F, 1.0F);
+            String label = Component.translatable("jcraft.hud.gauge.obedience").getString()
+                    + " " + Math.round(ratio * 100.0F) + "%";
+            drawGaugeBar(ctx, font, gaugeX, yCursor, ratio, 0xCCA855F7, label);
+            yCursor -= BAR_STEP;
+        } else if (stand instanceof PurpleHazeDistortionEntity phd) {
+            yCursor = drawPhdModePill(ctx, font, gaugeX, yCursor - 10, phd.getSyncedPoisonType()) - 4;
+        } else if (stand instanceof MadeInHeavenEntity mih && mih.getAccelTime() > 0) {
+            float ratio = Mth.clamp(mih.getSpeedometer() / (float) MadeInHeavenEntity.MAXIMUM_SPEEDOMETER, 0.0F, 1.0F);
+            String label = Component.translatable("jcraft.hud.gauge.speedometer").getString()
+                    + " " + mih.getSpeedometer() + "/" + MadeInHeavenEntity.MAXIMUM_SPEEDOMETER;
+            drawGaugeBar(ctx, font, gaugeX, yCursor, ratio, 0xCCFACC15, label);
+            yCursor -= BAR_STEP;
+        }
+
+        if (stand != null) {
+            for (final BlockMarkerMove.RecordingTimes rt : misc.viewActiveBlockMarkerMoves()) {
+                if (rt.getRemaining() > 0 && rt.getMax() > 0) {
+                    float ratio = Mth.clamp(rt.getRemaining() / (float) rt.getMax(), 0.0F, 1.0F);
+                    String sec = String.format(Locale.ROOT, "%.1fs", rt.getRemaining() / 20.0F);
+                    String label = Component.translatable("jcraft.hud.gauge.marker").getString() + " " + sec;
+                    drawGaugeBar(ctx, font, gaugeX, yCursor, ratio, 0xCCF472B6, label);
+                    yCursor -= BAR_STEP;
+                }
             }
-        } else if (spec instanceof HamonSpec) {
-            final var hamon = JComponentPlatformUtils.getHamon(player);
-            final int charge = (int) hamon.getHamonCharge();
-            final Vector3f color = hamon.isHamonizeReady() ? new Vector3f(1.0f, 1.0f, 0.6f) : HAMON_GAUGE.colorCopy();
-            HAMON_GAUGE.render(ctx, color.x, color.y, color.z, gaugeX, height + gaugeHeightOffset, charge);
+        }
+
+        if (spec instanceof AnubisSpec) {
+            float extra = misc.getAttackSpeedMult() - 1.0F;
+            if (extra > 0.01F) {
+                float ratio = Mth.clamp(extra / (AnubisSpec.BLOODLUST_MAX - 1.0F), 0.0F, 1.0F);
+                int stacks = Mth.clamp(Math.round(extra / AnubisSpec.BLOODLUST_HIT_INCREMENT), 1, 5);
+                String label = Component.translatable("jcraft.hud.gauge.bloodlust").getString() + " x" + stacks;
+                drawGaugeBar(ctx, font, gaugeX, yCursor, ratio, 0xCCDC2626, label);
+                yCursor -= BAR_STEP;
+            }
         } else if (spec instanceof RangerSpec) {
-            final var gunslinger = JComponentPlatformUtils.getGunslinger(player);
-            final int focus = (int) gunslinger.getFocus();
-            if (gunslinger.isFocusActive() || focus < RangerSpec.MAX_FOCUS) {
-                final Vector3f color = gunslinger.isFocusActive() ? new Vector3f(0.7f, 1.0f, 0.8f) : FOCUS_GAUGE.colorCopy();
-                FOCUS_GAUGE.render(ctx, color.x, color.y, color.z, gaugeX, height + gaugeHeightOffset, focus);
+            final CommonGunslingerComponent gunslinger = JComponentPlatformUtils.getGunslinger(player);
+            final float focus = gunslinger.getFocus();
+            if (gunslinger.isFocusActive() || focus < RangerSpec.MAX_FOCUS - 0.1F) {
+                float ratio = Mth.clamp(focus / RangerSpec.MAX_FOCUS, 0.0F, 1.0F);
+                int color = gunslinger.isFocusActive() ? 0xCC22D3EE : 0xCC34D399;
+                String label = Component.translatable("jcraft.hud.gauge.focus").getString() + " " + Math.round(ratio * 100.0F) + "%";
+                drawGaugeBar(ctx, font, gaugeX, yCursor, ratio, color, label);
             }
         }
     }
 
-    protected record Gauge(float red, float green, float blue, int max) {
-        public Gauge(Vector3f color, int max) {
-            this(color.x(), color.y(), color.z(), max);
-        }
+    private static int drawPhdModePill(final GuiGraphicsExtractor ctx, final Font font, final int x, final int y, final int poisonIdx) {
+        final int clamped = Mth.clamp(poisonIdx, 0, 2);
+        final AbstractPurpleHazeEntity.PoisonType type = AbstractPurpleHazeEntity.PoisonType.values()[clamped];
+        final String key = switch (type) {
+            case HARMING -> "jcraft.hud.phd.mode.harming";
+            case NULLIFYING -> "jcraft.hud.phd.mode.nullifying";
+            case DEBILITATING -> "jcraft.hud.phd.mode.debilitating";
+        };
+        final int accent = switch (type) {
+            case HARMING -> 0xFFC084FC;
+            case NULLIFYING -> 0xFF38BDF8;
+            case DEBILITATING -> 0xFFF472B6;
+        };
 
-        public void render(GuiGraphicsExtractor ctx, int x, int y, int value) {
-            render(ctx, red, green, blue, x, y, value);
-        }
+        ctx.fill(x, y, x + GAUGE_WIDTH, y + 18, 0x770E0B16);
+        ctx.outline(x, y, GAUGE_WIDTH, 18, accent & 0x66FFFFFF | 0x44000000);
+        ctx.blit(RenderPipelines.GUI_TEXTURED, PH_INDICATOR, x + 2, y, 0.0F, clamped * 18.0F, 18, 18, 18, 54);
 
-        public void render(GuiGraphicsExtractor ctx, float r, float g, float b, int x, int y, int value) {
-            
-            //RenderSystem.setShaderTexture(0, EMPTY_GAUGE);
-            ctx.blit(EMPTY_GAUGE, x, y, 0, 0, gaugeWidth, 5, gaugeWidth, 5);
-            //RenderSystem.setShaderTexture(0, FULL_GAUGE);
-            ctx.blit(FULL_GAUGE, x, y, 0, 0, value * gaugeWidth / max, 5, gaugeWidth, 5);
-            gaugeHeightOffset -= 6;
-            
-        }
+        final var pose = ctx.pose();
+        pose.pushMatrix();
+        pose.translate(x + 23, y + 6);
+        pose.scale(0.68F, 0.68F);
+        ctx.text(font, Component.translatable(key), 0, 0, accent, true);
+        pose.popMatrix();
+        return y;
+    }
 
-        public Vector3f colorCopy() {
-            return new Vector3f(red, green, blue);
+    private static void drawGaugeBar(final GuiGraphicsExtractor ctx, final Font font, final int x, final int y,
+                                     final float ratio, final int color, final String label) {
+        ctx.fill(x, y, x + GAUGE_WIDTH, y + BAR_HEIGHT, 0x770E0B16);
+        int fillW = Math.round((GAUGE_WIDTH - 2) * ratio);
+        if (fillW > 0) {
+            ctx.fill(x + 1, y + 1, x + 1 + fillW, y + BAR_HEIGHT - 1, color);
         }
+        ctx.outline(x, y, GAUGE_WIDTH, BAR_HEIGHT, 0x33FFFFFF);
+        final var pose = ctx.pose();
+        pose.pushMatrix();
+        pose.translate(x + 3, y + 1);
+        pose.scale(0.62F, 0.62F);
+        ctx.text(font, label, 0, 0, 0xEEF9FAFB, true);
+        pose.popMatrix();
     }
 }

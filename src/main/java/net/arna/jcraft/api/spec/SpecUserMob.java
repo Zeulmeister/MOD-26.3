@@ -30,10 +30,6 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 public class SpecUserMob extends PathfinderMob implements JSpecHolder, IFoodData {
-    // TODO: add metallica anims to the player anims these guys use
-    // TODO: healing
-    // TODO: anubis-specific sheathing
-
     protected final CommonSpecComponent component;
 
     private static final EntityDataAccessor<Boolean> ANIMATION_RESET = SynchedEntityData.defineId(SpecUserMob.class, EntityDataSerializers.BOOLEAN);
@@ -81,6 +77,8 @@ public class SpecUserMob extends PathfinderMob implements JSpecHolder, IFoodData
                     Vec3 posTowards = DefaultRandomPos.getPosTowards(this, 2, 7, target.position(), 1.5707963705062866);
                     if (posTowards != null) getNavigation().moveTo(posTowards.x, posTowards.y, posTowards.z, 1.0);
                 }
+            } else if (isAlive() && tickCount % 80 == 0 && getHealth() < getMaxHealth()) {
+                heal(1.0F);
             }
 
             spec.tickSpec();

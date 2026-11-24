@@ -23,6 +23,15 @@ public abstract class ClientLevelMixin implements IJSplatterManagerHolder {
         });
     }
 
+    @Inject(method = "tickPassenger", at = @At("HEAD"), cancellable = true)
+    private void jcraft$timestopTickClientPassenger(Entity vehicle, Entity passenger, CallbackInfo ci) {
+        JComponentPlatformUtils.getTimeStopData(passenger).ifPresent(ts -> {
+            if (ts.tick()) {
+                ci.cancel();
+            }
+        });
+    }
+
     @Inject(method = "tick", at = @At("TAIL"))
     private void jcraft$tickClientSplatters(BooleanSupplier hasTimeLeft, CallbackInfo ci) {
         this.jcraft$getSplatterManager().tick();
