@@ -109,7 +109,7 @@ public class MandomEntity extends StandEntity<MandomEntity, MandomEntity.State> 
 
         // Special check for ULTIMATE (Rewind) - only allow if countdown is active
         if (moveClass == MoveClass.ULTIMATE) {
-            CountdownMove countdownMove = getMove(CountdownMove.class);
+            CountdownMove<?> countdownMove = getMove(CountdownMove.class);
 
             if (countdownMove == null || !countdownMove.isCountdownActive()) {
                 // Countdown is not active, don't allow the ultimate
@@ -147,7 +147,7 @@ public class MandomEntity extends StandEntity<MandomEntity, MandomEntity.State> 
     public boolean initMove(MoveClass moveClass) {
         // Special check for ULTIMATE (Rewind) - only allow if countdown is active
         if (moveClass == MoveClass.ULTIMATE) {
-            CountdownMove countdownMove = getMove(CountdownMove.class);
+            CountdownMove<?> countdownMove = getMove(CountdownMove.class);
 
             if (countdownMove == null || !countdownMove.isCountdownActive()) {
                 // Countdown is not active, don't allow the ultimate

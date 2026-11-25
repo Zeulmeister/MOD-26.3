@@ -33,8 +33,8 @@ public class VampireSpecUser extends SpecUserMob {
         );
 
         targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, Player.class, true));
-        targetSelector.addGoal(3, new NearestAttackableTargetGoal(this, IronGolem.class, true));
-        targetSelector.addGoal(3, new NearestAttackableTargetGoal(this, Villager.class, true));
+        targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, IronGolem.class, true));
+        targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Villager.class, true));
     }
 
     public static AttributeSupplier.Builder createUserAttributes() {

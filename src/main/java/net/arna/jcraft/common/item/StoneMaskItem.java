@@ -72,6 +72,7 @@ public class StoneMaskItem extends Item {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // Official MC 26.3 Item tooltip hook (invoked by ItemStack#addDetailsToTooltip)
     public void appendHoverText(@NotNull ItemStack stack, @NotNull TooltipContext context, @NotNull TooltipDisplay display, @NotNull Consumer<Component> tooltipAdder, @NotNull TooltipFlag flag) {
         tooltipAdder.accept(Component.translatable("jcraft.stonemask.desc"));
     }

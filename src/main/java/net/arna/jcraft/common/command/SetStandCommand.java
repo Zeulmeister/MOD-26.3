@@ -99,7 +99,7 @@ public class SetStandCommand {
 
         for (final Entity entity : targets) {
             if (entity instanceof LivingEntity livingEntity) {
-                if (livingEntity.getType().builtInRegistryHolder().is(JTagRegistry.CAN_NEVER_HAVE_STAND)) {
+                if (net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(livingEntity.getType()).is(JTagRegistry.CAN_NEVER_HAVE_STAND)) {
                     continue;
                 }
                 final CommonStandComponent standData = JComponentPlatformUtils.getStandComponent(livingEntity);

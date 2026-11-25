@@ -92,7 +92,8 @@ public final class KQDetonateAttack<A extends StandEntity<? extends A, ?>> exten
 
         for (LivingEntity living : toExplode) {
             final Vec3 kbVec = living.getEyePosition().subtract(pos).normalize();
-            damageLogic(stand.level(), living, kbVec, 2, 3, true, damage, false, 4, damageSource, user, null);
+            damageLogic(stand.level(), living, new net.arna.jcraft.api.AttackData(
+                    kbVec, 2, 3, true, damage, false, 4, damageSource, user, null, null, false, false));
             living.addEffect(new MobEffectInstance(JStatusRegistry.KNOCKDOWN.asHolder(), 35, 0, true, false));
         }
     }

@@ -117,8 +117,10 @@ public final class CrossfireHurricaneAttack<A extends StandEntity<? extends A, ?
         for (LivingEntity living : toHurt) {
             LivingEntity target = JUtils.getUserIfStand(living);
             if (hurricaneTime > 1) {
-                damageLogic(world, target, new Vec3(Math.sin(stand.tickCount / 10.0) * 3, 0.0, Math.cos(stand.tickCount / 10.0) * 3),
-                        10, 1, false, 0.5f, true, 5, JDamageSources.stand(stand), user, CommonHitPropertyComponent.HitAnimation.MID);
+                damageLogic(world, target, new net.arna.jcraft.api.AttackData(
+                        new Vec3(Math.sin(stand.tickCount / 10.0) * 3, 0.0, Math.cos(stand.tickCount / 10.0) * 3),
+                        10, 1, false, 0.5f, true, 5, JDamageSources.stand(stand), user,
+                        CommonHitPropertyComponent.HitAnimation.MID, null, false, false));
                 if (hurricaneTime > 15) {
                     hurricaneTime = 15; // Allows for zoning until it hits something
                 }

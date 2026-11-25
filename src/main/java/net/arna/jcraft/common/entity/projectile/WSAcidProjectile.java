@@ -98,8 +98,8 @@ public class WSAcidProjectile extends AbstractArrow {
             discard();
         }
 
-        if (entity instanceof EndCrystal endCrystal) {
-            endCrystal.hurt(level().damageSources().thrown(this, owner), 2f);
+        if (entity instanceof EndCrystal endCrystal && level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            endCrystal.hurtServer(serverLevel, serverLevel.damageSources().thrown(this, owner), 2f);
         }
 
         playSound(SoundEvents.BUCKET_EMPTY, 1, 0.5f);

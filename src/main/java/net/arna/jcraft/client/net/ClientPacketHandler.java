@@ -297,7 +297,7 @@ public class ClientPacketHandler {
 
         final short control = buf.readShort();
         switch (control) {
-            // Attack hit boxes (disabled — drain packet bytes without rendering outlines)
+            // Attack hit boxes (disabled â€” drain packet bytes without rendering outlines)
             case (1) -> {
                 final int count = buf.readVarInt();
                 for (int i = 0; i < count; i++) {
@@ -339,7 +339,7 @@ public class ClientPacketHandler {
                 final double x = buf.readDouble();
                 final double y = buf.readDouble();
                 final double z = buf.readDouble();
-                final JParticleType particleType = buf.readEnum(JParticleType.class);
+                final JParticleType particleType = net.arna.jcraft.api.misc.JByteBufUtils.readEnum(buf, JParticleType.class);
 
                 client.execute(() -> client.level.addParticle(particleType.getParticleType(), false, true, x, y, z, 0, 0, 0));
             }
@@ -349,7 +349,7 @@ public class ClientPacketHandler {
                 final double x = buf.readDouble();
                 final double y = buf.readDouble();
                 final double z = buf.readDouble();
-                final JParticleType particleType = buf.readEnum(JParticleType.class);
+                final JParticleType particleType = net.arna.jcraft.api.misc.JByteBufUtils.readEnum(buf, JParticleType.class);
                 final int sparkCount = buf.readInt();
                 final double speed = buf.readDouble();
 
@@ -483,7 +483,7 @@ public class ClientPacketHandler {
                 final double velX = buf.readDouble();
                 final double velY = buf.readDouble();
                 final double velZ = buf.readDouble();
-                final JParticleType particleType = buf.readEnum(JParticleType.class);
+                final JParticleType particleType = net.arna.jcraft.api.misc.JByteBufUtils.readEnum(buf, JParticleType.class);
 
                 client.execute(() -> client.level.addParticle(particleType.getParticleType(), false, true, x, y, z, velX, velY, velZ));
             }
@@ -591,7 +591,7 @@ public class ClientPacketHandler {
     }
 
     public static void handleTimeAccelState(final @NonNull Minecraft client, final FriendlyByteBuf buf) {
-        final TimeAccelStatePacket.State state = buf.readEnum(TimeAccelStatePacket.State.class);
+        final TimeAccelStatePacket.State state = net.arna.jcraft.api.misc.JByteBufUtils.readEnum(buf, TimeAccelStatePacket.State.class);
         final int entityId = buf.readVarInt();
 
         switch (state) {

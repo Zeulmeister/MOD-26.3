@@ -392,7 +392,9 @@ public class HamonSpec extends JSpec<HamonSpec, HamonSpec.State> {
             return;
         }
 
-        target.hurt(target.damageSources().indirectMagic(user, null), 1.5f);
+        if (target.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            target.hurtServer(serverLevel, target.damageSources().indirectMagic(user, null), 1.5f);
+        }
         target.addEffect(new MobEffectInstance(MobEffects.MINING_FATIGUE, 10, 0, false, true));
         target.setRemainingFireTicks(10);
     }

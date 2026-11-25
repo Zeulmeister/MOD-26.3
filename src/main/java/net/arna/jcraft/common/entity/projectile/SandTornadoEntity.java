@@ -90,8 +90,10 @@ public class SandTornadoEntity extends JAttackEntity implements IOwnable {
                         if (target.isPassengerOfSameVehicle(master)) {
                             return;
                         }
-                        damageLogic(level(), target, circulation, 10, 1, false, 2f, true, 6,
-                                level().damageSources().mobAttack(master), master, CommonHitPropertyComponent.HitAnimation.MID, false);
+                        damageLogic(level(), target, new net.arna.jcraft.api.AttackData(
+                                circulation, 10, 1, false, 2f, true, 6,
+                                level().damageSources().mobAttack(master), master,
+                                CommonHitPropertyComponent.HitAnimation.MID, null, false, false));
                     }
                     hitsLeft--;
                 }

@@ -128,7 +128,7 @@ public final class PredictionMove<A extends StandEntity<? extends A, ?>> extends
         attacker.cancelMove();
     }
 
-    public void cancelPrediction(final A attacker) {
+    public void cancelPrediction(final StandEntity<?, ?> attacker) {
         cancelPrediction(attacker, predictionInfo);
     }
 
@@ -166,7 +166,7 @@ public final class PredictionMove<A extends StandEntity<? extends A, ?>> extends
         }
 
         return world.getEntitiesOfClass(Entity.class, stand.getBoundingBox().inflate(64),
-                EntitySelector.NO_CREATIVE_OR_SPECTATOR.and(e -> e != stand && e != player && !e.getType().builtInRegistryHolder().is(JTagRegistry.UNAFFECTED_BY_EPITAPH)));
+                EntitySelector.NO_CREATIVE_OR_SPECTATOR.and(e -> e != stand && e != player && !net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(e.getType()).is(JTagRegistry.UNAFFECTED_BY_EPITAPH)));
     }
 
     public static void updatePredictions(final Map<Entity, Vec3> predictions, final int ticksLeft) {

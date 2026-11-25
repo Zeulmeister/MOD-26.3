@@ -370,8 +370,8 @@ public final class JUtils {
             damageLogic(world, target, attackData);
         }
 
-        if (ent instanceof EndCrystal endCrystal) {
-            endCrystal.hurt(attackData.source(), attackData.damage());
+        if (ent instanceof EndCrystal endCrystal && world instanceof ServerLevel serverLevel) {
+            endCrystal.hurtServer(serverLevel, attackData.source(), attackData.damage());
         }
     }
 
@@ -654,15 +654,15 @@ public final class JUtils {
     public static float getBloodMult(LivingEntity entity) {
         EntityType<?> type = entity.getType();
 
-        if (type.builtInRegistryHolder().is(JTagRegistry.BLOODLESS_ENTITIES)) {
+        if (net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(type).is(JTagRegistry.BLOODLESS_ENTITIES)) {
             return 0;
         }
 
-        if (type.builtInRegistryHolder().is(EntityTypeTags.RAIDERS)) {
+        if (net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(type).is(EntityTypeTags.RAIDERS)) {
             return 1.5f;
         }
 
-        if (type.builtInRegistryHolder().is(EntityTypeTags.AXOLOTL_HUNT_TARGETS)) // Fishes
+        if (net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(type).is(EntityTypeTags.AXOLOTL_HUNT_TARGETS)) // Fishes
         {
             return 0.25f;
         }
@@ -806,7 +806,7 @@ public final class JUtils {
     public static boolean isFerrous(@Nullable Entity entity) {
         if (entity == null) return false;
 
-        if (entity.getType().builtInRegistryHolder().is(JTagRegistry.FERROUS_ENTITIES)) {
+        if (net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(entity.getType()).is(JTagRegistry.FERROUS_ENTITIES)) {
             return true;
         }
 

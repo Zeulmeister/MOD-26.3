@@ -10,9 +10,10 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
-import org.apache.commons.lang3.Validate;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
+
+import java.util.Objects;
 
 public class RotationAnimation {
     private static volatile Runnable onClientRotationStep = () -> {};
@@ -34,7 +35,7 @@ public class RotationAnimation {
             return;
         }
 
-        Validate.notNull(entity);
+        Objects.requireNonNull(entity);
 
         Vec3 newLookingDirection = getNewLookingDirection(newGravity, prevGravity, entity);
 

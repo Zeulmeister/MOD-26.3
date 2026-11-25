@@ -93,6 +93,7 @@ public class SpecDiscItem extends Item {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // Official MC 26.3 Item tooltip hook (invoked by ItemStack#addDetailsToTooltip)
     public void appendHoverText(@NonNull ItemStack stack, @NonNull TooltipContext tooltipCtx, @NonNull TooltipDisplay tooltipDisplay, @NonNull Consumer<Component> tooltipAdder, @NonNull TooltipFlag context) {
         SpecType type = getSpecType(stack);
         if (type == null) {

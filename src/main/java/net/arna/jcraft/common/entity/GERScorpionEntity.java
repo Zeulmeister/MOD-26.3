@@ -200,8 +200,9 @@ public class GERScorpionEntity extends Mob implements IOwnable {
                         jumpTarget = hurtAll.get(0);
                         for (LivingEntity l : hurtAll) {
                             LivingEntity target = JUtils.getUserIfStand(l);
-                            damageLogic(level(), target, getDeltaMovement(), rockStun, 1, false, 6f,
-                                    true, 10, damageSource, owner, CommonHitPropertyComponent.HitAnimation.MID);
+                            damageLogic(level(), target, new net.arna.jcraft.api.AttackData(
+                                    getDeltaMovement(), rockStun, 1, false, 6f, true, 10, damageSource, owner,
+                                    CommonHitPropertyComponent.HitAnimation.MID, null, false, false));
                         }
                         Transform();
                         JCraft.createParticle((ServerLevel) this.level(),
@@ -231,12 +232,16 @@ public class GERScorpionEntity extends Mob implements IOwnable {
                             for (LivingEntity l : hurt) {
                                 LivingEntity target = JUtils.getUserIfStand(l);
                                 target.addEffect(new MobEffectInstance(MobEffects.POISON, 60, 0, false, true));
-                                damageLogic(level(), target, Vec3.ZERO, 15, 1, false, 3f, true, 7, damageSource, owner, CommonHitPropertyComponent.HitAnimation.MID);
+                                damageLogic(level(), target, new net.arna.jcraft.api.AttackData(
+                                        Vec3.ZERO, 15, 1, false, 3f, true, 7, damageSource, owner,
+                                        CommonHitPropertyComponent.HitAnimation.MID, null, false, false));
                             }
                         } else {
                             for (LivingEntity l : hurt) {
                                 LivingEntity target = JUtils.getUserIfStand(l);
-                                damageLogic(level(), target, Vec3.ZERO, 15, 1, false, 3f, true, 7, damageSource, owner, CommonHitPropertyComponent.HitAnimation.MID);
+                                damageLogic(level(), target, new net.arna.jcraft.api.AttackData(
+                                        Vec3.ZERO, 15, 1, false, 3f, true, 7, damageSource, owner,
+                                        CommonHitPropertyComponent.HitAnimation.MID, null, false, false));
                             }
                         }
                     }

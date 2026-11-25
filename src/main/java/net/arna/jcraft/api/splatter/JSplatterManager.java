@@ -131,7 +131,7 @@ public class JSplatterManager {
         buf.writeDouble(pos.x());
         buf.writeDouble(pos.y());
         buf.writeDouble(pos.z());
-        buf.writeEnum(splatter.getDirection());
+        net.arna.jcraft.api.misc.JByteBufUtils.writeEnum(buf, splatter.getDirection());
         buf.writeIdentifier(splatter.getType().getId());
         buf.writeFloat(splatter.getXRange());
         buf.writeFloat(splatter.getZRange());
@@ -143,7 +143,7 @@ public class JSplatterManager {
         double x = buf.readDouble();
         double y = buf.readDouble();
         double z = buf.readDouble();
-        Direction direction = buf.readEnum(Direction.class);
+        Direction direction = net.arna.jcraft.api.misc.JByteBufUtils.readEnum(buf, Direction.class);
         Identifier typeRl = buf.readIdentifier();
         RegistrySupplier<SplatterFactory> type = JRegistries.SPLATTER_TYPE_REGISTRY.delegate(typeRl);
         if (!type.isPresent()) {

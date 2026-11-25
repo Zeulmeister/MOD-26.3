@@ -84,8 +84,9 @@ public class GEVinesEntity extends AbstractArrow {
                 if (livingOwner == target)
                     continue;
 
-                damageLogic(level(), target, kbVec, 22 - hitCount * 2, StunType.BURSTABLE.ordinal(),
-                        false, 5f, true, 11, ds, livingOwner, CommonHitPropertyComponent.HitAnimation.MID, false);
+                damageLogic(level(), target, new net.arna.jcraft.api.AttackData(
+                        kbVec, 22 - hitCount * 2, StunType.BURSTABLE.ordinal(), false, 5f, true, 11, ds, livingOwner,
+                        CommonHitPropertyComponent.HitAnimation.MID, null, false, false));
 
                 anyHit = true;
             }

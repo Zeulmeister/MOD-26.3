@@ -204,8 +204,10 @@ public class MeteorProjectile extends AbstractArrow {
         if (!hurtAll.isEmpty()) {
             for (LivingEntity l : hurtAll) {
                 final LivingEntity target = JUtils.getUserIfStand(l);
-                damageLogic(level(), target, l.position().subtract(position()).normalize(), 20, 3, false, 5f,
-                        false, 10, JDamageSources.create(level(), DamageTypes.ON_FIRE), owner, CommonHitPropertyComponent.HitAnimation.LAUNCH);
+                damageLogic(level(), target, new net.arna.jcraft.api.AttackData(
+                        l.position().subtract(position()).normalize(), 20, 3, false, 5f, false, 10,
+                        JDamageSources.create(level(), DamageTypes.ON_FIRE), owner,
+                        CommonHitPropertyComponent.HitAnimation.LAUNCH, null, false, false));
             }
         }
 

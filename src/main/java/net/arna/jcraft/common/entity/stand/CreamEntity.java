@@ -653,7 +653,9 @@ public class CreamEntity extends StandEntity<CreamEntity, CreamEntity.State> {
                     JUtils.cancelMoves(livingEntity);
                 }
 
-                livingEntity.hurt(level().damageSources().fellOutOfWorld(), damage);
+                if (livingEntity.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                    livingEntity.hurtServer(serverLevel, serverLevel.damageSources().fellOutOfWorld(), damage);
+                }
             }
         }
 

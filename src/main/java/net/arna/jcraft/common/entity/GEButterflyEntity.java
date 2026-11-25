@@ -29,7 +29,7 @@ import java.util.Arrays;
 public class GEButterflyEntity extends Mob implements IOwnable {
     public GEButterflyEntity(EntityType<? extends Mob> entityType, Level world) {
         super(entityType, world);
-        this.moveControl = new FlyingMoveControl(this, 10, false);
+        this.moveControl = new FlyingMoveControl<>(this, 10, false);
         this.navigation = new FlyingPathNavigation(this, world);
         this.setDropChance(net.minecraft.world.entity.EquipmentSlot.MAINHAND, 2.0F);
         this.setDropChance(net.minecraft.world.entity.EquipmentSlot.OFFHAND, 2.0F);

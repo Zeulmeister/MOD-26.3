@@ -49,7 +49,7 @@ public class BlockBreakerClient {
             BlockPos pos = buf.readBlockPos();
             int progress = Mth.clamp((int) (buf.readFloat() * 10), 0, 10);
             int breakerId = buf.readVarInt();
-            Direction attackedFrom = buf.readBoolean() ? buf.readEnum(Direction.class) : null;
+            Direction attackedFrom = buf.readBoolean() ? net.arna.jcraft.api.misc.JByteBufUtils.readEnum(buf, Direction.class) : null;
 
             Entity breaker = breakerId > 0 ? level.getEntity(breakerId) : null;
             Player player = breaker instanceof Player p ? p : null;

@@ -220,7 +220,9 @@ public class ItemTossProjectile extends AbstractArrow {
             entity.igniteForSeconds(5);
         }
 
-        entity.hurt(damageSource, calculateDamage(entity));
+        if (entity.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            entity.hurtServer(serverLevel, damageSource, calculateDamage(entity));
+        }
 
         if (targetIsEnderman) {
             return;
@@ -393,7 +395,9 @@ public class ItemTossProjectile extends AbstractArrow {
         // Fire charge ignites hit entity and deals bonus fire damage
         if (getItem().is(Items.FIRE_CHARGE)) {
             entity.igniteForSeconds(5);
-            entity.hurt(this.damageSources().onFire(), 4.0f);
+            if (entity.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                entity.hurtServer(serverLevel, this.damageSources().onFire(), 4.0f);
+            }
             this.playSound(SoundEvents.FIRECHARGE_USE, 1.0F, 1.0F);
             effectActivated = true;
         }
@@ -419,8 +423,8 @@ public class ItemTossProjectile extends AbstractArrow {
         }
 
         // end of inspired part
-        if (!this.level().isClientSide() && getItem().is(JTagRegistry.EXPLODES_ON_IMPACT)) {
-            entity.hurt(this.damageSources().arrow(this, entity2), 6f);
+        if (this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel && getItem().is(JTagRegistry.EXPLODES_ON_IMPACT)) {
+            entity.hurtServer(serverLevel, this.damageSources().arrow(this, entity2), 6f);
         }
         // a little bit more inspiration
         if (this.getPierceLevel() <= 0) {

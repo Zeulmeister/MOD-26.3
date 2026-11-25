@@ -203,7 +203,7 @@ public class AerosmithEntity extends StandEntity<AerosmithEntity, AerosmithEntit
     @Getter
     private final AerosmithChargeAttack chargeAttack;
     @Getter
-    private final BreathXrayMove<AerosmithEntity> breathXrayMove;
+    private final BreathXrayMove<?> breathXrayMove;
     @Getter
     private final AerosmithAttackOrderMove attackOrderMove;
 

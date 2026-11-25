@@ -66,8 +66,9 @@ public final class RequiemCounterAttack extends AbstractCounterAttack<RequiemCou
 
             final Vec3 kb = mainTarget.position().subtract(user.position());
             final Vec3 pushVec = (kb.lengthSqr() > 1.0E-4 ? kb.normalize() : attacker.getLookAngle()).scale(0.85).add(0.0, 0.25, 0.0);
-            Attacks.damageLogic(serverLevel, mainTarget, pushVec, 20, 1, true, 6.0f,
-                    false, 6, attacker.getDamageSource(), user, CommonHitPropertyComponent.HitAnimation.CRUSH, false);
+            Attacks.damageLogic(serverLevel, mainTarget, new net.arna.jcraft.api.AttackData(
+                    pushVec, 20, 1, true, 6.0f, false, 6, attacker.getDamageSource(), user,
+                    CommonHitPropertyComponent.HitAnimation.CRUSH, null, false, false));
 
             serverLevel.sendParticles(ParticleTypes.SOUL,
                     mainTarget.getX(), mainTarget.getY() + mainTarget.getBbHeight() * 0.5, mainTarget.getZ(),

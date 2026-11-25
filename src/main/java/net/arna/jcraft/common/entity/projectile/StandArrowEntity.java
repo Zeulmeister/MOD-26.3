@@ -39,7 +39,7 @@ public class StandArrowEntity extends AbstractArrow {
                 return;
             }
             final CommonStandComponent standData = JComponentPlatformUtils.getStandComponent(mob);
-            if (standData.getType() == null && !mob.getType().builtInRegistryHolder().is(JTagRegistry.CAN_NEVER_HAVE_STAND)) {
+            if (standData.getType() == null && !net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(mob.getType()).is(JTagRegistry.CAN_NEVER_HAVE_STAND)) {
                 standData.setType(StandTypeUtil.getRandomRegular(random, level.registryAccess(), mob instanceof Player, !(mob instanceof Player)));
                 mob.unRide();
                 JCraft.summon(mob.level(), mob);

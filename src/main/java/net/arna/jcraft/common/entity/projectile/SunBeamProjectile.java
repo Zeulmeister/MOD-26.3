@@ -169,8 +169,9 @@ public class SunBeamProjectile extends AbstractArrow {
                         for (LivingEntity l : hurtAll) {
                             LivingEntity target = JUtils.getUserIfStand(l);
                             int stun = 10;
-                            damageLogic(level(), target, Vec3.ZERO, stun, 1, false, 1f,
-                                    true, 2, damageSource, owner, CommonHitPropertyComponent.HitAnimation.values()[random.nextInt(3)]);
+                            damageLogic(level(), target, new net.arna.jcraft.api.AttackData(
+                                    Vec3.ZERO, stun, 1, false, 1f, true, 2, damageSource, owner,
+                                    CommonHitPropertyComponent.HitAnimation.values()[random.nextInt(3)], null, false, false));
                         }
 
                         Vec3 hitPos = hurtAll.get(0).position();

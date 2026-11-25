@@ -64,7 +64,9 @@ public abstract class CommonVampireComponentImpl implements CommonVampireCompone
                 world.canSeeSky(entity.blockPosition())
         ) {
             entity.igniteForSeconds(1);
-            entity.hurt(world.damageSources().dryOut(), 2.0F);
+            if (world instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                entity.hurtServer(serverLevel, serverLevel.damageSources().dryOut(), 2.0F);
+            }
         }
 
         // Vampires do not have to breathe.
@@ -78,7 +80,9 @@ public abstract class CommonVampireComponentImpl implements CommonVampireCompone
         if (foodData != null) {
             if (blood < 1 && --starveTick < 1) {
                 // Starve
-                entity.hurt(world.damageSources().starve(), 1.0F);
+                if (world instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                    entity.hurtServer(serverLevel, serverLevel.damageSources().starve(), 1.0F);
+                }
                 starveTick = 80;
             } else {
                 // Regenerate

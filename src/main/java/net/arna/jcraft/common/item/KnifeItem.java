@@ -70,8 +70,9 @@ public class KnifeItem extends Item {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // Official MC 26.3 Item tooltip hook (invoked by ItemStack#addDetailsToTooltip)
     public void appendHoverText(@NotNull ItemStack stack, @NotNull Item.TooltipContext tooltipCtx, @NotNull TooltipDisplay tooltipDisplay, Consumer<Component> tooltipAdder, @NotNull TooltipFlag context) {
-        tooltipAdder.accept(Component.translatable("jcraft.knife.chargetime").append(" §e" + getChargeTime() / 20F + "§9s"));
+        tooltipAdder.accept(Component.translatable("jcraft.knife.chargetime").append(" Â§e" + getChargeTime() / 20F + "Â§9s"));
     }
 
     @Override

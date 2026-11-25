@@ -107,7 +107,7 @@ public class BreathXrayMove<A extends IAttacker<? extends A, ?>> extends Abstrac
         boolean doPing = false;
 
         for (Entity entity : base.level().getEntities().getAll()) {
-            if (entity.distanceToSqr(pos) > range * range || entity.getType().builtInRegistryHolder().is(JTagRegistry.DOESNT_BREATHE) ||
+            if (entity.distanceToSqr(pos) > range * range || net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(entity.getType()).is(JTagRegistry.DOESNT_BREATHE) ||
                     entity == user || entity == base || JUtils.inTimeErase(entity) || entity.isSpectator() ||
                     !(entity instanceof LivingEntity living)) {
                 continue;

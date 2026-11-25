@@ -83,8 +83,9 @@ public class GETreeEntity extends AbstractArrow {
                 if (livingOwner == target) {
                     JUtils.addVelocity(target, launchVec.x, launchVec.y, launchVec.z);
                 } else {
-                    damageLogic(level(), target, launchVec, 25, 3,
-                            false, 7f, false, 11, ds, livingOwner, CommonHitPropertyComponent.HitAnimation.MID, false);
+                    damageLogic(level(), target, new net.arna.jcraft.api.AttackData(
+                            launchVec, 25, 3, false, 7f, false, 11, ds, livingOwner,
+                            CommonHitPropertyComponent.HitAnimation.MID, null, false, false));
                 }
 
                 processed.add(id);

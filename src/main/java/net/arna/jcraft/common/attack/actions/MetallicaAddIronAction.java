@@ -22,7 +22,7 @@ public class MetallicaAddIronAction extends MoveAction<MetallicaAddIronAction, M
     public void perform(MetallicaEntity attacker, LivingEntity user, Set<LivingEntity> targets) {
         boolean foundIronEntity = false;
         for (final LivingEntity target : targets) {
-            if (!target.getType().builtInRegistryHolder().is(JTagRegistry.IRONLESS_ENTITIES)) {
+            if (!net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(target.getType()).is(JTagRegistry.IRONLESS_ENTITIES)) {
                 foundIronEntity = true;
                 break;
             }

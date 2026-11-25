@@ -57,8 +57,8 @@ public final class KQGrabHitAttack<A extends StandEntity<? extends A, ?>> extend
 
             final DamageSource damageSource = JDamageSources.stand(attacker);
 
-            damageLogic(world, livingEntity, new Vec3(0, 1, 0), stun, 3, true,
-                    11f, false, 4, damageSource, user, null);
+            damageLogic(world, livingEntity, new net.arna.jcraft.api.AttackData(
+                    new Vec3(0, 1, 0), stun, 3, true, 11f, false, 4, damageSource, user, null, null, false, false));
             livingEntity.addEffect(new MobEffectInstance(JStatusRegistry.KNOCKDOWN.asHolder(), 35, 0, true, false));
         }
 

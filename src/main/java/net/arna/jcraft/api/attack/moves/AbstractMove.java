@@ -1027,7 +1027,7 @@ public abstract class AbstractMove<T extends AbstractMove<T, A>, A extends IAtta
     public static boolean mayBreak(final @NonNull Level level, @Nullable final LivingEntity user, @Nullable final BlockPos pos,
                                    @Nullable Predicate<BlockState> pred) {
         if (user != null) {
-            if (user.getType().builtInRegistryHolder().is(JTagRegistry.CANT_BREAK_BLOCKS)) {
+            if (net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(user.getType()).is(JTagRegistry.CANT_BREAK_BLOCKS)) {
                 return false;
             }
             // special case for brawler attacking training dummy

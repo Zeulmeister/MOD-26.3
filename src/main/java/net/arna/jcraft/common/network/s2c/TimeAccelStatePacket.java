@@ -116,7 +116,7 @@ public class TimeAccelStatePacket {
         // (the local host shares this static accelerations map in singleplayer/LAN).
         if (server.isDedicatedServer() || server.isPublished()) {
             final FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-            buf.writeEnum(State.START);
+            net.arna.jcraft.api.misc.JByteBufUtils.writeEnum(buf, State.START);
             buf.writeVarInt(mih.getId());
             buf.writeVarInt(duration);
             buf.writeLong(time); // for time syncing
@@ -139,7 +139,7 @@ public class TimeAccelStatePacket {
         final long finalDayTime = net.arna.jcraft.common.util.JUtils.getDayTime(mih.level());
         if (server.isDedicatedServer() || server.isPublished()) {
             final FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-            buf.writeEnum(State.STOP);
+            net.arna.jcraft.api.misc.JByteBufUtils.writeEnum(buf, State.STOP);
             buf.writeVarInt(mih.getId());
             buf.writeLong(finalDayTime);
 

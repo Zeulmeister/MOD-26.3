@@ -156,10 +156,10 @@ public class LargeIcicleProjectile extends AbstractArrow {
 
                     int stun = 15;
 
-                    damageLogic(level(), target, kbVec,
-                            stun, 3, false, 3f, true,
-                            4, level().damageSources().mobAttack(livingOwner), livingOwner,
-                            CommonHitPropertyComponent.HitAnimation.CRUSH, false, false);
+                    damageLogic(level(), target, new net.arna.jcraft.api.AttackData(
+                            kbVec, stun, 3, false, 3f, true, 4,
+                            level().damageSources().mobAttack(livingOwner), livingOwner,
+                            CommonHitPropertyComponent.HitAnimation.CRUSH, null, false, false));
                 }
                 if (hit) {
                     final Vec3 frontPos = pos.add(direction);
@@ -207,10 +207,10 @@ public class LargeIcicleProjectile extends AbstractArrow {
             int stun = (int) (15 * scale);
             if (instant) stun += 9;
 
-            damageLogic(level(), target, kbVec,
-                    stun, 3, false, 7f * scale + (perfect ? 3f : 0), true,
+            damageLogic(level(), target, new net.arna.jcraft.api.AttackData(
+                    kbVec, stun, 3, false, 7f * scale + (perfect ? 3f : 0), true,
                     (int) (13.0f * scale), level().damageSources().mobAttack(livingOwner), livingOwner,
-                    CommonHitPropertyComponent.HitAnimation.CRUSH, false, perfect);
+                    CommonHitPropertyComponent.HitAnimation.CRUSH, null, false, perfect));
         }
         if (hit) {
             final Vec3 frontPos = pos.add(direction.scale(2.5));

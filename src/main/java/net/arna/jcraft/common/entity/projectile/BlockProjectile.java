@@ -165,8 +165,9 @@ public class BlockProjectile extends JAttackEntity {
                         continue;
                     }
                     hit = true;
-                    damageLogic(level(), target, getDeltaMovement(), 15, 1, true,
-                            6, false, 11, damageSource, master, CommonHitPropertyComponent.HitAnimation.MID, false);
+                    damageLogic(level(), target, new net.arna.jcraft.api.AttackData(
+                            getDeltaMovement(), 15, 1, true, 6, false, 11, damageSource, master,
+                            CommonHitPropertyComponent.HitAnimation.MID, null, false, false));
                 }
             }
 

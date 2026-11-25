@@ -28,8 +28,9 @@ public abstract class AbstractEraseAttack<T extends AbstractEraseAttack<T, A>, A
 
     @Override
     protected void processTarget(final A attacker, final LivingEntity target, final Vec3 kbVec, final DamageSource damageSource) {
-        damageLogic(attacker.getEntityWorld(), target, kbVec, getStun(), getStunType().ordinal(), true,
-                0, isLift(), getBlockStun(), damageSource, attacker.getUserOrThrow(), getHitAnimation(), true, true);
+        damageLogic(attacker.getEntityWorld(), target, new net.arna.jcraft.api.AttackData(
+                kbVec, getStun(), getStunType().ordinal(), true, 0, isLift(), getBlockStun(),
+                damageSource, attacker.getUserOrThrow(), getHitAnimation(), null, true, true));
 
         target.removeEffect(JStatusRegistry.DAZED.asHolder());
         StandEntity<?, ?> stand = JUtils.getStand(target);

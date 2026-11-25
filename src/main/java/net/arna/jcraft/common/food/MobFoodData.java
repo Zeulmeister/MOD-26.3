@@ -41,7 +41,9 @@ public class MobFoodData extends FoodData {
             ++this.tickTimer;
             if (this.tickTimer >= 80) {
                 if (entity.getHealth() > 10.0F || difficulty == Difficulty.HARD || entity.getHealth() > 1.0F && difficulty == Difficulty.NORMAL) {
-                    entity.hurt(entity.damageSources().starve(), 1.0F);
+                    if (entity.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                        entity.hurtServer(serverLevel, entity.damageSources().starve(), 1.0F);
+                    }
                 }
 
                 this.tickTimer = 0;

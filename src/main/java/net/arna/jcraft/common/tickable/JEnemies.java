@@ -27,7 +27,7 @@ public class JEnemies {
         if (entity.level().isClientSide()) {
             throw new UnsupportedOperationException("Attempted to add an enemy to JEnemies from the clientside!");
         }
-        if (entity.getType().builtInRegistryHolder().is(JTagRegistry.NO_STAND_USER_AI)) {
+        if (net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(entity.getType()).is(JTagRegistry.NO_STAND_USER_AI)) {
             return;
         }
         if (enemies.containsKey(entity)) {

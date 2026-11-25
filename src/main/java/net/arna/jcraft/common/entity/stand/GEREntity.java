@@ -252,7 +252,7 @@ public class GEREntity extends StandEntity<GEREntity, GEREntity.State> {
     @Override
     public boolean initMove(MoveClass moveClass) {
         if (moveClass == MoveClass.ULTIMATE) {
-            final ReturnToZeroMove rtzMove = getMoveMap().findMoveByType(ReturnToZeroMove.class).orElse(null);
+            final ReturnToZeroMove<?> rtzMove = getMoveMap().findMoveByType(ReturnToZeroMove.class).orElse(null);
             if (rtzMove != null && rtzMove.returnToZero(this)) {
                 return true;
             } else {

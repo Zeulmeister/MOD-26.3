@@ -27,7 +27,10 @@ public final class BloodThrowAttack<A extends IAttacker<? extends A, ?>> extends
         super.onInitiate(attacker);
 
         final LivingEntity baseEntity = attacker.getBaseEntity();
-        attacker.getUserOrThrow().hurt(baseEntity.level().damageSources().magic(), 0.1f); // User throws their blood, dealing a bit of damage.
+        final LivingEntity user = attacker.getUserOrThrow();
+        if (user.level() instanceof net.minecraft.server.level.ServerLevel sl) {
+            user.hurtServer(sl, baseEntity.level().damageSources().magic(), 0.1f); // User throws their blood, dealing a bit of damage.
+        }
     }
 
     @Override

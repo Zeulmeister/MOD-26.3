@@ -24,8 +24,8 @@ import java.util.List;
  * The gate opens once, then every round ejects the spent case, feeds a fresh one and cycles the
  * cylinder, and the gate closes once the cylinder is full or the shooter is out of bullets.
  */
+// NOTE: Kept as server tickable state until Peacemaker reload moves to an Item DataComponent.
 @UtilityClass
-@Deprecated(forRemoval = false) // This should've been an item component
 public class PeacemakerReload {
     private final List<Reload> reloads = new ArrayList<>();
     private final List<Reload> toAdd = new ArrayList<>();

@@ -144,10 +144,10 @@ public class HGNetEntity extends JAttackEntity implements ICustomDamageHandler {
                     getInsideEntities().forEach(
                             living -> {
                                 if (!living.isPassengerOfSameVehicle(master)) {
-                                    damageLogic(
-                                            level(), living, launchVec, 15, 3, false, 5f, false, 10,
-                                            level().damageSources().mobAttack(this), master, CommonHitPropertyComponent.HitAnimation.HIGH
-                                    );
+                                    damageLogic(level(), living, new net.arna.jcraft.api.AttackData(
+                                            launchVec, 15, 3, false, 5f, false, 10,
+                                            level().damageSources().mobAttack(this), master,
+                                            CommonHitPropertyComponent.HitAnimation.HIGH, null, false, false));
                                 }
                             }
                     );

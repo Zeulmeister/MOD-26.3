@@ -113,7 +113,7 @@ public class AerosmithAttackOrderMove extends AbstractMove<AerosmithAttackOrderM
         final Vec3 pos = user.position();
         final Vec3 rotVec = user.getLookAngle();
 
-        final BreathXrayMove<AerosmithEntity> xrayMove = attacker.getBreathXrayMove();
+        final BreathXrayMove<?> xrayMove = attacker.getBreathXrayMove();
         if (xrayMove == null) return Collections.emptySet();
 
         final var detected = xrayMove.getDetected().object2IntEntrySet();

@@ -51,7 +51,11 @@ public class BulletHeatManager {
                 level.getEntitiesOfClass(LivingEntity.class,
                         new AABB(heatedBlock.above()).inflate(0.2, 0.1, 0.2),
                         entity -> entity.isAlive() && !entity.isSpectator() && !entity.fireImmune() && entity.onGround())
-                    .forEach(entity -> entity.hurt(level.damageSources().hotFloor(), 1.0f));
+                    .forEach(entity -> {
+                        if (entity.level() instanceof net.minecraft.server.level.ServerLevel sl) {
+                            entity.hurtServer(sl, sl.damageSources().hotFloor(), 1.0f);
+                        }
+                    });
             }
 
             return false;

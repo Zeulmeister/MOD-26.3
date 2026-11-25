@@ -112,8 +112,9 @@ public class BisectProjectile extends AbstractArrow {
             if (!hurtAll.isEmpty()) {
                 for (LivingEntity l : hurtAll) {
                     final LivingEntity target = JUtils.getUserIfStand(l);
-                    damageLogic(level(), target, getDeltaMovement(), (int) (10 * scale), 3, false, 5f * scale,
-                            true, 0, damageSource, owner, CommonHitPropertyComponent.HitAnimation.LAUNCH, false, true);
+                    damageLogic(level(), target, new net.arna.jcraft.api.AttackData(
+                            getDeltaMovement(), (int) (10 * scale), 3, false, 5f * scale, true, 0,
+                            damageSource, owner, CommonHitPropertyComponent.HitAnimation.LAUNCH, null, false, true));
                     hit.add(target.getId());
                 }
                 JCraft.createParticle((ServerLevel) this.level(),

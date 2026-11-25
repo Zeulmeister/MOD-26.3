@@ -326,7 +326,9 @@ public abstract class JSpec<A extends JSpec<A, S>, S extends Enum<S> & SpecAnima
 
         final Enum<? extends Enum<?>> overrideAnimation = move.getAnimation();
         if (overrideAnimation != null) {
-            state = (S) overrideAnimation;
+            @SuppressWarnings("unchecked")
+            final S typedState = (S) overrideAnimation;
+            state = typedState;
         }
 
         if (state != null) {

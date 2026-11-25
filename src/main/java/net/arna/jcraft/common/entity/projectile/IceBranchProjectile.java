@@ -130,10 +130,10 @@ public class IceBranchProjectile extends AbstractArrow {
 
                 LivingEntity target = JUtils.getUserIfStand(living);
 
-                damageLogic(level, target, Vec3.ZERO,
-                        30 - 10 * chainIndex / MAX_CHAIN_LENGTH, 0, false, 4f, true,
+                damageLogic(level, target, new net.arna.jcraft.api.AttackData(
+                        Vec3.ZERO, 30 - 10 * chainIndex / MAX_CHAIN_LENGTH, 0, false, 4f, true,
                         10, level.damageSources().mobAttack(livingOwner), livingOwner,
-                        CommonHitPropertyComponent.HitAnimation.MID);
+                        CommonHitPropertyComponent.HitAnimation.MID, null, false, false));
             }
             if (hit) {
                 final Vec3 frontPos = pos.add(rotVec.scale(-0.5));

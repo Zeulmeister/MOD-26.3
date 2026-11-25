@@ -360,7 +360,7 @@ public class JServerEvents {
                 EntitySelector.ENTITY_STILL_ALIVE);
 
         for (LivingEntity ent : toDamage) {
-            ent.hurt(serverWorld.damageSources().explosion(null, null), 7);
+            ent.hurtServer(serverWorld, serverWorld.damageSources().explosion(null, null), 7);
             JCraft.stun(ent, 10, 3);
             ent.addEffect(new MobEffectInstance(JStatusRegistry.KNOCKDOWN.asHolder(), 35, 0));
         }
@@ -425,7 +425,7 @@ public class JServerEvents {
                 return EventResult.pass();
             }
 
-            if (!mob.getType().builtInRegistryHolder().is(JTagRegistry.CAN_HAVE_STAND)) {
+            if (!net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(mob.getType()).is(JTagRegistry.CAN_HAVE_STAND)) {
                 return EventResult.pass();
             }
 

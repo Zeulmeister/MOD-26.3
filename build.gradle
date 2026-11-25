@@ -73,6 +73,9 @@ dependencies {
     // Optional ModMenu integration
     compileOnly "maven.modrinth:modmenu:${project.modmenu_modrinth}"
 
+    // Compile-only Guava annotation dependency (silences transitive j2objc ReflectionSupport$Level warning; never bundled)
+    compileOnly "com.google.j2objc:j2objc-annotations:3.0.0"
+
     // Lombok for clean data/builder classes on JDK 25
     compileOnly "org.projectlombok:lombok:${project.lombok_version}"
     annotationProcessor "org.projectlombok:lombok:${project.lombok_version}"
@@ -92,7 +95,7 @@ processResources {
 tasks.withType(JavaCompile).configureEach {
     it.options.release = 25
     it.options.encoding = "UTF-8"
-    it.options.compilerArgs.addAll(["-Xmaxerrs", "2000", "-Xlint:removal"])
+    it.options.compilerArgs.addAll(["-Xmaxerrs", "2000", "-Xlint:removal", "-Xlint:deprecation", "-Xlint:unchecked"])
 }
 
 java {

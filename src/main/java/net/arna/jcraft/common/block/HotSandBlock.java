@@ -22,7 +22,9 @@ public class HotSandBlock extends FallingBlock {
     public void stepOn(final Level world, final BlockPos pos, final BlockState state, final Entity entity) {
         if (!entity.isSteppingCarefully() && !entity.isInWater() &&
                 entity instanceof final LivingEntity livingEntity && !EnchantmentHelper.hasTag(livingEntity.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.FEET), net.minecraft.tags.EnchantmentTags.PREVENTS_ICE_MELTING)) {
-            entity.hurt(world.damageSources().hotFloor(), 1.0F);
+            if (world instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                entity.hurtServer(serverLevel, serverLevel.damageSources().hotFloor(), 1.0F);
+            }
         }
         super.stepOn(world, pos, state, entity);
     }

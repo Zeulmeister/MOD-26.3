@@ -326,8 +326,9 @@ public class RoadRollerEntity extends AbstractGroundVehicleEntity {
 
                     final LivingEntity target = JUtils.getUserIfStand(living);
                     if (getOwner() != target) {
-                        damageLogic(level(), target, target.position().subtract(position()), 25, 3,
-                                false, 12.0f, false, 21, ds, getOwner(), CommonHitPropertyComponent.HitAnimation.CRUSH, false);
+                        damageLogic(level(), target, new net.arna.jcraft.api.AttackData(
+                                target.position().subtract(position()), 25, 3, false, 12.0f, false, 21, ds, getOwner(),
+                                CommonHitPropertyComponent.HitAnimation.CRUSH, null, false, false));
                     }
                 }
 

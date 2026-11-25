@@ -15,6 +15,7 @@ public class GreenBabyItem extends Item {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // Official MC 26.3 Item tooltip hook (invoked by ItemStack#addDetailsToTooltip)
     public void appendHoverText(ItemStack stack, net.minecraft.world.item.Item.TooltipContext tooltipCtx, net.minecraft.world.item.component.TooltipDisplay tooltipDisplay, java.util.function.Consumer<Component> tooltipAdder, TooltipFlag context) {
         java.util.List<Component> tooltip = new java.util.ArrayList<>();
         Level world = null;

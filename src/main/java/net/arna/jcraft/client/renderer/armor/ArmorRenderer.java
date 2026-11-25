@@ -20,8 +20,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
-// TODO try to remove this clutter
-@Deprecated
+// NOTE: Retained as lightweight wrapper over AzArmorRenderer for Stone Mask and Red Hat.
 public class ArmorRenderer extends AzArmorRenderer {
 
     protected static final String MODEL_STR_TEMPLATE = "geo/%s.geo.json";

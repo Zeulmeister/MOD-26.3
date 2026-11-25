@@ -82,8 +82,10 @@ public class LifeDetectorEntity extends JAttackEntity {
             }
             final LivingEntity target = JUtils.getUserIfStand(living);
             final Vec3 kbVec = target.position().subtract(pos).normalize();
-            damageLogic(level(), target, kbVec, 10, 1, false, 5f, true, 9,
-                    level().damageSources().mobAttack(master), master, CommonHitPropertyComponent.HitAnimation.MID, false);
+            damageLogic(level(), target, new net.arna.jcraft.api.AttackData(
+                    kbVec, 10, 1, false, 5f, true, 9,
+                    level().damageSources().mobAttack(master), master,
+                    CommonHitPropertyComponent.HitAnimation.MID, null, false, false));
         }
 
         entityData.set(EXPLODED, true);

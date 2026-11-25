@@ -58,7 +58,7 @@ public final class GiveStandAttack<A extends IAttacker<? extends A, ?>> extends 
         final boolean[] consumed = {false};
 
         super.perform(attacker, user).stream().findFirst().ifPresent((target) -> {
-            if (target.getType().builtInRegistryHolder().is(JTagRegistry.CAN_NEVER_HAVE_STAND) || !itemStack.is(JItemRegistry.STAND_DISC.get())) {
+            if (net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(target.getType()).is(JTagRegistry.CAN_NEVER_HAVE_STAND) || !itemStack.is(JItemRegistry.STAND_DISC.get())) {
                 return;
             }
 

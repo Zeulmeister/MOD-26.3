@@ -96,10 +96,11 @@ public class Peacemaker extends Item {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // Official MC 26.3 Item tooltip hook (invoked by ItemStack#addDetailsToTooltip)
     public void appendHoverText(ItemStack stack, TooltipContext tooltipCtx, TooltipDisplay tooltipDisplay, Consumer<Component> tooltipAdder, TooltipFlag context) {
         int shots = getShots(stack);
 
-        tooltipAdder.accept(Component.translatable("tooltip.jcraft.peacemaker.shots").append(" §e" + shots));
+        tooltipAdder.accept(Component.translatable("tooltip.jcraft.peacemaker.shots").append(" Â§e" + shots));
         tooltipAdder.accept(Component.translatable("tooltip.jcraft.peacemaker.fire", getFireKey()));
         tooltipAdder.accept(Component.translatable("tooltip.jcraft.peacemaker.aim", getAimKey()));
         tooltipAdder.accept(Component.translatable("tooltip.jcraft.peacemaker.reload", getReloadKey()));

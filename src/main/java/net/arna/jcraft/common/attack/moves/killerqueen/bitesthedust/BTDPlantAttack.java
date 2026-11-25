@@ -166,7 +166,7 @@ public final class BTDPlantAttack<A extends StandEntity<? extends A, ?>> extends
                                                               LivingEntity target, int stunTicks, int enemyMoveStun,
                                                               double distance, StandEntity<?, ?> enemyStand,
                                                               AbstractMove<?, ?> enemyAttack) {
-        final BTDPlantAttack btdPlantAttack = attacker.getMove(BTDPlantAttack.class);
+        final BTDPlantAttack<?> btdPlantAttack = attacker.getMove(BTDPlantAttack.class);
         if (btdPlantAttack != null && btdPlantAttack.getEntityMarker() != null) {
             return MoveSelectionResult.USE;
         }

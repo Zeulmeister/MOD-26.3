@@ -164,8 +164,10 @@ public class KnifeProjectile extends AbstractArrow {
         for (LivingEntity living : hurt) {
             final LivingEntity target = JUtils.getUserIfStand(living);
             final Vec3 kbVec = target.position().subtract(pos).normalize();
-            damageLogic(level(), target, kbVec, 10, 1, false, 1f, true, 9,
-                    level().damageSources().indirectMagic(owner, this), getOwner(), CommonHitPropertyComponent.HitAnimation.MID, false);
+            damageLogic(level(), target, new net.arna.jcraft.api.AttackData(
+                    kbVec, 10, 1, false, 1f, true, 9,
+                    level().damageSources().indirectMagic(owner, this), getOwner(),
+                    CommonHitPropertyComponent.HitAnimation.MID, null, false, false));
         }
     }
 

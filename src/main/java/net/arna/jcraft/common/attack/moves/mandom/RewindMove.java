@@ -40,7 +40,7 @@ public final class RewindMove<A extends StandEntity<? extends A, ?>> extends Abs
 
     @Override
     public @NonNull Set<LivingEntity> perform(final A attacker, final LivingEntity user) {
-        CountdownMove countdownMove = attacker.getMove(CountdownMove.class);
+        CountdownMove<?> countdownMove = attacker.getMove(CountdownMove.class);
         if (countdownMove == null || !countdownMove.isCountdownActive()) {
             return Set.of();
         }

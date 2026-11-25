@@ -188,7 +188,7 @@ public class BoundSoundClient {
             return;
         }
 
-        SoundSource category = buf.readEnum(SoundSource.class);
+        SoundSource category = net.arna.jcraft.api.misc.JByteBufUtils.readEnum(buf, SoundSource.class);
 
         float volume = buf.readFloat();
         float pitch = buf.readFloat();

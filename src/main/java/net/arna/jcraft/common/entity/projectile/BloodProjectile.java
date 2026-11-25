@@ -50,14 +50,15 @@ public class BloodProjectile extends AbstractArrow {
 
         if (entity instanceof LivingEntity living) {
             final LivingEntity target = JUtils.getUserIfStand(living);
-            damageLogic(level(), target, Vec3.ZERO, 10, 1, false, 2f,
-                    false, 6, level().damageSources().thrown(this, owner), owner, CommonHitPropertyComponent.HitAnimation.MID);
+            damageLogic(level(), target, new net.arna.jcraft.api.AttackData(
+                    Vec3.ZERO, 10, 1, false, 2f, false, 6, level().damageSources().thrown(this, owner), owner,
+                    CommonHitPropertyComponent.HitAnimation.MID, null, false, false));
             target.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 60, 0, false, true));
             discard();
         }
 
-        if (entity instanceof EndCrystal endCrystal) {
-            endCrystal.hurt(level().damageSources().thrown(this, owner), 2f);
+        if (entity instanceof EndCrystal endCrystal && level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            endCrystal.hurtServer(serverLevel, serverLevel.damageSources().thrown(this, owner), 2f);
         }
 
         playSound(SoundEvents.SLIME_BLOCK_FALL, 1, 0.5f);

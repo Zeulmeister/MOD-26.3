@@ -20,8 +20,8 @@ public class BrawlerSpecUser extends SpecUserMob {
     protected void registerGoals() {
         super.registerGoals();
 
-        targetSelector.addGoal(2, new NearestAttackableTargetGoal(this, TrainingDummyEntity.class, true));
-        targetSelector.addGoal(3, new NearestAttackableTargetGoal(this, IronGolem.class, true));
+        targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, TrainingDummyEntity.class, true));
+        targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, IronGolem.class, true));
     }
 
     public static AttributeSupplier.Builder createUserAttributes() {

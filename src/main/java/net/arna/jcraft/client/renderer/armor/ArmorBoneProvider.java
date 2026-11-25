@@ -5,7 +5,7 @@ import mod.azure.azurelib.model.AzBone;
 import mod.azure.azurelib.render.armor.bone.AzArmorBoneProvider;
 import org.jetbrains.annotations.Nullable;
 
-@Deprecated
+// NOTE: Active bone provider for ArmorRenderer (Stone Mask and Red Hat).
 public class ArmorBoneProvider implements AzArmorBoneProvider {
     @Override
     public @Nullable AzBone getHeadBone(final AzBakedModel model) {

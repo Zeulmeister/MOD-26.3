@@ -18,13 +18,14 @@ public class BulletItem extends Item {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // Official MC 26.3 Item tooltip hook (invoked by ItemStack#addDetailsToTooltip)
     public void appendHoverText(ItemStack stack, net.minecraft.world.item.Item.TooltipContext tooltipCtx, net.minecraft.world.item.component.TooltipDisplay tooltipDisplay, java.util.function.Consumer<Component> tooltipAdder, TooltipFlag context) {
         java.util.List<Component> tooltip = new java.util.ArrayList<>();
         Level world = null;
         CompoundTag itemData = JItemData.getTag(stack);
 
         if (itemData != null && itemData.contains("Caliber")) {
-            tooltip.add(Component.translatable("jcraft.bullet.caliber").append(" §e" + itemData.getFloatOr("Caliber", 0f) + "§9mm"));
+            tooltip.add(Component.translatable("jcraft.bullet.caliber").append(" Â§e" + itemData.getFloatOr("Caliber", 0f) + "Â§9mm"));
         }
         tooltip.forEach(tooltipAdder);
     }

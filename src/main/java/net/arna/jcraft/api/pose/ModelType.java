@@ -60,8 +60,8 @@ public class ModelType<T extends Model> {
         this.parts = ImmutableMap.copyOf(parts);
     }
 
+    @SuppressWarnings("unchecked")
     private static <T extends Model> Class<T> castClass(final Class<?> clazz) {
-        //noinspection unchecked
         return (Class<T>) clazz;
     }
 

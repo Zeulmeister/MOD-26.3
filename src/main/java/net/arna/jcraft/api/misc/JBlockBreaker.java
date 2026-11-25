@@ -321,7 +321,7 @@ public class JBlockBreaker {
             buf.writeVarInt(breakerId);
             buf.writeBoolean(attackedFrom != null);
             if (attackedFrom != null) {
-                buf.writeEnum(attackedFrom);
+                net.arna.jcraft.api.misc.JByteBufUtils.writeEnum(buf, attackedFrom);
             }
         }
 

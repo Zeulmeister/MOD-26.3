@@ -432,7 +432,7 @@ public class MadeInHeavenEntity extends StandEntity<MadeInHeavenEntity, MadeInHe
 
             setAfterimage(true);
             user.addEffect(new MobEffectInstance(MobEffects.DOLPHINS_GRACE, 2,10));
-            user.addEffect(new MobEffectInstance((net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>)(net.minecraft.core.Holder<?>) JStatusRegistry.WATER_WALKING.asHolder(), 2));
+            user.addEffect(new MobEffectInstance(net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.wrapAsHolder(JStatusRegistry.WATER_WALKING.get()), 2));
         }
         else {
             net.arna.jcraft.common.util.JUtils.setMaxUpStep(user, DEFAULT_STEP_HEIGHT);

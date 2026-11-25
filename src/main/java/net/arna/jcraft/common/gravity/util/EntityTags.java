@@ -14,6 +14,6 @@ public class EntityTags {
         if (entity == null) {
             return false;
         }
-        return !entity.getType().builtInRegistryHolder().is(FORBIDDEN_ENTITIES);
+        return !net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(entity.getType()).is(FORBIDDEN_ENTITIES);
     }
 }

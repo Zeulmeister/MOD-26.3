@@ -53,7 +53,9 @@ public class D4CCounterAttack extends AbstractCounterAttack<D4CCounterAttack, D4
         countered.syncVelocity = true;
 
         if (countered instanceof LivingEntity livingEntity) {
-            livingEntity.hurt(livingEntity.level().damageSources().mobAttack(user), 10);
+            if (livingEntity.level() instanceof net.minecraft.server.level.ServerLevel sl) {
+                livingEntity.hurtServer(sl, sl.damageSources().mobAttack(user), 10);
+            }
             JCraft.stun(livingEntity, 20, 3);
             JUtils.cancelMoves(livingEntity);
         }

@@ -127,7 +127,9 @@ public class TonpettyEntity extends HamonSpecUser implements NeutralMob {
         // Hamon initiation
         else {
             int damage = specData.getType() == JSpecTypeRegistry.VAMPIRE.get() ? 200 : 1;
-            player.hurt(JDamageSources.create(player.level(), HAMON_INITIATION, player), damage);
+            if (player.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                player.hurtServer(serverLevel, JDamageSources.create(serverLevel, HAMON_INITIATION, player), damage);
+            }
 
             if (!player.level().isClientSide() && player.isAlive()) {
                 warned.remove(player);

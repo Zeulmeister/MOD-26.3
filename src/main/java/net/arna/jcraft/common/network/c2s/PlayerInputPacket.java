@@ -59,7 +59,7 @@ public class PlayerInputPacket {
         }
         buf.writeVarInt(input.size());
         for (Object2BooleanMap.Entry<? extends Enum<?>> entry : input.object2BooleanEntrySet()) {
-            buf.writeEnum(entry.getKey());
+            net.arna.jcraft.api.misc.JByteBufUtils.writeEnum(buf, entry.getKey());
             buf.writeBoolean(entry.getBooleanValue());
         }
     }
@@ -79,7 +79,7 @@ public class PlayerInputPacket {
         MovementInputType[] movementTypes = new MovementInputType[moveVecCount];
         boolean[] movementStates = new boolean[moveVecCount];
         for (int i = 0; i < moveVecCount; i++) {
-            movementTypes[i] = buf.readEnum(MovementInputType.class);
+            movementTypes[i] = net.arna.jcraft.api.misc.JByteBufUtils.readEnum(buf, MovementInputType.class);
             movementStates[i] = buf.readBoolean();
         }
 
@@ -91,7 +91,7 @@ public class PlayerInputPacket {
         MoveInputType[] moveTypes = new MoveInputType[moveCount];
         boolean[] moveStates = new boolean[moveCount];
         for (int i = 0; i < moveCount; i++) {
-            moveTypes[i] = buf.readEnum(MoveInputType.class);
+            moveTypes[i] = net.arna.jcraft.api.misc.JByteBufUtils.readEnum(buf, MoveInputType.class);
             moveStates[i] = buf.readBoolean();
         }
 
@@ -118,7 +118,7 @@ public class PlayerInputPacket {
 
         MoveInputType[] types = new MoveInputType[count];
         for (int i = 0; i < count; i++) {
-            types[i] = buf.readEnum(MoveInputType.class);
+            types[i] = net.arna.jcraft.api.misc.JByteBufUtils.readEnum(buf, MoveInputType.class);
             buf.readBoolean(); // Throwaway hold input data
         }
 

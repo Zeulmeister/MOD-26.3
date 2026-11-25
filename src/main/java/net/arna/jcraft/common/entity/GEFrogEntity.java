@@ -31,7 +31,8 @@ public class GEFrogEntity extends Frog implements IOwnable, ICustomDamageHandler
         }
 
         if (source.getEntity() instanceof LivingEntity living) {
-            return living.hurtOrSimulate(source, amount);
+            return living.level() instanceof net.minecraft.server.level.ServerLevel livingLevel
+                    && living.hurtServer(livingLevel, source, amount);
         }
         return false;
     }

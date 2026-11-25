@@ -40,8 +40,9 @@ public class FVRevolverItem extends Item {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // Official MC 26.3 Item tooltip hook (invoked by ItemStack#addDetailsToTooltip)
     public void appendHoverText(ItemStack stack, TooltipContext tooltipCtx, TooltipDisplay tooltipDisplay, Consumer<Component> tooltipAdder, TooltipFlag context) {
-        tooltipAdder.accept(Component.translatable("jcraft.revolver.shots").append(" §e" + getShots(stack)));
+        tooltipAdder.accept(Component.translatable("jcraft.revolver.shots").append(" Â§e" + getShots(stack)));
     }
 
     @Override

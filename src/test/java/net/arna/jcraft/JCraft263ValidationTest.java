@@ -1540,12 +1540,54 @@ public final class JCraft263ValidationTest {
                 "fabric.mod.json must use clean UTF-8 without mojibake");
         check(modJsonRaw.contains("8 Evoluções"), "fabric.mod.json description must reflect 8 Evolutions");
 
-        // 4. Reproducible JAR build configuration, CI workflow, and Architecture docs present
+        // 4. Reproducible JAR build configuration, strict compiler lints, CI workflow, and Architecture docs present
         String buildGradle = Files.readString(Path.of("build.gradle"), StandardCharsets.UTF_8);
         check(buildGradle.contains("reproducibleFileOrder = true") && buildGradle.contains("preserveFileTimestamps = false"),
                 "build.gradle must enforce reproducible JAR archives");
-        check(buildGradle.contains("-Xlint:removal"), "build.gradle must enable -Xlint:removal compiler check");
+        check(buildGradle.contains("-Xlint:removal") && buildGradle.contains("-Xlint:deprecation") && buildGradle.contains("-Xlint:unchecked"),
+                "build.gradle must enable -Xlint:removal, -Xlint:deprecation, and -Xlint:unchecked compiler checks");
+        check(buildGradle.contains("com.google.j2objc:j2objc-annotations"),
+                "build.gradle must provide compileOnly j2objc-annotations for zero-warning Guava compilation");
         check(buildGradle.contains("tasks.register('deployMod')"), "build.gradle must define deployMod distribution task");
+
+        // 5. JByteBufUtils wire-compatible & bounds-safe enum serialization
+        net.minecraft.network.FriendlyByteBuf testBuf = new net.minecraft.network.FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
+        net.arna.jcraft.api.misc.JByteBufUtils.writeEnum(testBuf, net.minecraft.core.Direction.NORTH);
+        check(net.arna.jcraft.api.misc.JByteBufUtils.readEnum(testBuf, net.minecraft.core.Direction.class) == net.minecraft.core.Direction.NORTH,
+                "JByteBufUtils must round-trip enum values");
+        testBuf.writeVarInt(999);
+        check(net.arna.jcraft.api.misc.JByteBufUtils.readEnum(testBuf, net.minecraft.core.Direction.class) == net.minecraft.core.Direction.values()[0],
+                "JByteBufUtils must safely clamp out-of-range ordinals");
+        testBuf.release();
+
+        // 6. All 16 Fabric CCA component interfaces must extend v8 CardinalComponent (not deprecated v3 Component)
+        for (String ccaCls : List.of(
+                "net/arna/jcraft/fabric/common/component/entity/GrabComponent.class",
+                "net/arna/jcraft/fabric/common/component/entity/GravityComponent.class",
+                "net/arna/jcraft/fabric/common/component/entity/TimeStopComponent.class",
+                "net/arna/jcraft/fabric/common/component/living/BombTrackerComponent.class",
+                "net/arna/jcraft/fabric/common/component/living/CooldownsComponent.class",
+                "net/arna/jcraft/fabric/common/component/living/GravityShiftComponent.class",
+                "net/arna/jcraft/fabric/common/component/living/GunslingerComponent.class",
+                "net/arna/jcraft/fabric/common/component/living/HamonComponent.class",
+                "net/arna/jcraft/fabric/common/component/living/HitPropertyComponent.class",
+                "net/arna/jcraft/fabric/common/component/living/MiscComponent.class",
+                "net/arna/jcraft/fabric/common/component/living/StandComponent.class",
+                "net/arna/jcraft/fabric/common/component/living/VampireComponent.class",
+                "net/arna/jcraft/fabric/common/component/player/PhComponent.class",
+                "net/arna/jcraft/fabric/common/component/player/SpecComponent.class",
+                "net/arna/jcraft/fabric/common/component/world/ShockwaveHandlerComponent.class",
+                "net/arna/jcraft/fabric/common/component/world/TexasHoldEmComponent.class")) {
+            try (InputStream in = cl.getResourceAsStream(ccaCls)) {
+                check(in != null, ccaCls + " must exist");
+                ClassNode cn = new ClassNode();
+                new ClassReader(in).accept(cn, ClassReader.SKIP_CODE);
+                check(!cn.interfaces.contains("org/ladysnake/cca/api/v3/component/Component"),
+                        ccaCls + " must not extend deprecated CCA v3 Component");
+                check(cn.interfaces.contains("org/ladysnake/cca/api/v8/component/CardinalComponent"),
+                        ccaCls + " must extend CCA v8 CardinalComponent");
+            }
+        }
 
         Path ciYml = Path.of(".github/workflows/ci.yml");
         check(Files.isRegularFile(ciYml), "GitHub Actions CI workflow .github/workflows/ci.yml must exist");

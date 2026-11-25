@@ -18,6 +18,7 @@ public class HatItem extends Item {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // Official MC 26.3 Item tooltip hook (invoked by ItemStack#addDetailsToTooltip)
     public void appendHoverText(@NonNull ItemStack stack, @NonNull TooltipContext context, @NonNull TooltipDisplay display, @NonNull Consumer<Component> tooltipAdder, @NonNull TooltipFlag flag) {
         if (getDefaultInstance().is(JTagRegistry.PROTECTS_FROM_SUN)) {
             tooltipAdder.accept(Component.translatable("jcraft.sunprotection.desc"));

@@ -59,7 +59,9 @@ public class AcidSplatter extends Splatter {
             }
 
             hit.addEffect(new MobEffectInstance(JStatusRegistry.WSPOISON.asHolder(), 20, 0, true, false));
-            hit.hurt(JDamageSources.create(getWorld(), JDamageSources.WHITE_SNAKE_POISON, getCreator()), 2f);
+            if (getWorld() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                hit.hurtServer(serverLevel, JDamageSources.create(serverLevel, JDamageSources.WHITE_SNAKE_POISON, getCreator()), 2f);
+            }
         }
     }
 }

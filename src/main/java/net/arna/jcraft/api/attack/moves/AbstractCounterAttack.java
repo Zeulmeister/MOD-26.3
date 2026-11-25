@@ -83,11 +83,17 @@ public abstract class AbstractCounterAttack<T extends AbstractCounterAttack<T, A
         final var causingEntity = source.getEntity();
 
         if (causingEntity != null) {
-            //noinspection unchecked
-            counter.counter(stand, causingEntity, source);
+            invokeCounter(counter, stand, causingEntity, source);
             living.removeEffect(JStatusRegistry.DAZED.asHolder());
             return true;
         }
         return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <A extends IAttacker<? extends A, ?>> void invokeCounter(
+            final AbstractCounterAttack<?, ?> counter, final StandEntity<?, ?> stand,
+            final Entity causingEntity, final DamageSource source) {
+        ((AbstractCounterAttack<?, A>) counter).counter((A) stand, causingEntity, source);
     }
 }

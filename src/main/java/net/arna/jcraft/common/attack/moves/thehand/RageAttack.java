@@ -67,8 +67,9 @@ public final class RageAttack extends AbstractMultiHitAttack<RageAttack, TheHand
 
     @Override
     protected void processTarget(final TheHandEntity attacker, final LivingEntity target, final Vec3 kbVec, final DamageSource damageSource) {
-        damageLogic(attacker.getEntityWorld(), target, kbVec, getStun(), getStunType().ordinal(), true,
-                0, isLift(), getBlockStun(), damageSource, attacker.getUserOrThrow(), getHitAnimation(), true, false);
+        damageLogic(attacker.getEntityWorld(), target, new net.arna.jcraft.api.AttackData(
+                kbVec, getStun(), getStunType().ordinal(), true, 0, isLift(), getBlockStun(),
+                damageSource, attacker.getUserOrThrow(), getHitAnimation(), null, true, false));
 
         target.removeEffect(JStatusRegistry.DAZED.asHolder());
         StandEntity<?, ?> stand = JUtils.getStand(target);

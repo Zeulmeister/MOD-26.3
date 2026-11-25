@@ -133,7 +133,7 @@ public final class PurpleHazeEntity extends AbstractPurpleHazeEntity<PurpleHazeE
                     Component.literal("unblockable, combo finisher")
             );
 
-    private static final PlayMove PLAY = new PlayMove<PurpleHazeEntity>(0, 30, 31)
+    private static final PlayMove<PurpleHazeEntity> PLAY = new PlayMove<PurpleHazeEntity>(0, 30, 31)
             .withInfo(Component.literal("Playing with flower"), Component.empty());
 
     public static final int MAX_OBEDIENCE = 60, MAX_OBEDIENCE_GAIN_COOLDOWN = 40;

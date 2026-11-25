@@ -33,7 +33,7 @@ public final class StealStandAttack<A extends IAttacker<? extends A, ?>> extends
     public @NonNull Set<LivingEntity> perform(final A attacker, final LivingEntity user) {
         final Set<LivingEntity> targets = super.perform(attacker, user);
 
-        // Exclusive stands mode — stand stealing is completely disregarded
+        // Exclusive stands mode Ã¢â‚¬â€ stand stealing is completely disregarded
         if (JServerConfig.EXCLUSIVE_STANDS.getValue()) {
             return targets;
         }
@@ -45,7 +45,7 @@ public final class StealStandAttack<A extends IAttacker<? extends A, ?>> extends
             }
 
             // skip entities flagged as cannot-take-stand-from
-            if (target.getType().builtInRegistryHolder().is(JTagRegistry.CANNOT_TAKE_STAND_FROM)) {
+            if (net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(target.getType()).is(JTagRegistry.CANNOT_TAKE_STAND_FROM)) {
                 continue;
             }
 

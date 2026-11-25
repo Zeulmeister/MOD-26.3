@@ -588,7 +588,7 @@ public final class JCraft {
         buf.writeDouble(x);
         buf.writeDouble(y);
         buf.writeDouble(z);
-        buf.writeEnum(type);
+        net.arna.jcraft.api.misc.JByteBufUtils.writeEnum(buf, type);
 
         ServerChannelFeedbackPacket.send(JUtils.around(world, new Vec3(x, y, z), 128), buf);
     }
@@ -603,7 +603,7 @@ public final class JCraft {
         buf.writeDouble(x);
         buf.writeDouble(y);
         buf.writeDouble(z);
-        buf.writeEnum(type);
+        net.arna.jcraft.api.misc.JByteBufUtils.writeEnum(buf, type);
         buf.writeInt(sparkCount);
         buf.writeDouble(sparkSpeed);
 
@@ -623,7 +623,7 @@ public final class JCraft {
         buf.writeDouble(velocity.x());
         buf.writeDouble(velocity.y());
         buf.writeDouble(velocity.z());
-        buf.writeEnum(type);
+        net.arna.jcraft.api.misc.JByteBufUtils.writeEnum(buf, type);
 
         ServerChannelFeedbackPacket.send(JUtils.around(world, start, 128), buf);
     }

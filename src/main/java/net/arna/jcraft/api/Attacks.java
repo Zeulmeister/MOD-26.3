@@ -250,7 +250,7 @@ public interface Attacks {
             if (standAttack != null) {
                 // Counter check
                 if (!tsHit && standAttack.isCounter() && stand.getMoveStun() < standAttack.getWindupPoint()) {
-                    //noinspection unchecked
+                    @SuppressWarnings("unchecked")
                     var counter = ((AbstractCounterAttack<?, StandEntity<?, ?>>) standAttack);
 
                     if (counter.canCounter(source, damage)) {
@@ -455,7 +455,7 @@ public interface Attacks {
 
         tryApplyHitstop(attacker, ent, damage);
 
-        if (JServerConfig.HEALTH_TO_DAMAGE_SCALING.getValue() && !ent.getType().builtInRegistryHolder().is(JTagRegistry.IGNORES_DAMAGE_SCALING)) {
+        if (JServerConfig.HEALTH_TO_DAMAGE_SCALING.getValue() && !net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(ent.getType()).is(JTagRegistry.IGNORES_DAMAGE_SCALING)) {
             float healthRatio = ent.getMaxHealth() / 20.0f;
             float damageAdjustment = healthRatio - 1.0f;
 

@@ -220,7 +220,7 @@ public class BulletProjectile extends AbstractArrow {
     public void gameEvent(net.minecraft.core.Holder<GameEvent> event, @Nullable Entity entity) {
         super.gameEvent(event, entity);
 
-        if (!event.is(GameEvent.PROJECTILE_SHOOT)) return;
+        if (!event.is(GameEvent.PROJECTILE_SHOOT.key())) return;
 
         if (entity instanceof LivingEntity living) {
             if (JUtils.getSpec(living) instanceof RangerSpec) {

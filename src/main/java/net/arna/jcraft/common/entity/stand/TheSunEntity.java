@@ -474,8 +474,8 @@ public final class TheSunEntity extends StandEntity<TheSunEntity, TheSunEntity.S
                         }
 
                         if (exposure > 2) {
-                            if (exposure > 8) {
-                                entity.hurt(JDamageSources.create(level(), DamageTypes.ON_FIRE), 1.5f);
+                            if (exposure > 8 && entity.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                                entity.hurtServer(serverLevel, JDamageSources.create(serverLevel, DamageTypes.ON_FIRE), 1.5f);
                             }
                             entity.igniteForSeconds(2);
                         }

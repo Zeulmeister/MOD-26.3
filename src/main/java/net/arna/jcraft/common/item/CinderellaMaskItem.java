@@ -28,6 +28,7 @@ public class CinderellaMaskItem extends Item {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // Official MC 26.3 Item tooltip hook (invoked by ItemStack#addDetailsToTooltip)
     public void appendHoverText(final @NotNull ItemStack stack, final @NotNull TooltipContext context, final @NotNull TooltipDisplay display, final @NotNull Consumer<Component> tooltipAdder, final @NotNull TooltipFlag flag) {
         tooltipAdder.accept(Component.translatable("jcraft.cinderella_mask.enchdesc"));
         tooltipAdder.accept(Component.translatable("jcraft.cinderella_mask.usedesc"));

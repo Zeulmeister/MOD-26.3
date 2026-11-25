@@ -89,7 +89,7 @@ public final class ReturnToZeroMove<A extends IAttacker<? extends A, ?>> extends
         return Set.of();
     }
 
-    public boolean returnToZero(final A attacker) {
+    public boolean returnToZero(final IAttacker<?, ?> attacker) {
         if (!started) {
             return false;
         }

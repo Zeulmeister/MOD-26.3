@@ -335,7 +335,7 @@ public class KingCrimsonEntity extends StandEntity<KingCrimsonEntity, KingCrimso
     public void moveCancel() {
         // Epitaph
         getMoveMap().findMoveByType(PredictionMove.class)
-                .ifPresent(m -> m.cancelPrediction(this));
+                .ifPresent(m -> ((PredictionMove<?>) m).cancelPrediction(this));
 
         // General
         setCurrentMove(null);

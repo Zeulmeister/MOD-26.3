@@ -111,8 +111,8 @@ public class SheerHeartAttackEntity extends Mob implements IOwnable {
     @Override
     public boolean hurtServer(net.minecraft.server.level.ServerLevel _sLevel, @NotNull DamageSource source, float amount) {
         // 256 value is arbitrary, to stop /kill from also killing the owner
-        if (master != null && amount < 256) {
-            master.hurt(source, amount / 4); // Reflect damage to owner (SHA is the right hand of KQ)
+        if (master != null && amount < 256 && master.level() instanceof net.minecraft.server.level.ServerLevel masterLevel) {
+            master.hurtServer(masterLevel, source, amount / 4); // Reflect damage to owner (SHA is the right hand of KQ)
         }
         return super.hurtServer(_sLevel, source, amount);
     }
@@ -231,8 +231,8 @@ public class SheerHeartAttackEntity extends Mob implements IOwnable {
                 continue;
             }
             final Vec3 kbVec = target.getEyePosition().subtract(position()).normalize();
-            damageLogic(level(), target, kbVec, 2, 3, true, 15f,
-                    false, 4, damageSource, getMaster(), null, false);
+            damageLogic(level(), target, new net.arna.jcraft.api.AttackData(
+                    kbVec, 2, 3, true, 15f, false, 4, damageSource, getMaster(), null, null, false, false));
             target.addEffect(new MobEffectInstance(JStatusRegistry.KNOCKDOWN.asHolder(), 35, 0, true, false));
             processed.add(id);
         }

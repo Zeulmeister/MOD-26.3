@@ -189,7 +189,7 @@ public class BoundSoundPlayer {
             ResourceKey<SoundEvent> soundKey = ResourceKey.create(Registries.SOUND_EVENT, sound.location());
             buf.writeResourceKey(soundKey);
 
-            buf.writeEnum(category);
+            net.arna.jcraft.api.misc.JByteBufUtils.writeEnum(buf, category);
             buf.writeFloat(volume);
             buf.writeFloat(pitch);
         }

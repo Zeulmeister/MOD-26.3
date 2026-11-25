@@ -93,8 +93,10 @@ public class RedBindEntity extends JAttackEntity {
         if (master != null) {
             final Vec3 vel = boundEntity.position().add(0, 0.5, 0).subtract(master.position());
             final Vec3 launch = vel.normalize().scale(1.25);
-            damageLogic(boundEntity.level(), boundEntity, launch, 20, 3, true,
-                    6, false, 4, level().damageSources().mobAttack(master), master, CommonHitPropertyComponent.HitAnimation.MID, false, true);
+            damageLogic(boundEntity.level(), boundEntity, new net.arna.jcraft.api.AttackData(
+                    launch, 20, 3, true, 6, false, 4,
+                    level().damageSources().mobAttack(master), master,
+                    CommonHitPropertyComponent.HitAnimation.MID, null, false, true));
         }
 
         EXPLODE.sendForEntity(this);
