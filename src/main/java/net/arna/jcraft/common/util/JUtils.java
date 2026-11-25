@@ -168,58 +168,7 @@ public final class JUtils {
     }
 
     public static void displayHitboxes(Level world, Collection<AABB> boxes) {
-        if (world instanceof ServerLevel serverLevel) {
-            final FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-            buf.writeShort(1);
-            buf.writeVarInt(boxes.size());
-
-            double minX = Double.MAX_VALUE;
-            double minY = Double.MAX_VALUE;
-            double minZ = Double.MAX_VALUE;
-
-            double maxX = Double.MIN_VALUE;
-            double maxY = Double.MIN_VALUE;
-            double maxZ = Double.MIN_VALUE;
-
-            for (AABB box : boxes) {
-                if (box.minX < minX) {
-                    minX = box.minX;
-                }
-                if (box.minY < minY) {
-                    minY = box.minY;
-                }
-                if (box.minZ < minZ) {
-                    minZ = box.minZ;
-                }
-
-                if (box.maxX < maxX) {
-                    maxX = box.maxX;
-                }
-                if (box.maxY < maxY) {
-                    maxY = box.maxY;
-                }
-                if (box.maxZ < maxZ) {
-                    maxZ = box.maxZ;
-                }
-
-                buf.writeDouble(box.minX);
-                buf.writeDouble(box.minY);
-                buf.writeDouble(box.minZ);
-
-                buf.writeDouble(box.maxX);
-                buf.writeDouble(box.maxY);
-                buf.writeDouble(box.maxZ);
-            }
-
-            final AABB entireBox = new AABB(minX, minY, minZ, maxX, maxY, maxZ).inflate(48);
-
-            ServerChannelFeedbackPacket.send(
-                    serverLevel.getPlayers(p -> entireBox.contains(p.position())),
-                    buf
-            );
-        } else {
-            throw new IllegalArgumentException("JUtils.displayHitboxes() must be called serverside!");
-        }
+        // Attack hitbox wireframe outlines disabled.
     }
 
     // Defaults to LivingEntity

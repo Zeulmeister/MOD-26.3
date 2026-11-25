@@ -132,8 +132,6 @@ public class JServerEvents {
             JCraft.preloadLockTicks--;
         }
 
-        //noinspection removal
-        RevolverFire.tick(server);
         PeacemakerReload.tick(server);
         PastDimensions.tick(server);
         Timestops.tick(server);
@@ -768,6 +766,15 @@ public class JServerEvents {
 
     public static void playerRespawn(final ServerPlayer serverPlayer, boolean conqueredEnd) {
         GunAiming.set(serverPlayer, false);
+
+        if (JCraft.gravityConfig.resetGravityOnRespawn) {
+            GravityChangerAPI.clearGravity(serverPlayer);
+            GravityChangerAPI.setDefaultGravityDirection(
+                    serverPlayer,
+                    net.minecraft.core.Direction.DOWN,
+                    new net.arna.jcraft.common.gravity.api.RotationParameters().rotationTime(0)
+            );
+        }
 
         final var vamp = JComponentPlatformUtils.getVampirism(serverPlayer);
 

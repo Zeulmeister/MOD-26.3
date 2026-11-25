@@ -18,6 +18,7 @@ import net.arna.jcraft.common.entity.TrainingDummyEntity;
 import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
 import net.arna.jcraft.common.network.s2c.ComboCounterPacket;
 import net.arna.jcraft.common.network.s2c.DamageNumberPacket;
+import net.arna.jcraft.common.tickable.Timestops;
 import net.arna.jcraft.common.util.*;
 import net.arna.jcraft.platform.JComponentPlatformUtils;
 import net.minecraft.network.FriendlyByteBuf;
@@ -378,7 +379,7 @@ public interface Attacks {
             final JSpec<?, ?> userSpec = JUtils.getSpec(livingAttacker);
             if (userSpec != null) {
                 final SpecType userSpecType = userSpec.getType();
-                // combo acknowledger
+                // combo acknowledger: Sendo Air -> Stomp -> follow-up hit on same target
                 if (userSpecType == JSpecTypeRegistry.HAMON.get() && livingAttacker instanceof ServerPlayer player) {
                     final CommonHamonComponent hamon = JComponentPlatformUtils.getHamon(player);
                     if (victim.getUUID().equals(hamon.getLastSendoAired()) && victim.getUUID().equals(hamon.getLastStomped()) &&
@@ -386,10 +387,11 @@ public interface Attacks {
                             hamon.getLastStompedTick() < hamon.getLastSendoAiredTick() &&
                             // but not too long ago (30 seconds)
                             hamon.getLastSendoAiredTick() - hamon.getLastStompedTick() <= 600 &&
-                            // check that stomp was last used move TODO do something less hacky than "was it used within the last five seconds"
-                            hamon.getLastStompedTick() <= 100
+                            // exact last-move verification: stomp was the immediately preceding Hamon combo step
+                            hamon.getLastHamonMove() == CommonHamonComponent.HamonMoveStep.STOMP
                     ) {
                         JAdvancementTriggerRegistry.HAMON6.trigger(player);
+                        hamon.setLastHamonMove(CommonHamonComponent.HamonMoveStep.OTHER);
                     }
                 }
             }
@@ -407,7 +409,7 @@ public interface Attacks {
             final JSpec<?,?> userSpec = JUtils.getSpec(livingAttacker);
             if (userSpec != null) {
                 final SpecType userSpecType = userSpec.getType();
-                // combo acknowledger
+                // combo acknowledger: Zoom Punch -> Sendo -> lethal hit on same target
                 if (userSpecType == JSpecTypeRegistry.HAMON.get() && livingAttacker instanceof ServerPlayer player) {
                     final CommonHamonComponent hamon = JComponentPlatformUtils.getHamon(player);
                     if (victim.getUUID().equals(hamon.getLastZoomPunched()) && victim.getUUID().equals(hamon.getLastSendoed()) &&
@@ -415,10 +417,11 @@ public interface Attacks {
                             hamon.getLastSendoedTick() < hamon.getLastZoomPunchedTick() &&
                             // but not too long ago (30 seconds)
                             hamon.getLastZoomPunchedTick() - hamon.getLastSendoedTick() <= 600 &&
-                            // check that sendo was last used move TODO do something less hacky than "was it used within the last five seconds"
-                            hamon.getLastSendoedTick() <= 100
+                            // exact last-move verification: sendo was the immediately preceding Hamon combo step
+                            hamon.getLastHamonMove() == CommonHamonComponent.HamonMoveStep.SENDO
                     ) {
                         JAdvancementTriggerRegistry.HAMON4.trigger(player);
+                        hamon.setLastHamonMove(CommonHamonComponent.HamonMoveStep.OTHER);
                     }
                 }
             }
@@ -450,7 +453,7 @@ public interface Attacks {
         //JCraft.LOGGER.info("Damaging entity: " + ent + " with damage: " + damage + " and scaling: " + scaling);
         damage *= scaling;
 
-        //tryApplyHitstop(attacker, ent, damage);
+        tryApplyHitstop(attacker, ent, damage);
 
         if (JServerConfig.HEALTH_TO_DAMAGE_SCALING.getValue() && !ent.getType().builtInRegistryHolder().is(JTagRegistry.IGNORES_DAMAGE_SCALING)) {
             float healthRatio = ent.getMaxHealth() / 20.0f;
@@ -496,31 +499,62 @@ public interface Attacks {
         applyAbsorptionAndStats(damage, damageSource, ent);
     }
 
-    /*
+    /**
+     * Computes micro-hitstop freeze duration (in ticks) for heavy/ultimate hits.
+     * Light hits and barrages (&lt; 6.0 post-scaling damage) return 0 so fast combos remain fluid.
+     */
+    static int computeHitstopTicks(final float damage) {
+        if (damage < 6.0f) {
+            return 0;
+        }
+        return Mth.clamp(Math.round(damage / 4.5f), 1, 4);
+    }
+
     static void tryApplyHitstop(@Nullable Entity attacker, LivingEntity victim, float damage) {
-        if (damage < 3.0f) return;
+        if (victim == null || victim.level().isClientSide() || !JServerConfig.ENABLE_HITSTOP.getValue()) {
+            return;
+        }
+        final int hitstop = computeHitstopTicks(damage);
+        if (hitstop <= 0) {
+            return;
+        }
+        // Never overwrite or disturb an active Time Stop
+        if (Timestops.isInTSRange(victim.position()) || (attacker != null && Timestops.isInTSRange(attacker.position()))) {
+            return;
+        }
 
-        final int hitstop = (int) (damage / 2.5f);
-
-        if (JServerConfig.ENABLE_HITSTOP.getValue()) {
-            if (attacker instanceof LivingEntity livingAttacker) {
-                JComponentPlatformUtils.getTimeStopData(attacker).ifPresent(data -> data.setTicks(hitstop));
-
-                StandEntity<?, ?> attackerStand = JUtils.getStand(livingAttacker);
-                if (attackerStand != null) {
-                    JComponentPlatformUtils.getTimeStopData(attackerStand).ifPresent(data -> data.setTicks(hitstop));
+        if (attacker instanceof LivingEntity livingAttacker) {
+            JComponentPlatformUtils.getTimeStopData(livingAttacker).ifPresent(data -> {
+                if (data.getTicks() < hitstop) {
+                    data.setTicks(hitstop);
                 }
-            }
+            });
 
-            JComponentPlatformUtils.getTimeStopData(victim).ifPresent(data -> data.setTicks(hitstop));
-
-            StandEntity<?, ?> victimStand = JUtils.getStand(victim);
-            if (victimStand != null) {
-                JComponentPlatformUtils.getTimeStopData(victimStand).ifPresent(data -> data.setTicks(hitstop));
+            StandEntity<?, ?> attackerStand = JUtils.getStand(livingAttacker);
+            if (attackerStand != null) {
+                JComponentPlatformUtils.getTimeStopData(attackerStand).ifPresent(data -> {
+                    if (data.getTicks() < hitstop) {
+                        data.setTicks(hitstop);
+                    }
+                });
             }
         }
+
+        JComponentPlatformUtils.getTimeStopData(victim).ifPresent(data -> {
+            if (data.getTicks() < hitstop) {
+                data.setTicks(hitstop);
+            }
+        });
+
+        StandEntity<?, ?> victimStand = JUtils.getStand(victim);
+        if (victimStand != null) {
+            JComponentPlatformUtils.getTimeStopData(victimStand).ifPresent(data -> {
+                if (data.getTicks() < hitstop) {
+                    data.setTicks(hitstop);
+                }
+            });
+        }
     }
-     */
 
     /**
      * Basic damage method, ignores potion effects and enchantments, accounts for armor and damage scaling
@@ -534,11 +568,11 @@ public interface Attacks {
             return;
         }
 
-        //tryApplyHitstop(damageSource.getEntity(), ent, damage);
-
         float scaling = ((IJCraftComboTracker) ent).jcraft$getDamageScaling();
         //JCraft.LOGGER.info("True damaging entity: " + ent + " with damage: " + damage + " and scaling: " + scaling);
         damage *= scaling;
+
+        tryApplyHitstop(damageSource.getEntity(), ent, damage);
 
         // Send damage number packet for training dummies
         if (ent instanceof TrainingDummyEntity && !ent.level().isClientSide() && damage > 0) {

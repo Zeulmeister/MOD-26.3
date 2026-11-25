@@ -34,7 +34,7 @@ public class GravityShiftComponentImpl extends CommonGravityShiftComponentImpl i
 
     @Override
     public boolean shouldSyncWith(ServerPlayer player) {
-        if (player.distanceToSqr(user) > RANGE_SQR) return false;
+        if (player.distanceToSqr(user) > getConfiguredUltRangeSqr()) return false;
         return GravityShiftComponent.super.shouldSyncWith(player);
     }
 

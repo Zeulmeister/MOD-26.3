@@ -61,13 +61,15 @@ public final class TimeAccelerationMove extends AbstractMove<TimeAccelerationMov
         attacker.setAccelTime(aTime - 1);
 
         if (aTime > 1) {
-            final List<Entity> toCatch = attacker.level().getEntitiesOfClass(Entity.class,
-                    attacker.getBoundingBox().inflate(96), EntitySelector.NO_CREATIVE_OR_SPECTATOR);
-            for (Entity entity : toCatch) {
-                if (entity instanceof LivingEntity) {
-                    continue;
+            if (JServerConfig.MIH_ACCELERATE_TICKS.getValue()) {
+                final List<Entity> toCatch = attacker.level().getEntitiesOfClass(Entity.class,
+                        attacker.getBoundingBox().inflate(96), EntitySelector.NO_CREATIVE_OR_SPECTATOR);
+                for (Entity entity : toCatch) {
+                    if (entity instanceof LivingEntity) {
+                        continue;
+                    }
+                    entity.tick();
                 }
-                entity.tick();
             }
         } else if (aTime == 1) {
             if (attacker.getSpeedometer() == MadeInHeavenEntity.MAXIMUM_SPEEDOMETER) {

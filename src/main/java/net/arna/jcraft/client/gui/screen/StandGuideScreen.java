@@ -1,15 +1,18 @@
 package net.arna.jcraft.client.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.arna.jcraft.JCraft;
 import net.arna.jcraft.api.IAttackerType;
 import net.arna.jcraft.api.attack.MoveMap;
 import net.arna.jcraft.api.attack.MoveSet;
 import net.arna.jcraft.api.attack.MoveSetManager;
+import net.arna.jcraft.api.attack.enums.BlockableType;
 import net.arna.jcraft.api.attack.enums.MoveClass;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
 import net.arna.jcraft.api.attack.moves.AbstractSimpleAttack;
 import net.arna.jcraft.api.component.living.CommonStandComponent;
 import net.arna.jcraft.api.component.player.CommonSpecComponent;
+import net.arna.jcraft.api.registry.JItemRegistry;
 import net.arna.jcraft.api.spec.JSpec;
 import net.arna.jcraft.api.spec.SpecData;
 import net.arna.jcraft.api.spec.SpecType;
@@ -29,6 +32,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
@@ -47,8 +51,9 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Interactive 4-tab JCraft Gameplay & Stand Guide Screen (Moveset, Evolutions, Combat, Survival Progression).
- * Accessible from the Y Radial Wheel center medallion and the JCraft Config Screen.
+ * Interactive 4-tab JCraft Gameplay & Stand Encyclopedia Screen (Moveset, Evolutions, Combat, Survival Progression).
+ * Supports browsing all obtainable Stands (regular & evolutions), move armor/unblockable/windup stats,
+ * contextual item icons, and keyboard shortcuts (1-4 tabs, Left/Right Stand cycling, Up/Down scrolling).
  */
 public final class StandGuideScreen extends Screen {
     private static final String[] TAB_KEYS = {
@@ -63,10 +68,13 @@ public final class StandGuideScreen extends Screen {
     @Nullable
     private final Screen parent;
     private final List<GuideCard> cards = new ArrayList<>();
+    private final List<StandType> obtainableStands = new ArrayList<>();
 
     private int activeTab = 0;
     private int scrollPixels = 0;
     private int totalContentHeight = 0;
+    /** Index into {@link #obtainableStands}, or -1 to show the player's currently equipped Stand/Spec. */
+    private int browsedStandIndex = -1;
 
     private int panelLeft;
     private int panelTop;
@@ -93,6 +101,17 @@ public final class StandGuideScreen extends Screen {
     public StandGuideScreen(@Nullable Screen parent) {
         super(Component.translatable("jcraft.guide.title"));
         this.parent = parent;
+        loadObtainableStands();
+    }
+
+    private void loadObtainableStands() {
+        this.obtainableStands.clear();
+        StandTypeUtil.streamAllObtainable()
+                .filter(t -> !StandTypeUtil.isNone(t))
+                .sorted(Comparator
+                        .comparing((StandType t) -> t.getData().isEvolution())
+                        .thenComparing(t -> t.getData().getInfo().getName().getString(), String.CASE_INSENSITIVE_ORDER))
+                .forEach(this.obtainableStands::add);
     }
 
     @Override
@@ -103,8 +122,8 @@ public final class StandGuideScreen extends Screen {
     @Override
     protected void init() {
         this.clearWidgets();
-        this.panelW = Math.min(580, this.width - 10);
-        this.panelH = Math.min(264, this.height - 10);
+        this.panelW = Math.min(584, this.width - 10);
+        this.panelH = Math.min(268, this.height - 10);
         this.panelLeft = (this.width - this.panelW) / 2;
         this.panelTop = (this.height - this.panelH) / 2;
 
@@ -123,7 +142,34 @@ public final class StandGuideScreen extends Screen {
                     .build());
         }
 
-        this.bodyTop = this.panelTop + 38;
+        // Encyclopedia Stand switcher bar on Tab 0 (Moveset)
+        if (this.activeTab == 0 && !this.obtainableStands.isEmpty()) {
+            int barY = this.panelTop + 37;
+            int myBtnW = 84;
+            int arrowW = 22;
+            int rightEdge = this.panelLeft + this.panelW - 8;
+            int myBtnX = rightEdge - myBtnW;
+            int nextX = myBtnX - 4 - arrowW;
+            int prevX = this.panelLeft + 8;
+
+            this.addRenderableWidget(Button.builder(Component.literal("◀"), b -> cycleBrowsedStand(-1))
+                    .bounds(prevX, barY, arrowW, 15).build());
+            this.addRenderableWidget(Button.builder(Component.literal("▶"), b -> cycleBrowsedStand(1))
+                    .bounds(nextX, barY, arrowW, 15).build());
+
+            Button mineBtn = Button.builder(Component.translatable("jcraft.guide.my_stand"), b -> {
+                this.browsedStandIndex = -1;
+                this.scrollPixels = 0;
+                this.init();
+            }).bounds(myBtnX, barY, myBtnW, 15).build();
+            mineBtn.active = this.browsedStandIndex >= 0;
+            this.addRenderableWidget(mineBtn);
+
+            this.bodyTop = barY + 18;
+        } else {
+            this.bodyTop = this.panelTop + 38;
+        }
+
         int footerY = this.panelTop + this.panelH - 22;
         this.bodyBottom = footerY - 4;
 
@@ -155,6 +201,24 @@ public final class StandGuideScreen extends Screen {
         this.addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
                 .bounds(centerStart + btnW + 6, footerY, btnW, 18)
                 .build());
+    }
+
+    private void cycleBrowsedStand(int step) {
+        if (this.obtainableStands.isEmpty()) {
+            return;
+        }
+        int total = this.obtainableStands.size();
+        if (this.browsedStandIndex < 0) {
+            LocalPlayer player = Minecraft.getInstance().player;
+            StandType equipped = player != null ? JComponentPlatformUtils.getStandComponent(player).getType() : null;
+            int eqIdx = equipped != null ? this.obtainableStands.indexOf(equipped) : -1;
+            int base = eqIdx >= 0 ? eqIdx : (step > 0 ? -1 : 0);
+            this.browsedStandIndex = Math.floorMod(base + step, total);
+        } else {
+            this.browsedStandIndex = Math.floorMod(this.browsedStandIndex + step, total);
+        }
+        this.scrollPixels = 0;
+        this.init();
     }
 
     private void switchTab(int tab) {
@@ -195,6 +259,16 @@ public final class StandGuideScreen extends Screen {
             return;
         }
 
+        // Browsing encyclopedia Stand mode
+        if (this.browsedStandIndex >= 0 && this.browsedStandIndex < this.obtainableStands.size()) {
+            StandType previewType = this.obtainableStands.get(this.browsedStandIndex);
+            CommonStandComponent standComp = JComponentPlatformUtils.getStandComponent(player);
+            boolean isEquipped = standComp.getType() == previewType;
+            StandEntity<?, ?> activeStand = isEquipped ? JUtils.getStand(player) : null;
+            addStandProfileAndMoves(previewType, activeStand, isEquipped);
+            return;
+        }
+
         CommonStandComponent standComp = JComponentPlatformUtils.getStandComponent(player);
         StandType standType = standComp.getType();
         StandEntity<?, ?> activeStand = JUtils.getStand(player);
@@ -218,68 +292,13 @@ public final class StandGuideScreen extends Screen {
                     0xAA1F1633,
                     null,
                     null,
-                    new ItemStack(Items.NETHER_STAR)
+                    new ItemStack(JItemRegistry.STAND_ARROW.get())
             );
             return;
         }
 
         if (hasStand) {
-            StandData data = standType.getData();
-            StandInfo info = data.getInfo();
-            int modeOrd = activeStand != null ? activeStand.getModeOrdinal() : 0;
-            String descKey = String.format("%s%s.info.desc", info.getNameKey(), modeOrd == 0 ? "" : Integer.toString(modeOrd));
-
-            StringBuilder summary = new StringBuilder();
-            if (Language.getInstance().has(descKey)) {
-                summary.append(Component.translatable(descKey).getString());
-            }
-            for (int p = 1; p <= info.getProCount(); p++) {
-                String k = String.format("%s.info.pro%d", info.getNameKey(), p);
-                if (Language.getInstance().has(k)) {
-                    if (!summary.isEmpty()) summary.append("\n");
-                    summary.append("§b+ ").append(Component.translatable(k).getString());
-                }
-            }
-            for (int c = 1; c <= info.getConCount(); c++) {
-                String k = String.format("%s.info.con%d", info.getNameKey(), c);
-                if (Language.getInstance().has(k)) {
-                    if (!summary.isEmpty()) summary.append("\n");
-                    summary.append("§c- ").append(Component.translatable(k).getString());
-                }
-            }
-            if (info.getFreeSpace().getContents() != PlainTextContents.EMPTY) {
-                String fs = info.getFreeSpace().getString().trim();
-                if (!fs.isEmpty()) {
-                    if (!summary.isEmpty()) summary.append("\n");
-                    summary.append("§7").append(fs);
-                }
-            }
-
-            String summonKey = JCraftClient.generateName(JCraftClient.STAND_SUMMON_KEY.getParent(), false);
-            String stateBadge = activeStand != null
-                    ? Component.translatable("jcraft.guide.stand.active").getString()
-                    : Component.translatable("jcraft.guide.stand.summon_with", summonKey).getString();
-
-            addTextCard(
-                    "★ " + info.getName().getString(),
-                    0xFFFDE047,
-                    stateBadge,
-                    activeStand != null ? 0xFF34D399 : 0xFF93C5FD,
-                    null,
-                    Component.literal(summary.isEmpty()
-                            ? Component.translatable("jcraft.guide.stand.ready_desc").getString()
-                            : summary.toString()),
-                    0xFFD4AF37,
-                    0xCC211638,
-                    standType.getId(),
-                    "ult",
-                    null
-            );
-
-            MoveMap<?, ?> standMoves = activeStand != null ? activeStand.getMoveMap() : resolveDefaultMoveMap(standType);
-            if (standMoves != null) {
-                appendMoveEntries(standMoves, standType.getId(), false);
-            }
+            addStandProfileAndMoves(standType, activeStand, true);
         }
 
         if (hasSpec) {
@@ -312,6 +331,76 @@ public final class StandGuideScreen extends Screen {
             if (specMoves != null) {
                 appendMoveEntries(specMoves, specType.getId(), true);
             }
+        }
+    }
+
+    private void addStandProfileAndMoves(StandType standType, @Nullable StandEntity<?, ?> activeStand, boolean isEquipped) {
+        StandData data = standType.getData();
+        StandInfo info = data.getInfo();
+        int modeOrd = activeStand != null ? activeStand.getModeOrdinal() : 0;
+        String descKey = String.format("%s%s.info.desc", info.getNameKey(), modeOrd == 0 ? "" : Integer.toString(modeOrd));
+
+        StringBuilder summary = new StringBuilder();
+        if (Language.getInstance().has(descKey)) {
+            summary.append(Component.translatable(descKey).getString());
+        }
+        for (int p = 1; p <= info.getProCount(); p++) {
+            String k = String.format("%s.info.pro%d", info.getNameKey(), p);
+            if (Language.getInstance().has(k)) {
+                if (!summary.isEmpty()) summary.append("\n");
+                summary.append("§b+ ").append(Component.translatable(k).getString());
+            }
+        }
+        for (int c = 1; c <= info.getConCount(); c++) {
+            String k = String.format("%s.info.con%d", info.getNameKey(), c);
+            if (Language.getInstance().has(k)) {
+                if (!summary.isEmpty()) summary.append("\n");
+                summary.append("§c- ").append(Component.translatable(k).getString());
+            }
+        }
+        if (info.getFreeSpace().getContents() != PlainTextContents.EMPTY) {
+            String fs = info.getFreeSpace().getString().trim();
+            if (!fs.isEmpty()) {
+                if (!summary.isEmpty()) summary.append("\n");
+                summary.append("§7").append(fs);
+            }
+        }
+
+        String summonKey = JCraftClient.generateName(JCraftClient.STAND_SUMMON_KEY.getParent(), false);
+        String stateBadge;
+        int badgeCol;
+        if (!isEquipped) {
+            stateBadge = data.isEvolution()
+                    ? Component.translatable("jcraft.guide.badge.evolution").getString()
+                    : Component.translatable("jcraft.guide.badge.preview").getString();
+            badgeCol = data.isEvolution() ? 0xFFF472B6 : 0xFFC4B5FD;
+        } else if (activeStand != null) {
+            stateBadge = Component.translatable("jcraft.guide.stand.active").getString();
+            badgeCol = 0xFF34D399;
+        } else {
+            stateBadge = Component.translatable("jcraft.guide.stand.summon_with", summonKey).getString();
+            badgeCol = 0xFF93C5FD;
+        }
+
+        addTextCard(
+                "★ " + info.getName().getString(),
+                data.isEvolution() ? 0xFFF5D0FE : 0xFFFDE047,
+                stateBadge,
+                badgeCol,
+                Component.translatable("jcraft.guide.stand.skins_count", info.getSkinCount()).getString(),
+                Component.literal(summary.isEmpty()
+                        ? Component.translatable("jcraft.guide.stand.ready_desc").getString()
+                        : summary.toString()),
+                data.isEvolution() ? 0xFFC084FC : 0xFFD4AF37,
+                0xCC211638,
+                standType.getId(),
+                "ult",
+                null
+        );
+
+        MoveMap<?, ?> standMoves = activeStand != null ? activeStand.getMoveMap() : resolveDefaultMoveMap(standType);
+        if (standMoves != null) {
+            appendMoveEntries(standMoves, standType.getId(), false);
         }
     }
 
@@ -369,12 +458,23 @@ public final class StandGuideScreen extends Screen {
         if (move.getCooldown() > 0) {
             stats.append(String.format(Locale.ROOT, "CD %.1fs", move.getCooldown() / 20.0f));
         }
+        if (move.getWindup() > 0) {
+            if (!stats.isEmpty()) stats.append(" • ");
+            stats.append(String.format(Locale.ROOT, "WINDUP %dt", move.getWindup()));
+        }
         if (move instanceof AbstractSimpleAttack<?, ?> atk && atk.getDamage() > 0f) {
             if (!stats.isEmpty()) stats.append(" • ");
             stats.append(String.format(Locale.ROOT, "DMG %.1f", atk.getDamage()));
             if (atk.getStun() > 0) {
                 stats.append(String.format(Locale.ROOT, " • STUN %dt", atk.getStun()));
             }
+            if (atk.getBlockableType() != BlockableType.BLOCKABLE) {
+                stats.append(" • §d⚡ Unblockable");
+            }
+        }
+        if (move.getArmor() > 0) {
+            if (!stats.isEmpty()) stats.append(" • ");
+            stats.append("§6🛡 Armor");
         }
 
         String iconName = moveClassToIconName(entry.getMoveClass());
@@ -428,7 +528,7 @@ public final class StandGuideScreen extends Screen {
                 0xAA1D1430,
                 null,
                 null,
-                null
+                new ItemStack(JItemRegistry.REQUIEM_ARROW.get())
         );
 
         List<EvolutionItemHandler.Evolution> evos = new ArrayList<>(EvolutionItemHandler.getEvolutions());
@@ -477,34 +577,46 @@ public final class StandGuideScreen extends Screen {
         String sneak = JCraftClient.generateName(mc.options.keyShift, false);
         String jump = JCraftClient.generateName(mc.options.keyJump, false);
 
-        addGuideTopic("jcraft.guide.combat.summon.title", "[" + summon + "]",
-                Component.translatable("jcraft.guide.combat.summon.body", summon), 0xFFFDE047);
-        addGuideTopic("jcraft.guide.combat.guard.title", "[" + useKey + "]",
-                Component.translatable("jcraft.guide.combat.guard.body", useKey), 0xFF60A5FA);
-        addGuideTopic("jcraft.guide.combat.variants.title", "[" + sneak + " / " + jump + "]",
-                Component.translatable("jcraft.guide.combat.variants.body", sneak, jump), 0xFF38BDF8);
-        addGuideTopic("jcraft.guide.combat.escape.title", "[" + dash + " / " + cdc + "]",
-                Component.translatable("jcraft.guide.combat.escape.body", dash, cdc), 0xFF34D399);
-        addGuideTopic("jcraft.guide.combat.pilot.title", "[" + pilot + " / " + zoom + "]",
-                Component.translatable("jcraft.guide.combat.pilot.body", pilot, zoom), 0xFFC084FC);
-        addGuideTopic("jcraft.guide.combat.toss.title", "[" + toss + "]",
-                Component.translatable("jcraft.guide.combat.toss.body", toss), 0xFFFBBF24);
-        addGuideTopic("jcraft.guide.combat.timestop.title", "ZA WARUDO",
-                Component.translatable("jcraft.guide.combat.timestop.body"), 0xFFF472B6);
+        addGuideItemTopic("jcraft.guide.combat.summon.title", "[" + summon + "]",
+                Component.translatable("jcraft.guide.combat.summon.body", summon), 0xFFFDE047,
+                new ItemStack(JItemRegistry.STAND_ARROW.get()));
+        addGuideItemTopic("jcraft.guide.combat.guard.title", "[" + useKey + "]",
+                Component.translatable("jcraft.guide.combat.guard.body", useKey), 0xFF60A5FA,
+                new ItemStack(Items.SHIELD));
+        addGuideItemTopic("jcraft.guide.combat.variants.title", "[" + sneak + " / " + jump + "]",
+                Component.translatable("jcraft.guide.combat.variants.body", sneak, jump), 0xFF38BDF8,
+                new ItemStack(Items.FEATHER));
+        addGuideIconTopic("jcraft.guide.combat.escape.title", "[" + dash + " / " + cdc + "]",
+                Component.translatable("jcraft.guide.combat.escape.body", dash, cdc), 0xFF34D399,
+                JCraft.id("universal"), "combobreaker");
+        addGuideItemTopic("jcraft.guide.combat.pilot.title", "[" + pilot + " / " + zoom + "]",
+                Component.translatable("jcraft.guide.combat.pilot.body", pilot, zoom), 0xFFC084FC,
+                new ItemStack(Items.ENDER_EYE));
+        addGuideItemTopic("jcraft.guide.combat.toss.title", "[" + toss + "]",
+                Component.translatable("jcraft.guide.combat.toss.body", toss), 0xFFFBBF24,
+                new ItemStack(Items.IRON_SWORD));
+        addGuideItemTopic("jcraft.guide.combat.timestop.title", "ZA WARUDO",
+                Component.translatable("jcraft.guide.combat.timestop.body"), 0xFFF472B6,
+                new ItemStack(Items.CLOCK));
     }
 
     private void buildProgressionCards() {
-        addGuideTopic("jcraft.guide.prog.arrows.title", "★ Stand",
-                Component.translatable("jcraft.guide.prog.arrows.body"), 0xFFFDE047);
-        addGuideTopic("jcraft.guide.prog.discs.title", "◈ Discs",
-                Component.translatable("jcraft.guide.prog.discs.body"), 0xFF38BDF8);
-        addGuideTopic("jcraft.guide.prog.specs.title", "✦ 5 Specs",
-                Component.translatable("jcraft.guide.prog.specs.body"), 0xFF34D399);
-        addGuideTopic("jcraft.guide.prog.npcs.title", "🌍 World",
-                Component.translatable("jcraft.guide.prog.npcs.body"), 0xFFC084FC);
+        addGuideItemTopic("jcraft.guide.prog.arrows.title", "★ Stand",
+                Component.translatable("jcraft.guide.prog.arrows.body"), 0xFFFDE047,
+                new ItemStack(JItemRegistry.STAND_ARROW.get()));
+        addGuideItemTopic("jcraft.guide.prog.discs.title", "◈ Discs",
+                Component.translatable("jcraft.guide.prog.discs.body"), 0xFF38BDF8,
+                new ItemStack(JItemRegistry.STAND_DISC.get()));
+        addGuideItemTopic("jcraft.guide.prog.specs.title", "✦ 5 Specs",
+                Component.translatable("jcraft.guide.prog.specs.body"), 0xFF34D399,
+                new ItemStack(JItemRegistry.STONE_MASK.get()));
+        addGuideItemTopic("jcraft.guide.prog.npcs.title", "🌍 World",
+                Component.translatable("jcraft.guide.prog.npcs.body"), 0xFFC084FC,
+                new ItemStack(Items.COMPASS));
     }
 
-    private void addGuideTopic(String titleKey, String badge, Component body, int accentColor) {
+    private void addGuideIconTopic(String titleKey, String badge, Component body, int accentColor,
+                                   Identifier iconOwner, String iconName) {
         addTextCard(
                 Component.translatable(titleKey).getString(),
                 accentColor,
@@ -514,9 +626,25 @@ public final class StandGuideScreen extends Screen {
                 body,
                 0x779333EA,
                 0x99181228,
-                JCraft.id("universal"),
-                "dash",
+                iconOwner,
+                iconName,
                 null
+        );
+    }
+
+    private void addGuideItemTopic(String titleKey, String badge, Component body, int accentColor, ItemStack icon) {
+        addTextCard(
+                Component.translatable(titleKey).getString(),
+                accentColor,
+                badge,
+                accentColor,
+                null,
+                body,
+                0x779333EA,
+                0x99181228,
+                null,
+                null,
+                icon
         );
     }
 
@@ -547,15 +675,55 @@ public final class StandGuideScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        int max = getMaxScroll();
-        if (max > 0 && scrollY != 0) {
-            int next = Mth.clamp(scrollPixels + (scrollY > 0 ? -SCROLL_STEP : SCROLL_STEP), 0, max);
-            if (next != scrollPixels) {
-                scrollPixels = next;
-                this.init();
+    public boolean keyPressed(KeyEvent event) {
+        int key = event.key();
+        if (key >= InputConstants.KEY_1 && key <= InputConstants.KEY_4) {
+            switchTab(key - InputConstants.KEY_1);
+            return true;
+        }
+        if (this.activeTab == 0) {
+            if (key == InputConstants.KEY_LEFT) {
+                cycleBrowsedStand(-1);
                 return true;
             }
+            if (key == InputConstants.KEY_RIGHT) {
+                cycleBrowsedStand(1);
+                return true;
+            }
+        }
+        if (key == InputConstants.KEY_UP) {
+            return scrollBy(-SCROLL_STEP);
+        }
+        if (key == InputConstants.KEY_DOWN) {
+            return scrollBy(SCROLL_STEP);
+        }
+        if (key == InputConstants.KEY_PAGEUP) {
+            return scrollBy(-SCROLL_STEP * 4);
+        }
+        if (key == InputConstants.KEY_PAGEDOWN) {
+            return scrollBy(SCROLL_STEP * 4);
+        }
+        return super.keyPressed(event);
+    }
+
+    private boolean scrollBy(int delta) {
+        int max = getMaxScroll();
+        if (max <= 0 || delta == 0) {
+            return false;
+        }
+        int next = Mth.clamp(scrollPixels + delta, 0, max);
+        if (next != scrollPixels) {
+            scrollPixels = next;
+            this.init();
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (scrollY != 0 && scrollBy(scrollY > 0 ? -SCROLL_STEP : SCROLL_STEP)) {
+            return true;
         }
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
@@ -573,6 +741,29 @@ public final class StandGuideScreen extends Screen {
 
         gui.centeredText(this.font, Component.translatable("jcraft.guide.title"),
                 this.panelLeft + this.panelW / 2, this.panelTop + 6, 0xFFFDE68A);
+
+        // Encyclopedia Stand selector label on Tab 0
+        if (this.activeTab == 0 && !this.obtainableStands.isEmpty()) {
+            int barY = this.panelTop + 37;
+            int barLeft = this.panelLeft + 34;
+            int barRight = this.panelLeft + this.panelW - 8 - 84 - 4 - 22 - 4;
+            gui.fill(barLeft, barY, barRight, barY + 15, 0xAA1C1430);
+            gui.outline(barLeft, barY, barRight - barLeft, 15, 0x77C084FC);
+            String label;
+            int col;
+            if (this.browsedStandIndex >= 0 && this.browsedStandIndex < this.obtainableStands.size()) {
+                StandType st = this.obtainableStands.get(this.browsedStandIndex);
+                String evoTag = st.getData().isEvolution() ? " §d[Evo]" : "";
+                label = String.format(Locale.ROOT, "%s%s  §7(%d/%d)",
+                        st.getData().getInfo().getName().getString(), evoTag,
+                        this.browsedStandIndex + 1, this.obtainableStands.size());
+                col = 0xFFFDE68A;
+            } else {
+                label = Component.translatable("jcraft.guide.browser_hint", this.obtainableStands.size()).getString();
+                col = 0xFFC4B5FD;
+            }
+            gui.centeredText(this.font, label, (barLeft + barRight) / 2, barY + 4, col);
+        }
 
         int cardLeft = this.panelLeft + 8;
         int cardRight = this.panelLeft + this.panelW - 12;

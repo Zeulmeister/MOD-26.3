@@ -63,13 +63,8 @@ public class JServerConfig {
     public static final IntOption KC_TIME_ERASURE_DURATION = new IntOption(JCraft.id("kc_time_erasure_duration"), BALANCE, 120, 0);
     public static final FloatOption STAND_DAMAGE_MULTIPLIER = new FloatOption(JCraft.id("stand_damage_multiplier"), BALANCE, 1.0f, 0f, 10f);
     public static final BooleanOption IGNORE_ARMOR = new BooleanOption(JCraft.id("ignore_armor"), BALANCE, false);
-    /*
     public static final IntOption CMOON_UTIL_DURATION = new IntOption(JCraft.id("cmoon_util_duration"), BALANCE, 300, 0);
     public static final IntOption CMOON_ULT_RANGE = new IntOption(JCraft.id("cmoon_ult_range"), BALANCE, 100, 0, 256);
-    public static final EnumOption<SpecType> DEF_SPEC = new EnumOption<>("def_spec", BALANCE, SpecType.class, SpecType.NONE);
-    public static final BooleanOption INVIS_CREAM_VOID = new BooleanOption(JCraft.id("invis_cream_void"), BALANCE, false);
-    public static final BooleanOption TIME_SKIP_USE_UTIL = new BooleanOption(JCraft.id("time_skip_use_util"), BALANCE, false);
-     */
     public static final BooleanOption HEALTH_TO_DAMAGE_SCALING = new BooleanOption(JCraft.id("health_to_damage_scaling"), BALANCE, true);
     public static final FloatOption VS_STANDLESS_DAMAGE_MULTIPLIER = new FloatOption(JCraft.id("vs_standless_damage_multiplier"), BALANCE, 1.5f);
     public static final FloatOption DAMAGE_SCALING_MINIMUM = new FloatOption(JCraft.id("damage_scaling_minimum"), BALANCE, 0.4f);
@@ -98,26 +93,26 @@ public class JServerConfig {
     public static final BooleanOption MANDOM_AFFECTS_BLOCKS = new BooleanOption(JCraft.id("mandom_affects_blocks"), INTERACTION, true);
     public static final BooleanOption WS_STEAL_STANDS_FROM_PLAYERS = new BooleanOption(JCraft.id("ws_steal_stands_from_players"), INTERACTION, false);
     public static final FloatOption BLOCK_BREAKAGE_MULTIPLIER = new FloatOption(JCraft.id("block_breakage_multiplier"), INTERACTION, 1.0f);
+    // Note: Stand block griefing is controlled by the Fabric GameRule JCraft.STAND_GRIEFING (jcraft:stand_griefing).
+    public static final BooleanOption UNIVERSAL_ABILITIES = new BooleanOption(JCraft.id("universal_abilities"), INTERACTION, true);
+    public static final BooleanOption SPTW_IGNITE_CAMPFIRES = new BooleanOption(JCraft.id("sptw_ignite_campfires"), INTERACTION, true);
+    public static final IntOption SHA_SEARCH_RADIUS = new IntOption(JCraft.id("sha_search_radius"), INTERACTION, 10, 3, 32);
+    public static final BooleanOption MIH_ACCELERATE_TICKS = new BooleanOption(JCraft.id("mih_accelerate_ticks"), INTERACTION, true);
+    public static final BooleanOption USE_FOOLISH_SAND = new BooleanOption(JCraft.id("use_foolish_sand"), INTERACTION, true);
 
-    // Gravity options (backed by & synchronized with JCraft.gravityConfig)
+    // Gravity options (fully unified & synchronized with JCraft.gravityConfig)
     private static final Identifier GRAVITY = JCraft.id("gravity");
     public static final BooleanOption GRAVITY_ONLY_AFFECTS_PLAYERS = new BooleanOption(JCraft.id("gravity_only_affects_players"), GRAVITY, false);
     public static final BooleanOption GRAVITY_KEEP_WORLD_LOOK = new BooleanOption(JCraft.id("gravity_keep_world_look"), GRAVITY, false);
     public static final IntOption GRAVITY_ROTATION_TIME = new IntOption(JCraft.id("gravity_rotation_time"), GRAVITY, 500, 0, 5000);
     public static final BooleanOption GRAVITY_WORLD_VELOCITY = new BooleanOption(JCraft.id("gravity_world_velocity"), GRAVITY, false);
     public static final BooleanOption RESET_GRAVITY_ON_DIMENSION_CHANGE = new BooleanOption(JCraft.id("reset_gravity_on_dimension_change"), GRAVITY, true);
-    /*
-    public static final BooleanOption UNIVERSAL_ABILITIES = new BooleanOption(JCraft.id("universal_abilities"), INTERACTION, true);
-    public static final BooleanOption STAND_GRIEFING = new BooleanOption(JCraft.id("stand_griefing"), INTERACTION, true);
-    public static final BooleanOption SPTW_IGNITE_CAMPFIRES = new BooleanOption(JCraft.id("sptw_ignite_campfires"), INTERACTION, true);
-    public static final IntOption SHA_SEARCH_RADIUS = new IntOption(JCraft.id("sha_search_radius"), INTERACTION, 10, 3, 32);
-    public static final BooleanOption MIH_ACCELERATE_TICKS = new BooleanOption(JCraft.id("mih_accelerate_ticks"), INTERACTION, true);
-    public static final BooleanOption USE_FOOLISH_SAND = new BooleanOption(JCraft.id("use_foolish_sand"), INTERACTION, true);
-     */
+    public static final BooleanOption RESET_GRAVITY_ON_RESPAWN = new BooleanOption(JCraft.id("reset_gravity_on_respawn"), GRAVITY, true);
+    public static final BooleanOption VOID_DAMAGE_ABOVE_WORLD = new BooleanOption(JCraft.id("void_damage_above_world"), GRAVITY, false);
 
     // Gameplay options
     private static final Identifier GAMEPLAY = JCraft.id("gameplay");
-    // public static final BooleanOption ENABLE_HITSTOP = new BooleanOption(JCraft.id("enable_hitstop"), GAMEPLAY, false);
+    public static final BooleanOption ENABLE_HITSTOP = new BooleanOption(JCraft.id("enable_hitstop"), GAMEPLAY, false);
     public static final BooleanOption EXCLUSIVE_STANDS = new BooleanOption(JCraft.id("exclusive_stands"), GAMEPLAY, false);
     public static final BooleanOption START_WITH_SPEC = new BooleanOption(JCraft.id("start_with_spec"), GAMEPLAY, false);
     public static final BooleanOption START_WITH_STAND = new BooleanOption(JCraft.id("start_with_stand"), GAMEPLAY, false);
@@ -140,6 +135,8 @@ public class JServerConfig {
         JCraft.gravityConfig.rotationTime = GRAVITY_ROTATION_TIME.getValue();
         JCraft.gravityConfig.worldVelocity = GRAVITY_WORLD_VELOCITY.getValue();
         JCraft.gravityConfig.resetGravityOnDimensionChange = RESET_GRAVITY_ON_DIMENSION_CHANGE.getValue();
+        JCraft.gravityConfig.resetGravityOnRespawn = RESET_GRAVITY_ON_RESPAWN.getValue();
+        JCraft.gravityConfig.voidDamageAboveWorld = VOID_DAMAGE_ABOVE_WORLD.getValue();
     }
 
     @SneakyThrows

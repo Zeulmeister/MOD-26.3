@@ -55,6 +55,9 @@ import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.*;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.control.JumpControl;
 import net.minecraft.world.entity.ai.control.LookControl;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
@@ -78,6 +81,10 @@ import static net.arna.jcraft.api.Attacks.damageLogic;
 
 public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S> & StandAnimationState<E>>
         extends Mob implements IAttacker<E, S>, ICustomDamageHandler, MoveSet.ReloadListener<E, S> {
+
+    public static final Identifier STAND_ATTACK_SPEED_MODIFIER_ID = JCraft.id("stand_attack_speed_penalty");
+    private static final AttributeModifier STAND_ATTACK_SPEED_MODIFIER = new AttributeModifier(
+            STAND_ATTACK_SPEED_MODIFIER_ID, -0.55, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
 
     private MoveSet<E, S> moveSet;
     @Getter
@@ -1051,6 +1058,7 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
         }
         setCurrentMove(null);
         setMoveStun(0);
+        updateUserAttackSpeedPenalty(false);
         setState(getIdleState());
         setReset(true);
     }
@@ -1212,6 +1220,9 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
             user.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 5, 4, true, false));
         }
 
+        final boolean applyUserAttackSpeedPenalty = move != null && moveStun > 0 && !blocking && !move.isCharge() && !isRemote;
+        updateUserAttackSpeedPenalty(applyUserAttackSpeedPenalty);
+
         // Attack logic
         if (move != null) {
             MoveTickQueue.queueTick(getThis(), move, getMoveStun());
@@ -1227,11 +1238,6 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
                 final float attackDist = move.getMoveDistance();
 
                 if (!move.isCharge()) {
-/*                    if (!isRemote) {
-                        // TODO: find a cleaner way to slow down the users attack speed
-                        user.addEffect(new MobEffectInstance(MobEffects.MINING_FATIGUE, 5, 4, true, false));
-                    }*/
-
                     setAttackRotationOffset();
                     setDistanceOffset(attackDist);
                 }
@@ -1297,8 +1303,26 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
         }
     }
 
+    protected void updateUserAttackSpeedPenalty(final boolean active) {
+        if (user == null || level().isClientSide()) {
+            return;
+        }
+        final AttributeInstance attackSpeed = user.getAttribute(Attributes.ATTACK_SPEED);
+        if (attackSpeed == null) {
+            return;
+        }
+        if (active) {
+            if (!attackSpeed.hasModifier(STAND_ATTACK_SPEED_MODIFIER_ID)) {
+                attackSpeed.addTransientModifier(STAND_ATTACK_SPEED_MODIFIER);
+            }
+        } else if (attackSpeed.hasModifier(STAND_ATTACK_SPEED_MODIFIER_ID)) {
+            attackSpeed.removeModifier(STAND_ATTACK_SPEED_MODIFIER_ID);
+        }
+    }
+
     @Override
     public void remove(final RemovalReason reason) {
+        updateUserAttackSpeedPenalty(false);
         if (!level().isClientSide() && user != null && (tsTime > 0 || net.arna.jcraft.common.tickable.Timestops.isUserOfActiveTimestop(user))) {
             setTsTime(0);
             JCraft.stopTimestop(user);

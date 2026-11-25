@@ -126,7 +126,7 @@ public final class JCraft {
     public static final int SPEC_QUEUE_MOVESTUN_LIMIT = 11; // exclusive, 10 -> 0.5s window for queueing moves
     public static final int QUEUE_MOVESTUN_LIMIT = 7; // exclusive, 6 -> 0.3s window for queueing moves
 
-    public static final GravityChangerConfig gravityConfig = new GravityChangerConfig(); // TODO incorporate this into our own config
+    public static final GravityChangerConfig gravityConfig = new GravityChangerConfig(); // Synchronized from JServerConfig.syncGravityConfig()
 
     // List of spec classes that will be initialized to get their movesets.
     public static final List<Class<?>> SPEC_CLASSES = ImmutableList.of(BrawlerSpec.class, HamonSpec.class, VampireSpec.class, AnubisSpec.class);
@@ -629,6 +629,9 @@ public final class JCraft {
     }
 
     public static void tryPushBlock(final ServerLevel world, final LivingEntity user, final @NonNull StandEntity<?, ?> stand) {
+        if (!JServerConfig.UNIVERSAL_ABILITIES.getValue()) {
+            return;
+        }
         if (pushblockCooldowns.getOrDefault(user, -1) > 0) {
             return;
         }
@@ -721,6 +724,7 @@ public final class JCraft {
      * This attack is blockable, launches and stuns on hit.
      */
     public static void comboBreak(ServerLevel world, LivingEntity player, MobEffectInstance stun) {
+        if (!JServerConfig.UNIVERSAL_ABILITIES.getValue()) return;
         if (stun == null) return;
         if (player.isSpectator()) return;
         CommonCooldownsComponent cooldowns = JComponentPlatformUtils.getCooldowns(player);

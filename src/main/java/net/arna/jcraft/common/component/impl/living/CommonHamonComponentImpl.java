@@ -45,6 +45,9 @@ public abstract class CommonHamonComponentImpl implements CommonHamonComponent {
     private int lastStompedTick = Integer.MIN_VALUE;
     @Getter
     @Setter
+    private HamonMoveStep lastHamonMove = HamonMoveStep.NONE;
+    @Getter
+    @Setter
     private int activeLesson;
     private final int[] lessonTicks = new int[6];
 
@@ -67,6 +70,7 @@ public abstract class CommonHamonComponentImpl implements CommonHamonComponent {
     public void setLastZoomPunched(final @NonNull UUID lastZoomPunched) {
         this.lastZoomPunched = lastZoomPunched;
         lastZoomPunchedTick = 0;
+        lastHamonMove = HamonMoveStep.ZOOM_PUNCH;
     }
 
     @Override
@@ -77,12 +81,14 @@ public abstract class CommonHamonComponentImpl implements CommonHamonComponent {
     public void resetLastZoomPunched() {
         lastZoomPunched = null;
         lastZoomPunchedTick = Integer.MIN_VALUE;
+        if (lastHamonMove == HamonMoveStep.ZOOM_PUNCH) lastHamonMove = HamonMoveStep.NONE;
     }
 
     @Override
     public void setLastSendoed(final @NonNull UUID lastSendoed) {
         this.lastSendoed = lastSendoed;
         lastSendoedTick = 0;
+        lastHamonMove = HamonMoveStep.SENDO;
     }
 
     @Override
@@ -93,12 +99,14 @@ public abstract class CommonHamonComponentImpl implements CommonHamonComponent {
     public void resetLastSendoed() {
         lastSendoed = null;
         lastSendoedTick = Integer.MIN_VALUE;
+        if (lastHamonMove == HamonMoveStep.SENDO) lastHamonMove = HamonMoveStep.NONE;
     }
 
     @Override
     public void setLastSendoAired(final @NonNull UUID lastSendoAired) {
         this.lastSendoAired = lastSendoAired;
         lastSendoAiredTick = 0;
+        lastHamonMove = HamonMoveStep.SENDO_AIR;
     }
 
     @Override
@@ -109,12 +117,14 @@ public abstract class CommonHamonComponentImpl implements CommonHamonComponent {
     public void resetLastSendoAired() {
         lastSendoAired = null;
         lastSendoAiredTick = Integer.MIN_VALUE;
+        if (lastHamonMove == HamonMoveStep.SENDO_AIR) lastHamonMove = HamonMoveStep.NONE;
     }
 
     @Override
     public void setLastStomped(final @NonNull UUID lastStomped) {
         this.lastStomped = lastStomped;
         this.lastStompedTick = 0;
+        lastHamonMove = HamonMoveStep.STOMP;
     }
 
     @Override
@@ -126,6 +136,7 @@ public abstract class CommonHamonComponentImpl implements CommonHamonComponent {
     public void resetLastStomped() {
         lastStomped = null;
         lastStompedTick = Integer.MIN_VALUE;
+        if (lastHamonMove == HamonMoveStep.STOMP) lastHamonMove = HamonMoveStep.NONE;
     }
 
     public int getLessonTicks(int lesson) {

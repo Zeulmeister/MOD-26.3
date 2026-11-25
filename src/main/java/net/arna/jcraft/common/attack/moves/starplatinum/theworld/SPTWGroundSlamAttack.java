@@ -51,6 +51,25 @@ public final class SPTWGroundSlamAttack<A extends IAttacker<? extends A, ?>> ext
             }
         }
 
+        if (net.arna.jcraft.common.config.JServerConfig.SPTW_IGNITE_CAMPFIRES.getValue()
+                && originEntity.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            final net.minecraft.core.BlockPos center = originEntity.blockPosition();
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dz = -2; dz <= 2; dz++) {
+                        final net.minecraft.core.BlockPos checkPos = center.offset(dx, dy, dz);
+                        final net.minecraft.world.level.block.state.BlockState state = serverLevel.getBlockState(checkPos);
+                        if (state.getBlock() instanceof net.minecraft.world.level.block.CampfireBlock
+                                && !state.getValue(net.minecraft.world.level.block.CampfireBlock.LIT)
+                                && !state.getValue(net.minecraft.world.level.block.CampfireBlock.WATERLOGGED)
+                                && net.arna.jcraft.common.util.JUtils.mayAlter(serverLevel, user, checkPos, null)) {
+                            serverLevel.setBlockAndUpdate(checkPos, state.setValue(net.minecraft.world.level.block.CampfireBlock.LIT, true));
+                        }
+                    }
+                }
+            }
+        }
+
         return targets;
     }
 

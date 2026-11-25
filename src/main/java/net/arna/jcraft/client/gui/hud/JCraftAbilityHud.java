@@ -3,12 +3,14 @@ package net.arna.jcraft.client.gui.hud;
 import dev.architectury.event.events.client.ClientGuiEvent;
 import lombok.experimental.UtilityClass;
 import net.arna.jcraft.JCraft;
+import net.arna.jcraft.api.attack.MoveMap;
 import net.arna.jcraft.api.attack.enums.MoveClass;
 import net.arna.jcraft.api.component.living.CommonCooldownsComponent;
 import net.arna.jcraft.api.spec.JSpec;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.client.JClientConfig;
 import net.arna.jcraft.client.JCraftClient;
+import net.arna.jcraft.common.config.JServerConfig;
 import net.arna.jcraft.common.entity.stand.AerosmithEntity;
 import net.arna.jcraft.common.entity.stand.MandomEntity;
 import net.arna.jcraft.common.util.CooldownType;
@@ -37,8 +39,9 @@ import static net.arna.jcraft.client.JCraftClient.*;
 /**
  * Clean, unobtrusive Stand & Spec Ability Dock:
  * - Hidden completely when Stand is inactive (except Spec moves on cooldown / ALWAYS mode)
- * - When Stand is summoned, shows a compact translucent dock with each ability's icon logo,
- *   short keybind badge, ready status strip (plus subtle ready pulse), and live cooldown sweep + timer.
+ * - Supports configurable HUD Scale (0.75x - 1.50x) anchored cleanly to its screen corner
+ * - Highlights actively executing abilities via synced Stand state, shows crouch/aerial variant pips
+ *   when holding Sneak or airborne, and hides universal chips when UNIVERSAL_ABILITIES is disabled.
  */
 @UtilityClass
 public class JCraftAbilityHud {
@@ -85,7 +88,18 @@ public class JCraftAbilityHud {
 
     private record AbilitySlot(CooldownType cooldownType, @Nullable MoveClass moveClass, String iconName) {}
 
-    private record ResolvedSlot(CooldownType cooldownType, Identifier iconOwner, String iconName) {}
+    private record ResolvedSlot(
+            CooldownType cooldownType,
+            Identifier iconOwner,
+            String iconName,
+            boolean activeNow,
+            boolean crouchVariantActive,
+            boolean aerialVariantActive
+    ) {}
+
+    public static float getClampedHudScale() {
+        return JClientConfig.getInstance().getClampedHudScale();
+    }
 
     public static int getHudX(final int scaledX, final int rightOffset) {
         return switch (JClientConfig.getInstance().getUiPosition()) {
@@ -101,6 +115,22 @@ public class JCraftAbilityHud {
 
     public static void clearTextureCache() {
         TEXTURE_EXISTS_CACHE.clear();
+    }
+
+    private static boolean matchesActiveState(final MoveMap.Entry<?, ?> entry, final @Nullable Enum<?> activeState) {
+        if (activeState == null || entry == null) {
+            return false;
+        }
+        if (activeState == entry.getAnimState()) {
+            return true;
+        }
+        if (entry.getCrouchingVariant() != null && activeState == entry.getCrouchingVariant().getAnimState()) {
+            return true;
+        }
+        if (entry.getAerialVariant() != null && activeState == entry.getAerialVariant().getAnimState()) {
+            return true;
+        }
+        return entry.getFollowup() != null && activeState == entry.getFollowup().getAnimState();
     }
 
     public static void render(final GuiGraphicsExtractor ctx) {
@@ -121,6 +151,11 @@ public class JCraftAbilityHud {
 
         final boolean standActiveForMoves = stand != null
                 && !(stand instanceof AerosmithEntity as && !as.isAllowingMoveHandling());
+        final boolean crouching = player.isShiftKeyDown();
+        final boolean airborne = !player.onGround() && !player.isInWater();
+        final Enum<?> activeStandState = (standActiveForMoves && stand.getMoveStun() > 0 && !stand.blocking)
+                ? stand.getState()
+                : null;
 
         final List<ResolvedSlot> slots = new ArrayList<>();
         if (standActiveForMoves) {
@@ -128,10 +163,12 @@ public class JCraftAbilityHud {
             if (stand instanceof MandomEntity && spec != null) {
                 final Identifier specId = spec.getType().getId();
                 for (AbilitySlot s : SPEC_SLOTS) {
-                    slots.add(new ResolvedSlot(s.cooldownType(), specId, s.iconName()));
+                    slots.add(new ResolvedSlot(s.cooldownType(), specId, s.iconName(), false, false, false));
                 }
-                slots.add(new ResolvedSlot(CooldownType.UTILITY, standId, "utility"));
-                slots.add(new ResolvedSlot(CooldownType.STAND_ULTIMATE, standId, "ult"));
+                slots.add(resolveStandSlot(stand, new AbilitySlot(CooldownType.UTILITY, MoveClass.UTILITY, "utility"),
+                        standId, activeStandState, crouching, airborne));
+                slots.add(resolveStandSlot(stand, new AbilitySlot(CooldownType.STAND_ULTIMATE, MoveClass.ULTIMATE, "ult"),
+                        standId, activeStandState, crouching, airborne));
             } else {
                 final boolean hasMoveMapEntries = !stand.getMoveMap().getEntries().isEmpty();
                 for (AbilitySlot s : STAND_SLOTS) {
@@ -139,11 +176,11 @@ public class JCraftAbilityHud {
                             && stand.getMoveMap().getEntries(s.moveClass()).isEmpty()) {
                         continue;
                     }
-                    slots.add(new ResolvedSlot(s.cooldownType(), standId, s.iconName()));
+                    slots.add(resolveStandSlot(stand, s, standId, activeStandState, crouching, airborne));
                 }
                 if (slots.isEmpty()) {
                     for (AbilitySlot s : STAND_SLOTS) {
-                        slots.add(new ResolvedSlot(s.cooldownType(), standId, s.iconName()));
+                        slots.add(new ResolvedSlot(s.cooldownType(), standId, s.iconName(), false, false, false));
                     }
                 }
             }
@@ -159,16 +196,18 @@ public class JCraftAbilityHud {
             if (cfg.getUiDuration() == JClientConfig.UIDuration.ALWAYS || anySpecCooldown) {
                 final Identifier specId = spec.getType().getId();
                 for (AbilitySlot s : SPEC_SLOTS) {
-                    slots.add(new ResolvedSlot(s.cooldownType(), specId, s.iconName()));
+                    slots.add(new ResolvedSlot(s.cooldownType(), specId, s.iconName(), false, false, false));
                 }
             }
         }
 
-        // Collect universal skills that are currently on cooldown (Dash / Cooldown Cancel / Combo Breaker)
+        // Collect universal skills that are currently on cooldown (hidden if UNIVERSAL_ABILITIES is disabled)
         final List<ResolvedSlot> activeUniversalCooldowns = new ArrayList<>();
-        for (AbilitySlot u : UNIVERSAL_SLOTS) {
-            if (cooldowns.getCooldown(u.cooldownType()) > 0) {
-                activeUniversalCooldowns.add(new ResolvedSlot(u.cooldownType(), UNIVERSAL_ID, u.iconName()));
+        if (JServerConfig.UNIVERSAL_ABILITIES.getValue()) {
+            for (AbilitySlot u : UNIVERSAL_SLOTS) {
+                if (cooldowns.getCooldown(u.cooldownType()) > 0) {
+                    activeUniversalCooldowns.add(new ResolvedSlot(u.cooldownType(), UNIVERSAL_ID, u.iconName(), false, false, false));
+                }
             }
         }
 
@@ -189,15 +228,33 @@ public class JCraftAbilityHud {
 
         final int baseX;
         final int baseY;
+        final float anchorX;
+        final float anchorY;
         if (horizontalStrip) {
             baseX = (sw - gridW) / 2 + cfg.getHorizontalHudOffset();
             baseY = sh - 66 - gridH + cfg.getVerticalHudOffset();
+            anchorX = baseX + gridW * 0.5f;
+            anchorY = baseY + gridH;
         } else if (uiPos == JClientConfig.UIPos.LEFT) {
             baseX = 8 + cfg.getHorizontalHudOffset();
             baseY = sh - 8 - gridH + cfg.getVerticalHudOffset();
+            anchorX = baseX;
+            anchorY = baseY + gridH;
         } else {
             baseX = sw - gridW - 8 + cfg.getHorizontalHudOffset();
             baseY = sh - 8 - gridH + cfg.getVerticalHudOffset();
+            anchorX = baseX + gridW;
+            anchorY = baseY + gridH;
+        }
+
+        final float hudScale = getClampedHudScale();
+        final var pose = ctx.pose();
+        final boolean applyScale = Math.abs(hudScale - 1.0f) > 0.005f;
+        if (applyScale) {
+            pose.pushMatrix();
+            pose.translate(anchorX, anchorY);
+            pose.scale(hudScale, hudScale);
+            pose.translate(-anchorX, -anchorY);
         }
 
         // Subtle integrated Stand name + 3px Guard bar directly above the ability dock when Stand is summoned
@@ -232,6 +289,44 @@ public class JCraftAbilityHud {
                         UNIVERSAL_TILE, UNIVERSAL_ICON, nowMs);
             }
         }
+
+        if (applyScale) {
+            pose.popMatrix();
+        }
+    }
+
+    private static ResolvedSlot resolveStandSlot(
+            final StandEntity<?, ?> stand,
+            final AbilitySlot slot,
+            final Identifier standId,
+            final @Nullable Enum<?> activeState,
+            final boolean crouching,
+            final boolean airborne
+    ) {
+        boolean activeNow = false;
+        boolean hasCrouch = false;
+        boolean hasAerial = false;
+        if (slot.moveClass() != null) {
+            for (MoveMap.Entry<?, ?> entry : stand.getMoveMap().getEntries(slot.moveClass())) {
+                if (matchesActiveState(entry, activeState)) {
+                    activeNow = true;
+                }
+                if (entry.getCrouchingVariant() != null) {
+                    hasCrouch = true;
+                }
+                if (entry.getAerialVariant() != null) {
+                    hasAerial = true;
+                }
+            }
+        }
+        return new ResolvedSlot(
+                slot.cooldownType(),
+                standId,
+                slot.iconName(),
+                activeNow,
+                crouching && hasCrouch,
+                airborne && hasAerial
+        );
     }
 
     private static void renderAbilityTile(
@@ -262,16 +357,17 @@ public class JCraftAbilityHud {
                 ? Mth.clamp((pulseUntil - nowMs) / (float) READY_PULSE_DURATION_MS, 0.0f, 1.0f)
                 : 0.0f;
 
-        // 1. Soft translucent dark tile background
-        ctx.fill(x, y, x + tileSize, y + tileSize, coolingDown ? 0x80090710 : 0x6E110E1B);
+        // 1. Soft translucent dark tile background (subtle golden wash while actively executing)
+        int bgColor = slot.activeNow() ? 0xAA2D1C4A : (coolingDown ? 0x80090710 : 0x6E110E1B);
+        ctx.fill(x, y, x + tileSize, y + tileSize, bgColor);
 
         // 2. Crisp ability logo centered in tile
         final int iconPad = (tileSize - iconSize) / 2;
-        final float iconAlpha = coolingDown ? 0.30f : 0.90f;
+        final float iconAlpha = slot.activeNow() ? 1.0f : (coolingDown ? 0.30f : 0.90f);
         final int iconTint = ARGB.colorFromFloat(iconAlpha, 1.0f, 1.0f, 1.0f);
         renderIconSized(ctx, x + iconPad, y + iconPad, iconSize, slot.iconOwner(), slot.iconName(), iconTint);
 
-        // 3. Cooldown vertical recharge sweep + thin bottom progress / ready strip
+        // 3. Cooldown vertical recharge sweep + thin bottom progress / ready / active strip
         if (coolingDown) {
             int veilH = Mth.clamp(Mth.ceil(tileSize * progress), 1, tileSize);
             ctx.fill(x, y, x + tileSize, y + veilH, 0x7708060F);
@@ -280,14 +376,22 @@ public class JCraftAbilityHud {
             if (chargeW > 0) {
                 ctx.fill(x, y + tileSize - 1, x + chargeW, y + tileSize, 0xCCF59E0B);
             }
-            ctx.outline(x, y, tileSize, tileSize, 0x449CA3AF);
+            ctx.outline(x, y, tileSize, tileSize, slot.activeNow() ? 0xFFFACC15 : 0x449CA3AF);
         } else {
-            // Ready indicator: subtle glass rim + 1px emerald ready bar at the bottom (flashes softly on recharge!)
-            int borderColor = pulse > 0.0f
-                    ? ARGB.colorFromFloat(0.45f + pulse * 0.50f, 0.99f, 0.90f, 0.54f)
-                    : 0x4DFFFFFF;
+            // Ready indicator: subtle glass rim + 1px emerald ready bar (gold glow when executing or pulsing!)
+            int borderColor;
+            int readyBarColor;
+            if (slot.activeNow()) {
+                borderColor = 0xFFFDE047;
+                readyBarColor = 0xFFFACC15;
+            } else if (pulse > 0.0f) {
+                borderColor = ARGB.colorFromFloat(0.45f + pulse * 0.50f, 0.99f, 0.90f, 0.54f);
+                readyBarColor = 0xEEFDE68A;
+            } else {
+                borderColor = 0x4DFFFFFF;
+                readyBarColor = 0xBB34D399;
+            }
             ctx.outline(x, y, tileSize, tileSize, borderColor);
-            int readyBarColor = pulse > 0.0f ? 0xEEFDE68A : 0xBB34D399;
             ctx.fill(x + 1, y + tileSize - 1, x + tileSize - 1, y + tileSize, readyBarColor);
         }
 
@@ -304,6 +408,23 @@ public class JCraftAbilityHud {
             pose.translate(x + 2, y + 2);
             pose.scale(keyScale, keyScale);
             ctx.text(font, keyLabel, 0, 0, coolingDown ? 0xAA9CA3AF : 0xF0F9FAFB, false);
+            pose.popMatrix();
+        }
+
+        // 4b. Crouch / Aerial variant indicator pip at top-right when an alternate move is unlocked
+        if (tileSize >= 20 && !coolingDown && (slot.crouchVariantActive() || slot.aerialVariantActive())) {
+            final String pip = slot.crouchVariantActive() ? "↓" : "↑";
+            final int pipCol = slot.crouchVariantActive() ? 0xFF38BDF8 : 0xFFFBBF24;
+            final float pipScale = 0.58f;
+            final int pipW = Mth.ceil(font.width(pip) * pipScale) + 2;
+            final int pipH = Mth.ceil(7 * pipScale) + 2;
+            ctx.fill(x + tileSize - 1 - pipW, y + 1, x + tileSize - 1, y + 1 + pipH, 0xAA07050D);
+
+            var pose = ctx.pose();
+            pose.pushMatrix();
+            pose.translate(x + tileSize - pipW, y + 2);
+            pose.scale(pipScale, pipScale);
+            ctx.text(font, pip, 0, 0, pipCol, false);
             pose.popMatrix();
         }
 

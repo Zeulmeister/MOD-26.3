@@ -1,0 +1,26 @@
+{
+  "anim_state": "SHADOW_STEP",
+  "class": "UTILITY",
+  "cooldown_type": "UTILITY",
+  "move": {
+    "type": "jcraft:shared_time_skip_move",
+    "cooldown": 260,
+    "duration": 4,
+    "extras": {
+      "description": {
+        "translate": "move.jcraft.chariot_requiem.default.shadow_step.description"
+      },
+      "mobility_type": "TELEPORT",
+      "name": {
+        "translate": "move.jcraft.chariot_requiem.default.shadow_step.name"
+      }
+    },
+    "move_distance": 1.0,
+    "particles": true,
+    "range": 12.0,
+    "sounds": [
+      "jcraft:timeskip"
+    ],
+    "windup": 2
+  }
+}

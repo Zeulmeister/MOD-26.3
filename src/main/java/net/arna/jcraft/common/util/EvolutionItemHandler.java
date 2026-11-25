@@ -49,6 +49,7 @@ public class EvolutionItemHandler {
             "gold_experience_to_gold_experience_requiem",
             "killer_queen_to_killer_queen_bites_the_dust",
             "shadow_the_world_to_the_world",
+            "silver_chariot_to_chariot_requiem",
             "star_platinum_to_star_platinum_the_world",
             "the_world_to_the_world_over_heaven",
             "white_snake_to_c_moon"

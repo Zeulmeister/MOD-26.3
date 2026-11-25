@@ -4,6 +4,7 @@ import lombok.NonNull;
 import net.arna.jcraft.JCraft;
 import net.arna.jcraft.common.attack.moves.cmoon.GravityShiftMove;
 import net.arna.jcraft.api.component.living.CommonGravityShiftComponent;
+import net.arna.jcraft.common.config.JServerConfig;
 import net.arna.jcraft.common.entity.projectile.BlockProjectile;
 import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
 import net.arna.jcraft.common.gravity.util.Gravity;
@@ -52,7 +53,15 @@ public abstract class CommonGravityShiftComponentImpl implements CommonGravitySh
     }
 
     public static final String GRAVITY_SOURCE = JCraft.MOD_ID + "$" + GravityShiftMove.class.getSimpleName();
-    protected static final int RANGE_SQR = 10000;
+
+    protected static int getConfiguredUltRange() {
+        return Math.max(0, JServerConfig.CMOON_ULT_RANGE.getValue());
+    }
+
+    protected static double getConfiguredUltRangeSqr() {
+        final double range = Math.max(1, getConfiguredUltRange());
+        return range * range;
+    }
 
     private final LivingEntity user;
     private final RandomSource random;
@@ -96,8 +105,9 @@ public abstract class CommonGravityShiftComponentImpl implements CommonGravitySh
                 if (time < 1 && !shiftedEntities.isEmpty()) {
                     shiftedEntities.clear();
                 } else {
+                    final double maxRangeSqr = getConfiguredUltRangeSqr();
                     for (Entity entity : shiftedEntities) {
-                        if (entity.distanceToSqr(user) > RANGE_SQR) {
+                        if (entity.distanceToSqr(user) > maxRangeSqr) {
                             GravityChangerAPI.setGravity(entity, GravityChangerAPI.getGravityList(entity).stream()
                                     .filter(g -> !GRAVITY_SOURCE.equals(g.source()))
                                     .toList());
@@ -110,7 +120,12 @@ public abstract class CommonGravityShiftComponentImpl implements CommonGravitySh
                     return;
                 }
 
-                final List<Entity> toCatch = world.getEntitiesOfClass(Entity.class, user.getBoundingBox().inflate(64), EntitySelector.NO_CREATIVE_OR_SPECTATOR);
+                final int configuredRange = getConfiguredUltRange();
+                if (configuredRange <= 0) {
+                    return;
+                }
+                final int radialRadius = Math.min(64, configuredRange);
+                final List<Entity> toCatch = world.getEntitiesOfClass(Entity.class, user.getBoundingBox().inflate(radialRadius), EntitySelector.NO_CREATIVE_OR_SPECTATOR);
 
                 for (final Entity entity : toCatch) {
                     if (entity.isPassengerOfSameVehicle(user)) {
@@ -149,11 +164,16 @@ public abstract class CommonGravityShiftComponentImpl implements CommonGravitySh
 
     @Override
     public void startDirectional(final int range) {
+        final int maxRange = getConfiguredUltRange();
+        if (maxRange <= 0) {
+            return;
+        }
         time = 600;
         type = ShiftType.DIRECTIONAL;
 
+        final int effectiveRange = Math.min(Math.max(1, range), maxRange);
         Direction lookDir = JUtils.getLookDirection(user);
-        List<Entity> toCatch = user.level().getEntitiesOfClass(Entity.class, user.getBoundingBox().inflate(Math.max(1, range)),
+        List<Entity> toCatch = user.level().getEntitiesOfClass(Entity.class, user.getBoundingBox().inflate(effectiveRange),
                 EntitySelector.NO_CREATIVE_OR_SPECTATOR.and(e -> !e.isPassengerOfSameVehicle(user)));
 
         Gravity gravity = new Gravity(lookDir, 3, GRAVITY_CHANGE_DURATION, GRAVITY_SOURCE);
@@ -199,7 +219,7 @@ public abstract class CommonGravityShiftComponentImpl implements CommonGravitySh
     }
 
     public boolean shouldSyncWith(final ServerPlayer player) {
-        if (player.distanceToSqr(user) > RANGE_SQR) {
+        if (player.distanceToSqr(user) > getConfiguredUltRangeSqr()) {
             return false;
         }
         return true;

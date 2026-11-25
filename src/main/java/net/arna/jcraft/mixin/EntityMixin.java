@@ -479,7 +479,16 @@ public abstract class EntityMixin implements EntityAddon {
 
     @Inject(method = "tick", at = @At("HEAD"))
     private void jcraft$preTick(CallbackInfo ci) {
-        EntityTickEvent.ENTITY_PRE.invoker().tick((Entity) (Object) this);
+        final Entity self = (Entity) (Object) this;
+        EntityTickEvent.ENTITY_PRE.invoker().tick(self);
+
+        if (net.arna.jcraft.JCraft.gravityConfig.voidDamageAboveWorld
+                && this.jcraft$constructed
+                && self.level() instanceof net.minecraft.server.level.ServerLevel serverLevel
+                && GravityChangerAPI.getGravityDirection(self) == Direction.UP
+                && self.getY() > serverLevel.getMaxY() + 64.0) {
+            self.hurtServer(serverLevel, serverLevel.damageSources().fellOutOfWorld(), 4.0F);
+        }
     }
 
     @Inject(method = "isInvulnerable", at = @At("HEAD"), cancellable = true)

@@ -1,0 +1,45 @@
+{
+  "anim_state": "SOUL_SWAP",
+  "class": "SPECIAL2",
+  "cooldown_type": "STAND_SP2",
+  "move": {
+    "type": "jcraft:chariotrequiem_soul_swap_attack",
+    "attack_extras": {
+      "backstab": true,
+      "block_stun": 6,
+      "blockable_type": "NON_BLOCKABLE_EFFECTS_ONLY",
+      "hit_animation": "MID",
+      "hit_spark": "HIT_SPARK_2"
+    },
+    "cooldown": 260,
+    "damage": 5.0,
+    "duration": 22,
+    "extras": {
+      "actions": [
+        {
+          "type": "jcraft:play_sound",
+          "run": "at_init",
+          "sound": "jcraft:timeskip"
+        },
+        {
+          "type": "jcraft:play_sound",
+          "bind": false,
+          "run": "on_hit",
+          "sound": "jcraft:impact5"
+        }
+      ],
+      "description": {
+        "translate": "move.jcraft.chariot_requiem.default.soul_swap.description"
+      },
+      "name": {
+        "translate": "move.jcraft.chariot_requiem.default.soul_swap.name"
+      }
+    },
+    "hitbox_size": 4.0,
+    "knockback": 0.15,
+    "move_distance": 0.5,
+    "offset": 0.0,
+    "stun": 18,
+    "windup": 12
+  }
+}

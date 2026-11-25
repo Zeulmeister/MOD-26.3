@@ -51,12 +51,37 @@ public final class HealMove<A extends IAttacker<? extends A, ?>> extends Abstrac
 
     @Override
     public @NonNull Set<LivingEntity> perform(final A attacker, final LivingEntity user) {
-        final Set<LivingEntity> targets = target.pickTargets(super.perform(attacker, user), user);
+        final Set<LivingEntity> foundTargets;
+        if (target == HealTarget.USER) {
+            foundTargets = Set.of(user);
+        } else {
+            net.minecraft.world.phys.Vec3 userRotVec = user.getLookAngle();
+            final Direction gravDir = net.arna.jcraft.common.gravity.api.GravityChangerAPI.getGravityDirection(user);
+            if (gravDir == Direction.UP) {
+                userRotVec = new net.minecraft.world.phys.Vec3(userRotVec.x, -userRotVec.y, userRotVec.z);
+            }
+            final net.minecraft.world.phys.Vec3 hPos = getOffsetHeightPos(attacker);
+            net.minecraft.world.phys.Vec3 rotVec = (isStaticY() || attacker.isRemote()) ? getRotVec(attacker) : userRotVec;
+            final net.minecraft.world.phys.Vec3 upVec = new net.minecraft.world.phys.Vec3(gravDir.step()).scale(-1.0);
+            if (isStaticY()) {
+                rotVec = rotVec.with(gravDir.getAxis(), 0);
+            }
+            final net.minecraft.world.phys.Vec3 fPos = getOffsetForwardPos(attacker, hPos, upVec, rotVec);
+            final Set<net.minecraft.world.phys.AABB> boxes = calculateBoxes(attacker, user, rotVec, upVec, hPos, fPos);
+            // Pass null DamageSource so healing always reaches teammates/allies even when ENABLE_FRIENDLY_FIRE is false
+            foundTargets = findHits(attacker, boxes, null, false);
+        }
+        final Set<LivingEntity> targets = target.pickTargets(foundTargets, user);
         targets.forEach(e -> {
             e.heal(health);
 
             if (pacifyMobs) {
                 pacifyMob(e);
+            }
+            if (user.level() instanceof ServerLevel sl) {
+                sl.sendParticles(net.minecraft.core.particles.ParticleTypes.HAPPY_VILLAGER,
+                        e.getX(), e.getY() + e.getBbHeight() * 0.6, e.getZ(),
+                        8, 0.35, 0.4, 0.35, 0.04);
             }
         });
 

@@ -10,6 +10,7 @@ import net.arna.jcraft.api.registry.JParticleTypeRegistry;
 import net.arna.jcraft.api.registry.JSoundRegistry;
 import net.arna.jcraft.api.registry.JStatusRegistry;
 import net.arna.jcraft.api.stand.StandEntity;
+import net.arna.jcraft.common.config.JServerConfig;
 import net.arna.jcraft.common.entity.ai.goal.SHAAttackGoal;
 import net.arna.jcraft.common.entity.damage.JDamageSources;
 import net.arna.jcraft.common.util.IOwnable;
@@ -156,9 +157,10 @@ public class SheerHeartAttackEntity extends Mob implements IOwnable {
 
             if (target == null) {
                 if (this.tickCount % 10 == 0) { // Entity lists are still expensive
+                    final int searchRadius = Math.max(1, JServerConfig.SHA_SEARCH_RADIUS.getValue());
                     final List<LivingEntity> toTrack = level().getEntitiesOfClass(
                             LivingEntity.class,
-                            new AABB(pos.add(16, 16, 16), pos.add(-16, -16, -16)),
+                            new AABB(pos.add(searchRadius, searchRadius, searchRadius), pos.add(-searchRadius, -searchRadius, -searchRadius)),
                             EntitySelector.NO_CREATIVE_OR_SPECTATOR.and(e -> e != this && e != master)
                     );
 

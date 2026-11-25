@@ -35,7 +35,12 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.control.JumpControl;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -189,16 +194,85 @@ public interface IAttacker<A extends IAttacker<? extends A, S>, S extends Enum<?
                 state = AttackerBrainInfo.State.PRESSURE;
             }
         } else {
-            // Generic random choice for neutral, TODO: this should have more nuance later.
-            if (info.getTicksSinceStateChange() % 10 == 0 && getBaseEntity().getRandom().nextBoolean()) {
-                state = JUtils.chooseRandom(getBaseEntity().getRandom(),
-                        AttackerBrainInfo.State.APPROACH,
-                        AttackerBrainInfo.State.KEEPAWAY,
-                        AttackerBrainInfo.State.DISENGAGE);
+            // Context-aware neutral decision instead of blind uniform RNG
+            if (info.getTicksSinceStateChange() % 10 == 0) {
+                state = chooseNeutralState(attackerCtx, targetCtx, getBaseEntity(), targetCtx.entity());
             }
         }
 
         info.setState(state);
+    }
+
+    default AttackerBrainInfo.State chooseNeutralState(final CombatEntityContext attackerCtx,
+                                                       final CombatEntityContext targetCtx,
+                                                       final LivingEntity selfEntity,
+                                                       final @Nullable LivingEntity targetEntity) {
+        final RandomSource rng = selfEntity.getRandom();
+        final float selfHpRatio = selfEntity.getMaxHealth() > 0f ? selfEntity.getHealth() / selfEntity.getMaxHealth() : 1f;
+        final float targetHpRatio = (targetEntity != null && targetEntity.getMaxHealth() > 0f)
+                ? targetEntity.getHealth() / targetEntity.getMaxHealth() : 1f;
+
+        boolean hasRangedOption = false;
+        for (AbstractMove<?, ? super A> move : allAttacks()) {
+            if (move.isRanged()) {
+                hasRangedOption = true;
+                break;
+            }
+        }
+
+        // Punish stunned or low-HP opponents aggressively
+        if (targetCtx.stun() != null || targetHpRatio < 0.35f) {
+            return rng.nextFloat() < 0.85f ? AttackerBrainInfo.State.APPROACH : AttackerBrainInfo.State.KEEPAWAY;
+        }
+        // Tactical retreat when critically injured and at frame disadvantage
+        if (selfHpRatio < 0.30f && attackerCtx.disadvantage() > targetCtx.disadvantage()) {
+            return rng.nextFloat() < 0.70f ? AttackerBrainInfo.State.DISENGAGE : AttackerBrainInfo.State.KEEPAWAY;
+        }
+        // Zoning fighters maintain space when healthy/hurt; melee-heavy fighters close distance
+        if (hasRangedOption) {
+            float keepawayChance = selfHpRatio < 0.55f ? 0.65f : 0.45f;
+            float roll = rng.nextFloat();
+            if (roll < keepawayChance) return AttackerBrainInfo.State.KEEPAWAY;
+            if (roll < keepawayChance + 0.45f) return AttackerBrainInfo.State.APPROACH;
+            return AttackerBrainInfo.State.DISENGAGE;
+        }
+        return rng.nextFloat() < 0.80f ? AttackerBrainInfo.State.APPROACH : AttackerBrainInfo.State.KEEPAWAY;
+    }
+
+    /**
+     * Checks whether a breakable physical obstacle (such as fences, glass panes, iron bars, or low walls)
+     * sits directly along the collider path between {@code mob} and {@code target}, even when
+     * {@link LivingEntity#hasLineOfSight} returns {@code true} through visually transparent blocks.
+     * Casts center and shoulder-width lateral rays so narrow blocks like fence posts are reliably detected.
+     */
+    static boolean isPathBlockedByBreakableObstacle(final LivingEntity mob, final LivingEntity target) {
+        if (mob == null || target == null || mob.level() != target.level()) {
+            return false;
+        }
+        final Level level = mob.level();
+        final double dx = target.getX() - mob.getX();
+        final double dz = target.getZ() - mob.getZ();
+        final double horizLen = Math.hypot(dx, dz);
+        final double perpX = horizLen > 1.0e-4 ? -dz / horizLen : 1.0;
+        final double perpZ = horizLen > 1.0e-4 ? dx / horizLen : 0.0;
+
+        final double[] heights = {0.35, mob.getBbHeight() * 0.55};
+        final double[] lateralOffsets = {0.0, 0.28, -0.28};
+        for (double h : heights) {
+            for (double lat : lateralOffsets) {
+                final Vec3 from = mob.position().add(perpX * lat, h, perpZ * lat);
+                final Vec3 to = target.position().add(perpX * lat, Math.min(h, target.getBbHeight() * 0.75), perpZ * lat);
+                final BlockHitResult hit = level.clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, mob));
+                if (hit.getType() == HitResult.Type.BLOCK) {
+                    final BlockState state = level.getBlockState(hit.getBlockPos());
+                    final float hardness = state.getDestroySpeed(level, hit.getBlockPos());
+                    if (!state.isAir() && hardness >= 0.0f && hardness <= 5.0f) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     default double getEngagementDistance() {
@@ -409,8 +483,8 @@ public interface IAttacker<A extends IAttacker<? extends A, S>, S extends Enum<?
              boolean isBarrage = attack.isBarrage();
              boolean isCharge = attack.isCharge();
              if (distance <= 5) {
-                 //todo: expand on mob.canSee(target), because placing fences down doesn't cause them to want to break through
-                 if (isBarrage && !isCharge && !mob.hasLineOfSight(target)) // Mine towards target if possible
+                 // Detect both opaque walls (!hasLineOfSight) and transparent collidable obstacles (fences, glass, iron bars)
+                 if (isBarrage && !isCharge && (!mob.hasLineOfSight(target) || isPathBlockedByBreakableObstacle(mob, target)))
                  {
                      if (attack instanceof MainBarrageAttack<?>) {
                          selectedAttack = attack;

@@ -35,7 +35,6 @@ public class MoveSetImpl<A extends IAttacker<? extends A, S>, S extends Enum<S>>
     private final Codec<MoveMap<A, S>> codec;
     private final Codec<MoveMap.Entry<A, S>> entryCodec;
     private final List<WeakReference<ReloadListener<A, S>>> listeners = new CopyOnWriteArrayList<>();
-    @Getter
     private final MoveMap<A, S> moveMap = new MoveMapImpl<>();
     @Getter
     private boolean initialized = false;

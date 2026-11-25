@@ -1,7 +1,7 @@
 package net.arna.jcraft.client.gui.hud;
 
+import net.arna.jcraft.api.attack.enums.MoveInputType;
 import net.arna.jcraft.api.component.living.CommonHamonComponent;
-import net.arna.jcraft.api.component.living.CommonVampireComponent;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.client.JClientConfig;
 import net.arna.jcraft.client.combat.CombatInputBuffer;
@@ -9,6 +9,8 @@ import net.arna.jcraft.client.remote.StandRemoteControlHandler;
 import net.arna.jcraft.client.taunt.PlayerPoseTauntHandler;
 import net.arna.jcraft.client.util.JClientUtils;
 import net.arna.jcraft.client.zoom.StarPlatinumPrecisionHandler;
+import net.arna.jcraft.common.entity.stand.KingCrimsonEntity;
+import net.arna.jcraft.common.entity.stand.MadeInHeavenEntity;
 import net.arna.jcraft.common.util.DimensionData;
 import net.arna.jcraft.common.util.JUtils;
 import net.arna.jcraft.platform.JComponentPlatformUtils;
@@ -68,10 +70,14 @@ public final class JoJoAnimeHudRenderer {
 
         // 2. Subtle Buffered Move indicator only during the short 6-tick input buffer window
         if (stand != null && CombatInputBuffer.hasBufferedMove() && CombatInputBuffer.peekBufferedMove() != null) {
-            String bufTxt = "⚡ " + CombatInputBuffer.peekBufferedMove().name();
+            MoveInputType buffered = CombatInputBuffer.peekBufferedMove();
+            String moveLabel = buffered.getMoveClass() != null
+                    ? buffered.getMoveClass().getFriendlyName().getString()
+                    : buffered.name();
+            String bufTxt = "⚡ " + moveLabel;
             int bx = (cfg.getUiPosition() == JClientConfig.UIPos.LEFT ? 8 : sw - font.width(bufTxt) - 10) + cfg.getHorizontalHudOffset();
             int by = sh - (cfg.isIconHud() ? 72 : 28) + cfg.getVerticalHudOffset();
-            ctx.text(font, bufTxt, bx, by, 0xCC7DD3FC, true);
+            ctx.text(font, bufTxt, bx, by, 0xDD7DD3FC, true);
         }
 
         // 3. Slim Hamon Charge micro-bar (Vampire Blood uses official blood drop icons via GuiMixin)
@@ -90,21 +96,46 @@ public final class JoJoAnimeHudRenderer {
             drawMicroSpecBar(ctx, font, specBarX, specBarY, specBarW, hamonRatio, hamonColor, hamonLabel);
         }
 
-        // 4. Active Time Stop Slim Top-Center Pill + Kinetic Projectile Counter
+        // 4. Active Time Stop / Time Erase / Time Acceleration Top-Center Countdown Pills (stacked cleanly)
+        int topPillY = 8;
         int tsTicks = getRemainingTimeStopTicks(player);
         if (tsTicks > 0) {
             int boxW = 148;
             int boxH = clientSuspendedProjectiles > 0 ? 24 : 14;
             int boxX = (sw - boxW) / 2;
-            int boxY = 8;
-            ctx.fill(boxX, boxY, boxX + boxW, boxY + boxH, 0x99120820);
-            ctx.outline(boxX, boxY, boxW, boxH, 0x99C084FC);
+            ctx.fill(boxX, topPillY, boxX + boxW, topPillY + boxH, 0x99120820);
+            ctx.outline(boxX, topPillY, boxW, boxH, 0x99C084FC);
             String secStr = String.format(java.util.Locale.ROOT, "⏱ %.1fs", tsTicks / 20.0F);
-            ctx.centeredText(font, "ZA WARUDO  " + secStr, sw / 2, boxY + 3, 0xFFE9D5FF);
+            ctx.centeredText(font, "ZA WARUDO  " + secStr, sw / 2, topPillY + 3, 0xFFE9D5FF);
             if (clientSuspendedProjectiles > 0) {
                 Component kinStr = Component.translatable("jcraft.hud.kinetic_count", clientSuspendedProjectiles);
-                ctx.centeredText(font, kinStr, sw / 2, boxY + 13, 0xFFFDE047);
+                ctx.centeredText(font, kinStr, sw / 2, topPillY + 13, 0xFFFDE047);
             }
+            topPillY += boxH + 4;
+        }
+
+        if (stand instanceof KingCrimsonEntity kc && kc.getTETime() > 0) {
+            int boxW = 152;
+            int boxH = 14;
+            int boxX = (sw - boxW) / 2;
+            ctx.fill(boxX, topPillY, boxX + boxW, topPillY + boxH, 0x99220810);
+            ctx.outline(boxX, topPillY, boxW, boxH, 0x99EF4444);
+            Component teTxt = Component.translatable("jcraft.hud.time_erase",
+                    String.format(java.util.Locale.ROOT, "%.1f", kc.getTETime() / 20.0F));
+            ctx.centeredText(font, teTxt, sw / 2, topPillY + 3, 0xFFFECACA);
+            topPillY += boxH + 4;
+        }
+
+        if (stand instanceof MadeInHeavenEntity mih && mih.getAccelTime() > 0) {
+            int boxW = 164;
+            int boxH = 14;
+            int boxX = (sw - boxW) / 2;
+            ctx.fill(boxX, topPillY, boxX + boxW, topPillY + boxH, 0x99081424);
+            ctx.outline(boxX, topPillY, boxW, boxH, 0x9938BDF8);
+            Component mihTxt = Component.translatable("jcraft.hud.time_accel",
+                    String.format(java.util.Locale.ROOT, "%.1f", mih.getAccelTime() / 20.0F));
+            ctx.centeredText(font, mihTxt, sw / 2, topPillY + 3, 0xFFBAE6FD);
+            topPillY += boxH + 4;
         }
 
         // 5. Pilot Mode Telemetry & Body-Under-Attack Warning Pill
@@ -114,7 +145,7 @@ public final class JoJoAnimeHudRenderer {
             int effPct = Math.round(stand.getRemoteEfficiency() * 100.0F);
             int pBoxW = 166;
             int pBoxX = (sw - pBoxW) / 2;
-            int pBoxY = tsTicks > 0 ? 35 : 8;
+            int pBoxY = topPillY;
             ctx.fill(pBoxX, pBoxY, pBoxX + pBoxW, pBoxY + 18, 0x990B1220);
             ctx.outline(pBoxX, pBoxY, pBoxW, 18, 0x9938BDF8);
             Component pilotTxt = Component.translatable(

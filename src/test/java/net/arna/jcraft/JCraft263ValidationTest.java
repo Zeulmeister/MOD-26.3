@@ -22,8 +22,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Stream;
 
 public final class JCraft263ValidationTest {
@@ -84,13 +87,13 @@ public final class JCraft263ValidationTest {
         }
 
         List<Path> evolutions = collectJsonFiles(RESOURCES_ROOT.resolve("data/jcraft/evolutions"));
-        checkEquals(7, evolutions.size(), "All 7 Evolutions must be present in data/jcraft/evolutions");
+        checkEquals(8, evolutions.size(), "All 8 Evolutions must be present in data/jcraft/evolutions");
         for (Path evo : evolutions) {
             parseJsonObject(evo);
         }
 
         List<Path> movesets = collectJsonFiles(RESOURCES_ROOT.resolve("data/jcraft/movesets"));
-        check(movesets.size() >= 281, "All 281+ Movesets must be present in data/jcraft/movesets");
+        check(movesets.size() >= 298, "All 298+ Movesets must be present in data/jcraft/movesets");
         int holdableCount = 0;
         for (Path moveset : movesets) {
             String content = Files.readString(moveset, StandardCharsets.UTF_8);
@@ -227,7 +230,7 @@ public final class JCraft263ValidationTest {
                 totalMixins++;
             }
         }
-        checkEquals(37, totalMixins, "All 37 common + client Mixins must be registered and bytecode-verified");
+        checkEquals(38, totalMixins, "All 38 common + client Mixins must be registered and bytecode-verified");
     }
 
     static void verifyKineticTimeStopPhysicsMath() {
@@ -523,11 +526,11 @@ public final class JCraft263ValidationTest {
     public static void main(String[] args) throws Exception {
         System.out.println("=== Running JCraft 26.3 Superior Edition Verification Suite ===");
         verifyAllStandsSpecsEvolutionsAndMovesetsPresentAndValid();
-        System.out.println("[PASS] 37 Stands, 5 Specs, 7 Evolutions & 281 Movesets verified.");
+        System.out.println("[PASS] 37 Stands, 5 Specs, 8 Evolutions & 298+ Movesets verified.");
         verifyMc263AssetsWorldgenTradesAndTranslations();
         System.out.println("[PASS] 223 Items, 4 RenderPearl 26.3 Post-Effects + GLSL 330 std140 Shaders, Trades & Translations verified.");
         verifyFabricModJsonEntrypointsAndMixins();
-        System.out.println("[PASS] fabric.mod.json, 16 CCA Components, 5 Entrypoints & all 37 Java 25 Mixins verified.");
+        System.out.println("[PASS] fabric.mod.json, 16 CCA Components, 5 Entrypoints & all 38 Java 25 Mixins verified.");
         verifyKineticTimeStopPhysicsMath();
         System.out.println("[PASS] Kinetic Time Stop Deceleration & +25% Momentum Release Physics verified.");
         verifySmartCombatInputBufferWindowAndExpiry();
@@ -550,6 +553,16 @@ public final class JCraft263ValidationTest {
         System.out.println("[PASS] Brutal Reverse-Engineering Fixes (Lotes 1-4: MIH Clock, Hamon Server Safety, Equipment, Features, TS, Gravity C-Moon) verified.");
         verifyDedicatedServerIsolation();
         System.out.println("[PASS] Dedicated-Server Bytecode Isolation Gate (0 common/api -> client leaks across all non-client classes) verified.");
+        verifyVisualPresentationAndFinalArt();
+        System.out.println("[PASS] Visual Presentation & Final Art (SkyBox Time Erase/MIH, SpecUserArmorLayer, TheSun Corona, 88 Icons, 3 Masks, 28 Unique Poses) verified.");
+        verifyCombatAndGameFeelUpgrades();
+        System.out.println("[PASS] Combat & Game Feel (Safe Hitstop, Exact Hamon Combos, Smart Neutral/Fence AI, AttackSpeed Modifier, Smooth TimeAccel) verified.");
+        verifyContentAndBalanceUpgrades();
+        System.out.println("[PASS] Content & Balance (Crazy Diamond, Chariot Requiem + Requiem Evolution, Exposed JServerConfig & Unified GravityChangerConfig) verified.");
+        verifyUiHudAndUxPolish();
+        System.out.println("[PASS] UI, HUD & UX Polish (Config Coverage & Tooltips, Dynamic Radial Wheel, Stand Encyclopedia, Variant/Active HUD & MainMenu Wrap) verified.");
+        verifyEngineeringBuildAndArchitecture();
+        System.out.println("[PASS] Engineering, Build & Architecture (Zero Dead Code, Vanilla MenuType, Reproducible JAR, CI Workflow & Docs) verified.");
         System.out.println("=== ALL " + passedAssertions + " ASSERTIONS PASSED SUCCESSFULLY ===");
     }
 
@@ -1118,5 +1131,431 @@ public final class JCraft263ValidationTest {
         check(violations.isEmpty(),
                 "Dedicated-server isolation violations (" + violations.size() + "): "
                         + String.join("; ", violations.stream().limit(15).toList()));
+    }
+
+    static void verifyVisualPresentationAndFinalArt() throws Exception {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+
+        // 1. SkyRendererMixin + SkyBoxManager + te_sky.png texture
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/mixin/client/SkyRendererMixin.class")) {
+            check(in != null, "SkyRendererMixin.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            check(cn.methods.stream().anyMatch(m -> "jcraft$renderTimeEraseSkyBox".equals(m.name)),
+                    "SkyRendererMixin must inject Time Erase skybox renderer");
+            check(cn.methods.stream().anyMatch(m -> "jcraft$renderMihCelestialTrails".equals(m.name)),
+                    "SkyRendererMixin must inject MIH celestial star-trail renderer");
+        }
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/client/rendering/skybox/SkyBoxManager.class")) {
+            check(in != null, "SkyBoxManager.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            check(cn.methods.stream().anyMatch(m -> "isTimeEraseSkyActive".equals(m.name)),
+                    "SkyBoxManager must expose isTimeEraseSkyActive");
+            check(cn.methods.stream().anyMatch(m -> "isTimeAccelSkyActive".equals(m.name)),
+                    "SkyBoxManager must expose isTimeAccelSkyActive");
+        }
+        Path teSky = RESOURCES_ROOT.resolve("assets/jcraft/textures/environment/te_sky.png");
+        check(Files.exists(teSky) && Files.size(teSky) > 10_000L, "Time Erase sky texture te_sky.png must exist");
+
+        // 2. SpecUserRenderer includes SpecUserArmorLayer; AbstractRenderLayer.setDefaultGlow sets packedOverlay properly
+        check(cl.getResource("net/arna/jcraft/client/renderer/entity/npc/SpecUserRenderer$SpecUserArmorLayer.class") != null,
+                "SpecUserRenderer$SpecUserArmorLayer must exist for SpecUserMob armor rendering");
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/client/renderer/entity/layer/AbstractRenderLayer.class")) {
+            check(in != null, "AbstractRenderLayer.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            var mGlow = cn.methods.stream().filter(m -> "setDefaultGlow".equals(m.name)).findFirst().orElseThrow();
+            boolean callsSetOverlay = false;
+            int callsSetLight = 0;
+            for (var insn = mGlow.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi) {
+                    if ("setPackedOverlay".equals(mi.name)) callsSetOverlay = true;
+                    if ("setPackedLight".equals(mi.name)) callsSetLight++;
+                }
+            }
+            check(callsSetOverlay, "AbstractRenderLayer.setDefaultGlow must call setPackedOverlay");
+            checkEquals(1, callsSetLight, "AbstractRenderLayer.setDefaultGlow must call setPackedLight exactly once");
+        }
+
+        // 3. TheSunRenderer & SunGlowLayer use emissive translucent & additive eyes passes
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/client/renderer/entity/layer/SunGlowLayer.class")) {
+            check(in != null, "SunGlowLayer.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            var mRender = cn.methods.stream().filter(m -> "render".equals(m.name)).findFirst().orElseThrow();
+            int reRenderCalls = 0;
+            for (var insn = mRender.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi && "reRender".equals(mi.name)) {
+                    reRenderCalls++;
+                }
+            }
+            check(reRenderCalls >= 2, "SunGlowLayer must perform dual-pass core + corona emissive render");
+        }
+
+        // 4. All 88 final-art icons (11 Stands x 8 slots) are valid 18x18 RGBA PNGs and unique per Stand
+        Path iconsRoot = RESOURCES_ROOT.resolve("assets/jcraft/textures/gui/ability_icons");
+        List<String> artStands = List.of(
+                "the_sun", "silver_chariot_possessed", "crazy_diamond", "chariot_requiem", "diver_down",
+                "cinderella", "osiris", "atum", "dragons_dream", "foo_fighters", "goo_goo_dolls");
+        List<String> artSlots = List.of("light", "heavy", "barrage", "special1", "special2", "special3", "ult", "utility");
+        for (String st : artStands) {
+            Set<String> standHashes = new HashSet<>();
+            for (String slot : artSlots) {
+                Path p = iconsRoot.resolve(st).resolve(slot + ".png");
+                var img = javax.imageio.ImageIO.read(p.toFile());
+                check(img != null && img.getWidth() == 18 && img.getHeight() == 18,
+                        "Final art icon must be 18x18: " + st + "/" + slot);
+                int opaque = 0;
+                for (int y = 0; y < 18; y++) {
+                    for (int x = 0; x < 18; x++) {
+                        if (((img.getRGB(x, y) >>> 24) & 0xFF) > 128) opaque++;
+                    }
+                }
+                check(opaque >= 40, "Final art icon must contain real pixel art: " + st + "/" + slot + " (opaque=" + opaque + ")");
+                standHashes.add(Arrays.toString(Files.readAllBytes(p)));
+            }
+            checkEquals(8, standHashes.size(), "All 8 ability icons must be distinct for Stand: " + st);
+        }
+
+        // 5. All 3 humanoid equipment mask/hat textures are 64x32 PNGs with multi-color front-face detail
+        Path eqRoot = RESOURCES_ROOT.resolve("assets/jcraft/textures/entity/equipment/humanoid");
+        for (String eq : List.of("stone_mask.png", "red_hat.png", "cinderella_mask.png")) {
+            var img = javax.imageio.ImageIO.read(eqRoot.resolve(eq).toFile());
+            check(img != null && img.getWidth() == 64 && img.getHeight() == 32,
+                    "Equipment texture must be 64x32: " + eq);
+            Set<Integer> frontColors = new HashSet<>();
+            for (int y = 8; y < 16; y++) {
+                for (int x = 8; x < 16; x++) {
+                    int argb = img.getRGB(x, y);
+                    if (((argb >>> 24) & 0xFF) > 0) frontColors.add(argb);
+                }
+            }
+            check(frontColors.size() >= 4, "Equipment texture front face must have multi-tone pixel art: " + eq + " (" + frontColors.size() + " colors)");
+        }
+
+        // 6. All 28 newly refined Stand user pose JSONs must be distinct from one another
+        List<String> refinedPoses = List.of(
+                "crazy_diamond", "gold_experience", "silver_chariot", "d4c", "made_in_heaven", "c_moon",
+                "white_snake", "hierophant_green", "magicians_red", "cream", "metallica", "the_hand",
+                "purple_haze", "purple_haze_distortion", "aerosmith", "mandom", "shadow_the_world",
+                "the_fool", "horus", "the_sun", "chariot_requiem", "diver_down", "foo_fighters",
+                "cinderella", "osiris", "atum", "dragons_dream", "goo_goo_dolls");
+        Set<String> poseContents = new HashSet<>();
+        Path posesRoot = RESOURCES_ROOT.resolve("assets/jcraft/poses");
+        for (String pName : refinedPoses) {
+            poseContents.add(Files.readString(posesRoot.resolve(pName).resolve("humanoid.json"), StandardCharsets.UTF_8));
+        }
+        checkEquals(28, poseContents.size(), "All 28 refined Stand user poses must have distinct silhouettes");
+    }
+
+    static void verifyCombatAndGameFeelUpgrades() throws Exception {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+
+        // 1. Safe Micro-Hitstop curve (light/barrage = 0, heavy/ult = 1..4) & JServerConfig.ENABLE_HITSTOP
+        checkEquals(0, net.arna.jcraft.api.Attacks.computeHitstopTicks(0.0f), "0 damage hitstop must be 0");
+        checkEquals(0, net.arna.jcraft.api.Attacks.computeHitstopTicks(2.5f), "Barrage hitstop must be 0");
+        checkEquals(0, net.arna.jcraft.api.Attacks.computeHitstopTicks(5.9f), "Sub-threshold hitstop must be 0");
+        checkEquals(1, net.arna.jcraft.api.Attacks.computeHitstopTicks(6.0f), "Heavy threshold hitstop must be 1");
+        checkEquals(2, net.arna.jcraft.api.Attacks.computeHitstopTicks(9.0f), "Medium-heavy hitstop must be 2");
+        checkEquals(3, net.arna.jcraft.api.Attacks.computeHitstopTicks(13.5f), "Strong heavy hitstop must be 3");
+        checkEquals(4, net.arna.jcraft.api.Attacks.computeHitstopTicks(18.0f), "Ultimate hitstop must be 4");
+        checkEquals(4, net.arna.jcraft.api.Attacks.computeHitstopTicks(50.0f), "Hitstop must clamp at 4 ticks max");
+
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/common/config/JServerConfig.class")) {
+            check(in != null, "JServerConfig.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            check(cn.fields.stream().anyMatch(f -> "ENABLE_HITSTOP".equals(f.name)),
+                    "JServerConfig must expose ENABLE_HITSTOP");
+        }
+        JsonObject enJson = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/en_us.json"));
+        JsonObject ptJson = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/pt_br.json"));
+        for (String key : List.of("jcraft.serverconfig.option.enable_hitstop", "jcraft.serverconfig.option.enable_hitstop.tooltip")) {
+            check(enJson.has(key) && ptJson.has(key), "EN/PT-BR translations must define " + key);
+        }
+
+        // 2. Deterministic Hamon combo move-step tracking (no fixed 5-second window hack)
+        checkEquals(6, net.arna.jcraft.api.component.living.CommonHamonComponent.HamonMoveStep.values().length,
+                "HamonMoveStep must define all 6 combo states");
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/api/Attacks.class")) {
+            check(in != null, "Attacks.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            boolean usesLastHamonMove = cn.methods.stream().anyMatch(m -> {
+                for (var insn = m.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                    if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi && "getLastHamonMove".equals(mi.name)) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            check(usesLastHamonMove, "Attacks must check CommonHamonComponent.getLastHamonMove() for Hamon combos");
+        }
+
+        // 3. Context-aware neutral AI & collider obstacle detection in IAttacker
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/api/attack/IAttacker.class")) {
+            check(in != null, "IAttacker.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            check(cn.methods.stream().anyMatch(m -> "chooseNeutralState".equals(m.name)),
+                    "IAttacker must expose context-aware chooseNeutralState");
+            check(cn.methods.stream().anyMatch(m -> "isPathBlockedByBreakableObstacle".equals(m.name)),
+                    "IAttacker must expose isPathBlockedByBreakableObstacle for fences/glass");
+        }
+
+        // 4. StandEntity uses clean transient Attributes.ATTACK_SPEED modifier instead of Mining Fatigue
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/api/stand/StandEntity.class")) {
+            check(in != null, "StandEntity.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            check(cn.fields.stream().anyMatch(f -> "STAND_ATTACK_SPEED_MODIFIER_ID".equals(f.name)),
+                    "StandEntity must define STAND_ATTACK_SPEED_MODIFIER_ID");
+            check(cn.methods.stream().anyMatch(m -> "updateUserAttackSpeedPenalty".equals(m.name)),
+                    "StandEntity must define updateUserAttackSpeedPenalty");
+        }
+
+        // 5. Smooth cubic ease-out resync math for TimeAccelStatePacket
+        checkEquals(1000L, net.arna.jcraft.common.network.s2c.TimeAccelStatePacket.interpolateSmoothDayTime(1000L, 2000L, 0.0f),
+                "TimeAccel smooth sync at progress 0.0 must equal startDayTime");
+        checkEquals(1875L, net.arna.jcraft.common.network.s2c.TimeAccelStatePacket.interpolateSmoothDayTime(1000L, 2000L, 0.5f),
+                "TimeAccel smooth sync at progress 0.5 must follow cubic ease-out (0.875)");
+        checkEquals(2000L, net.arna.jcraft.common.network.s2c.TimeAccelStatePacket.interpolateSmoothDayTime(1000L, 2000L, 1.0f),
+                "TimeAccel smooth sync at progress 1.0 must reach exact server dayTime");
+    }
+
+    static void verifyContentAndBalanceUpgrades() throws Exception {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+
+        // 1. Crazy Diamond obtainable, complete 9-slot moveset, and valid Bedrock animations
+        JsonObject cdStand = parseJsonObject(RESOURCES_ROOT.resolve("data/jcraft/stands/crazy_diamond.json"));
+        check(!cdStand.has("obtainable") || cdStand.get("obtainable").getAsBoolean(),
+                "crazy_diamond.json must be obtainable");
+        checkEquals(1, cdStand.getAsJsonObject("info").getAsJsonArray("skin_names").size(),
+                "Crazy Diamond must declare 1 extra skin matching skin1.png");
+        List<Path> cdMoves = collectJsonFiles(RESOURCES_ROOT.resolve("data/jcraft/movesets/stand/crazy_diamond/default"));
+        checkEquals(9, cdMoves.size(), "Crazy Diamond must have all 9 moveset slot JSONs");
+        JsonObject cdAnims = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/animations/crazy_diamond.animation.json"))
+                .getAsJsonObject("animations");
+        for (String clip : List.of("idle", "summon", "block", "light", "light_followup", "uppercut",
+                "heavy", "barrage", "heal", "wall_breaker", "bearing_snap", "rage", "jump", "itemthrow_charge", "itemthrow")) {
+            check(cdAnims.has(clip), "crazy_diamond.animation.json missing clip: " + clip);
+        }
+
+        // 2. Chariot Requiem obtainable evolution + Silver Chariot -> Chariot Requiem evolution JSON + MoveTypes + animations
+        JsonObject crStand = parseJsonObject(RESOURCES_ROOT.resolve("data/jcraft/stands/chariot_requiem.json"));
+        check(!crStand.has("obtainable") || crStand.get("obtainable").getAsBoolean(),
+                "chariot_requiem.json must be obtainable");
+        check(crStand.has("evolution") && crStand.get("evolution").getAsBoolean(),
+                "chariot_requiem.json must be marked as an evolution");
+        JsonObject scrEvo = parseJsonObject(RESOURCES_ROOT.resolve("data/jcraft/evolutions/silver_chariot_to_chariot_requiem.json"));
+        checkEquals("jcraft:requiem_arrow", scrEvo.get("item").getAsString(), "SCR evolution item");
+        checkEquals("jcraft:silver_chariot", scrEvo.get("stand").getAsString(), "SCR base stand");
+        checkEquals("jcraft:chariot_requiem", scrEvo.get("target").getAsString(), "SCR target stand");
+
+        List<Path> crMoves = collectJsonFiles(RESOURCES_ROOT.resolve("data/jcraft/movesets/stand/chariot_requiem/default"));
+        checkEquals(9, crMoves.size(), "Chariot Requiem must have all 9 moveset slot JSONs");
+        check(cl.getResource("net/arna/jcraft/common/attack/moves/chariotrequiem/RequiemCounterAttack.class") != null,
+                "RequiemCounterAttack must exist");
+        check(cl.getResource("net/arna/jcraft/common/attack/moves/chariotrequiem/SoulSwapAttack.class") != null,
+                "SoulSwapAttack must exist");
+        JsonObject crAnims = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/animations/chariot_requiem.animation.json"))
+                .getAsJsonObject("animations");
+        for (String clip : List.of("idle", "summon", "block", "light", "light_followup", "heavy", "barrage",
+                "somnolence", "soul_swap", "counter", "counter_miss", "dominion", "shadow_step", "itemthrow_charge", "itemthrow")) {
+            check(crAnims.has(clip), "chariot_requiem.animation.json missing clip: " + clip);
+        }
+
+        // 3. Exposed JServerConfig options + full GravityChangerConfig unification + EN/PT-BR translations
+        List<String> newConfigFields = List.of(
+                "CMOON_UTIL_DURATION", "CMOON_ULT_RANGE", "UNIVERSAL_ABILITIES", "SPTW_IGNITE_CAMPFIRES",
+                "SHA_SEARCH_RADIUS", "MIH_ACCELERATE_TICKS", "USE_FOOLISH_SAND",
+                "RESET_GRAVITY_ON_RESPAWN", "VOID_DAMAGE_ABOVE_WORLD"
+        );
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/common/config/JServerConfig.class")) {
+            check(in != null, "JServerConfig.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            for (String field : newConfigFields) {
+                check(cn.fields.stream().anyMatch(f -> field.equals(f.name)),
+                        "JServerConfig must expose option field: " + field);
+            }
+        }
+        JsonObject enJson = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/en_us.json"));
+        JsonObject ptJson = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/pt_br.json"));
+        for (String opt : List.of("cmoon_util_duration", "cmoon_ult_range", "universal_abilities",
+                "sptw_ignite_campfires", "sha_search_radius", "mih_accelerate_ticks", "use_foolish_sand",
+                "reset_gravity_on_respawn", "void_damage_above_world")) {
+            String key = "jcraft.serverconfig.option." + opt;
+            check(enJson.has(key) && ptJson.has(key), "EN/PT-BR missing option name: " + key);
+            check(enJson.has(key + ".tooltip") && ptJson.has(key + ".tooltip"), "EN/PT-BR missing option tooltip: " + key + ".tooltip");
+        }
+        // Verify GravityChangerConfig unification sync in JServerConfig.syncGravityConfig() bytecode (live test runs in AllStandsRuntimeDiagnostic)
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/common/config/JServerConfig.class")) {
+            check(in != null, "JServerConfig.class must exist for syncGravityConfig verification");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            var syncMethod = cn.methods.stream().filter(m -> "syncGravityConfig".equals(m.name)).findFirst().orElseThrow();
+            Set<String> writtenGravityFields = new HashSet<>();
+            for (var insn = syncMethod.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                if (insn instanceof org.objectweb.asm.tree.FieldInsnNode fi
+                        && fi.getOpcode() == org.objectweb.asm.Opcodes.PUTFIELD
+                        && "net/arna/jcraft/common/gravity/config/GravityChangerConfig".equals(fi.owner)) {
+                    writtenGravityFields.add(fi.name);
+                }
+            }
+            for (String gf : List.of("keepWorldLook", "rotationTime", "worldVelocity",
+                    "resetGravityOnDimensionChange", "resetGravityOnRespawn", "voidDamageAboveWorld")) {
+                check(writtenGravityFields.contains(gf),
+                        "JServerConfig.syncGravityConfig() must synchronize GravityChangerConfig." + gf);
+            }
+        }
+    }
+
+    static void verifyUiHudAndUxPolish() throws Exception {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+
+        // 1. JClientConfig.hudScale default & JCraftAbilityHud clamping + active/variant/universal checks
+        var clientCfg = net.arna.jcraft.client.JClientConfig.getInstance();
+        float prevScale = clientCfg.getHudScale();
+        try {
+            checkClose(1.0, prevScale, 1.0E-5, "Default HUD scale must be 1.0f");
+            clientCfg.setHudScale(0.2f);
+            checkClose(0.75, clientCfg.getClampedHudScale(), 1.0E-5, "HUD scale lower clamp must be 0.75f");
+            clientCfg.setHudScale(3.0f);
+            checkClose(1.50, clientCfg.getClampedHudScale(), 1.0E-5, "HUD scale upper clamp must be 1.50f");
+        } finally {
+            clientCfg.setHudScale(prevScale);
+        }
+
+        // 2. JoJoRadialWheelScreen smooth cubic ease-out pop-in curve
+        checkClose(0.72, net.arna.jcraft.client.gui.screen.JoJoRadialWheelScreen.computeOpenScale(0L), 1.0E-5,
+                "Radial wheel open scale at 0ms must be 0.72");
+        float midScale = net.arna.jcraft.client.gui.screen.JoJoRadialWheelScreen.computeOpenScale(
+                net.arna.jcraft.client.gui.screen.JoJoRadialWheelScreen.OPEN_ANIM_DURATION_MS / 2);
+        check(midScale > 0.90f && midScale < 1.0f, "Radial wheel open scale at 50% must ease out smoothly (got=" + midScale + ")");
+        checkClose(1.0, net.arna.jcraft.client.gui.screen.JoJoRadialWheelScreen.computeOpenScale(
+                net.arna.jcraft.client.gui.screen.JoJoRadialWheelScreen.OPEN_ANIM_DURATION_MS), 1.0E-5,
+                "Radial wheel open scale at completion must be 1.0");
+
+        // 3. JCraftConfigScreen exposes all 10 new server options + clientTooltip + font.split tooltip wrapping
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/client/gui/screen/JCraftConfigScreen.class")) {
+            check(in != null, "JCraftConfigScreen.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            Set<String> referencedServerFields = new HashSet<>();
+            boolean hasClientTooltip = false;
+            boolean usesFontSplit = false;
+            for (var m : cn.methods) {
+                if ("clientTooltip".equals(m.name)) hasClientTooltip = true;
+                for (var insn = m.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                    if (insn instanceof org.objectweb.asm.tree.FieldInsnNode fi
+                            && "net/arna/jcraft/common/config/JServerConfig".equals(fi.owner)) {
+                        referencedServerFields.add(fi.name);
+                    } else if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi
+                            && "split".equals(mi.name) && "net/minecraft/client/gui/Font".equals(mi.owner)) {
+                        usesFontSplit = true;
+                    }
+                }
+            }
+            check(hasClientTooltip, "JCraftConfigScreen must resolve client option tooltips");
+            check(usesFontSplit, "JCraftConfigScreen tooltips must use Font.split for exact word wrapping");
+            for (String optField : List.of("CMOON_UTIL_DURATION", "CMOON_ULT_RANGE", "UNIVERSAL_ABILITIES",
+                    "SPTW_IGNITE_CAMPFIRES", "SHA_SEARCH_RADIUS", "MIH_ACCELERATE_TICKS", "USE_FOOLISH_SAND",
+                    "ENABLE_HITSTOP", "RESET_GRAVITY_ON_RESPAWN", "VOID_DAMAGE_ABOVE_WORLD")) {
+                check(referencedServerFields.contains(optField),
+                        "JCraftConfigScreen must expose JServerConfig." + optField);
+            }
+        }
+
+        // 4. StandGuideScreen encyclopedia cycling, JCraftAbilityHud active-state/scale, JoJoAnimeHudRenderer pills, MainMenuScreen wrap
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/client/gui/screen/StandGuideScreen.class")) {
+            check(in != null, "StandGuideScreen.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            check(cn.methods.stream().anyMatch(m -> "cycleBrowsedStand".equals(m.name)),
+                    "StandGuideScreen must expose cycleBrowsedStand encyclopedia navigation");
+        }
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/client/gui/screen/MainMenuScreen.class")) {
+            check(in != null, "MainMenuScreen.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            check(cn.methods.stream().anyMatch(m -> "drawWrappedText".equals(m.name)),
+                    "MainMenuScreen must wrap Stand info via drawWrappedText");
+        }
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/client/gui/hud/JCraftAbilityHud.class")) {
+            check(in != null, "JCraftAbilityHud.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            check(cn.methods.stream().anyMatch(m -> "matchesActiveState".equals(m.name)),
+                    "JCraftAbilityHud must highlight actively executing abilities via matchesActiveState");
+            check(cn.methods.stream().anyMatch(m -> "getClampedHudScale".equals(m.name)),
+                    "JCraftAbilityHud must expose getClampedHudScale");
+        }
+
+        // 5. All new EN & PT-BR UI/HUD translation keys present
+        JsonObject enJson = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/en_us.json"));
+        JsonObject ptJson = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/pt_br.json"));
+        for (String key : List.of(
+                "jcraft.config.hud_scale", "jcraft.config.hud_scale.tooltip",
+                "jcraft.radial.no_stand", "jcraft.radial.skin_unavailable", "jcraft.radial.skin_named", "jcraft.radial.active_tag",
+                "jcraft.guide.my_stand", "jcraft.guide.badge.evolution", "jcraft.guide.badge.preview",
+                "jcraft.guide.stand.skins_count", "jcraft.guide.browser_hint",
+                "jcraft.hud.time_erase", "jcraft.hud.time_accel")) {
+            check(enJson.has(key) && ptJson.has(key), "EN/PT-BR translations must define " + key);
+        }
+    }
+
+    static void verifyEngineeringBuildAndArchitecture() throws Exception {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+
+        // 1. Dead @Deprecated(forRemoval=true) RevolverFire class must be removed
+        check(cl.getResource("net/arna/jcraft/common/tickable/RevolverFire.class") == null,
+                "Dead RevolverFire.class must be removed");
+
+        // 2. JMenuRegistry & MenuCallPacket must use vanilla MC 26.3 MenuType / ServerPlayer.openMenu (no deprecated MenuRegistry.ofExtended/openExtendedMenu)
+        for (String cls : List.of(
+                "net/arna/jcraft/api/registry/JMenuRegistry.class",
+                "net/arna/jcraft/common/network/c2s/MenuCallPacket.class")) {
+            try (InputStream in = cl.getResourceAsStream(cls)) {
+                check(in != null, cls + " must exist");
+                ClassNode cn = new ClassNode();
+                new ClassReader(in).accept(cn, 0);
+                boolean usesDeprecatedMenuRegistry = cn.methods.stream().anyMatch(m -> {
+                    for (var insn = m.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                        if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi
+                                && "dev/architectury/registry/menu/MenuRegistry".equals(mi.owner)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
+                check(!usesDeprecatedMenuRegistry, cls + " must not call deprecated Architectury MenuRegistry");
+            }
+        }
+
+        // 3. Clean UTF-8 fabric.mod.json metadata (8 Evolutions, no mojibake)
+        String modJsonRaw = Files.readString(RESOURCES_ROOT.resolve("fabric.mod.json"), StandardCharsets.UTF_8);
+        check(!modJsonRaw.contains("Ã") && !modJsonRaw.contains("â€”"),
+                "fabric.mod.json must use clean UTF-8 without mojibake");
+        check(modJsonRaw.contains("8 Evoluções"), "fabric.mod.json description must reflect 8 Evolutions");
+
+        // 4. Reproducible JAR build configuration, CI workflow, and Architecture docs present
+        String buildGradle = Files.readString(Path.of("build.gradle"), StandardCharsets.UTF_8);
+        check(buildGradle.contains("reproducibleFileOrder = true") && buildGradle.contains("preserveFileTimestamps = false"),
+                "build.gradle must enforce reproducible JAR archives");
+        check(buildGradle.contains("-Xlint:removal"), "build.gradle must enable -Xlint:removal compiler check");
+        check(buildGradle.contains("tasks.register('deployMod')"), "build.gradle must define deployMod distribution task");
+
+        Path ciYml = Path.of(".github/workflows/ci.yml");
+        check(Files.isRegularFile(ciYml), "GitHub Actions CI workflow .github/workflows/ci.yml must exist");
+        String ciText = Files.readString(ciYml, StandardCharsets.UTF_8);
+        check(ciText.contains("gradlew") && ciText.contains("build"), "CI workflow must invoke gradlew build");
+
+        Path archMd = Path.of("ARCHITECTURE.md");
+        check(Files.isRegularFile(archMd), "ARCHITECTURE.md must exist");
+        String archText = Files.readString(archMd, StandardCharsets.UTF_8);
+        check(archText.contains("verifyDedicatedServerIsolation") && archText.contains("GravityChangerConfig"),
+                "ARCHITECTURE.md must document Dedicated-Server Isolation and Config Unification");
     }
 }

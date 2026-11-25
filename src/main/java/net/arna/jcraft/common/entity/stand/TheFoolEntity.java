@@ -371,6 +371,9 @@ public class TheFoolEntity extends StandEntity<TheFoolEntity, TheFoolEntity.Stat
     }
 
     public static void createFoolishSand(Level world, TheFoolEntity theFool, BlockPos pos, Vec3 vel) {
+        if (!net.arna.jcraft.common.config.JServerConfig.USE_FOOLISH_SAND.getValue()) {
+            return;
+        }
         final BlockPos midBlockPos = pos.subtract(GravityChangerAPI.getGravityDirection(theFool).getUnitVec3i());
         if (world.getBlockState(midBlockPos).canOcclude()) {
             return;

@@ -14,7 +14,6 @@ import net.arna.jcraft.client.JClientConfig;
 import net.arna.jcraft.client.JCraftClient;
 import net.arna.jcraft.client.gui.ServerConfigUI;
 import net.arna.jcraft.client.gui.hud.EpitaphOverlay;
-import net.arna.jcraft.client.renderer.effects.AttackHitboxEffectRenderer;
 import net.arna.jcraft.client.renderer.effects.TimeErasePredictionEffectRenderer;
 import net.arna.jcraft.client.rendering.DamageIndicatorManager;
 import net.arna.jcraft.client.rendering.handler.CrimsonShaderHandler;
@@ -298,27 +297,17 @@ public class ClientPacketHandler {
 
         final short control = buf.readShort();
         switch (control) {
-            // Attack hit boxes
+            // Attack hit boxes (disabled — drain packet bytes without rendering outlines)
             case (1) -> {
                 final int count = buf.readVarInt();
-
-                final AABB[] boxes = new AABB[count];
-
                 for (int i = 0; i < count; i++) {
-                    final double
-                        minX = buf.readDouble(),
-                        minY = buf.readDouble(),
-                        minZ = buf.readDouble(),
-
-                        maxX = buf.readDouble(),
-                        maxY = buf.readDouble(),
-                        maxZ = buf.readDouble();
-
-                    boxes[i] = new AABB(minX, minY, minZ, maxX, maxY, maxZ);
+                    buf.readDouble();
+                    buf.readDouble();
+                    buf.readDouble();
+                    buf.readDouble();
+                    buf.readDouble();
+                    buf.readDouble();
                 }
-
-                // Run on render thread to avoid concurrency issues.
-                client.execute(() -> AttackHitboxEffectRenderer.addHitboxes(java.util.Arrays.asList(boxes)));
             }
 
             // Time erase trackers
@@ -611,7 +600,10 @@ public class ClientPacketHandler {
                 final long startTime = buf.readLong();
                 client.execute(() -> TimeAccelStatePacket.addAcceleration(entityId, (int) (duration - (System.currentTimeMillis() - startTime) / 50), startTime));
             }
-            case STOP -> client.execute(() -> TimeAccelStatePacket.removeAcceleration(entityId));
+            case STOP -> {
+                final long serverDayTime = buf.readableBytes() >= 8 ? buf.readLong() : -1L;
+                client.execute(() -> TimeAccelStatePacket.finishAccelerationWithSmoothSync(entityId, client.level, serverDayTime));
+            }
         }
     }
 
@@ -713,14 +705,8 @@ public class ClientPacketHandler {
                 return;
             }
 
-            final Splatter splatter = JUtils.getSplatterManager(world)
+            JUtils.getSplatterManager(world)
                     .readSplatter(new FriendlyByteBuf(io.netty.buffer.Unpooled.wrappedBuffer(data)));
-
-            long ageMs = splatter.getMaxAge() * 50L;
-            AttackHitboxEffectRenderer.addHitbox(splatter.getMainBox(), ageMs, true);
-            splatter.getSections().stream()
-                    .filter(section -> !section.isRemoved())
-                    .forEach(section -> AttackHitboxEffectRenderer.addHitbox(section.getHitBox(), ageMs, true));
         });
     }
 

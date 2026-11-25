@@ -13,7 +13,9 @@ public class CooldownCancelPacket {
 
         if (
                 player.isCreative() ||
-                (JServerConfig.SURVIVAL_CDC.getValue() && !player.hasEffect(JStatusRegistry.DAZED.asHolder()))
+                (JServerConfig.UNIVERSAL_ABILITIES.getValue()
+                        && JServerConfig.SURVIVAL_CDC.getValue()
+                        && !player.hasEffect(JStatusRegistry.DAZED.asHolder()))
         ) {
             JComponentPlatformUtils.getCooldowns(player).cooldownCancel();
         }

@@ -1,0 +1,60 @@
+{
+  "anim_state": "SOMNOLENCE",
+  "class": "SPECIAL1",
+  "cooldown_type": "STAND_SP1",
+  "move": {
+    "type": "jcraft:shared_simple_attack",
+    "attack_extras": {
+      "backstab": true,
+      "block_stun": 6,
+      "blockable_type": "NON_BLOCKABLE_EFFECTS_ONLY",
+      "hit_animation": "MID",
+      "hit_spark": "HIT_SPARK_2"
+    },
+    "cooldown": 240,
+    "damage": 4.0,
+    "duration": 22,
+    "extras": {
+      "actions": [
+        {
+          "type": "jcraft:play_sound",
+          "run": "at_init",
+          "sound": "jcraft:timeerase"
+        },
+        {
+          "type": "jcraft:effect",
+          "effects": [
+            {
+              "amplifier": 2,
+              "duration": 100,
+              "effect": "minecraft:slowness"
+            },
+            {
+              "amplifier": 0,
+              "duration": 80,
+              "effect": "minecraft:darkness"
+            },
+            {
+              "amplifier": 0,
+              "duration": 80,
+              "effect": "minecraft:weakness"
+            }
+          ],
+          "run": "on_strike"
+        }
+      ],
+      "description": {
+        "translate": "move.jcraft.chariot_requiem.default.somnolence.description"
+      },
+      "name": {
+        "translate": "move.jcraft.chariot_requiem.default.somnolence.name"
+      }
+    },
+    "hitbox_size": 4.5,
+    "knockback": 0.1,
+    "move_distance": 0.5,
+    "offset": 0.0,
+    "stun": 24,
+    "windup": 12
+  }
+}

@@ -1,5 +1,6 @@
 package net.arna.jcraft.common.entity.ai.goal;
 
+import net.arna.jcraft.common.config.JServerConfig;
 import net.arna.jcraft.common.entity.SheerHeartAttackEntity;
 import net.arna.jcraft.common.util.JUtils;
 import net.minecraft.world.entity.LivingEntity;
@@ -42,7 +43,8 @@ public class SHAAttackGoal extends Goal {
             return false;
         }
 
-        if (sha.distanceToSqr(target) > 1024.0D) {
+        final double maxTrackDist = Math.max(16.0D, JServerConfig.SHA_SEARCH_RADIUS.getValue() * 2.0D);
+        if (sha.distanceToSqr(target) > maxTrackDist * maxTrackDist) {
             return false;
         } else {
             return !sha.getNavigation().isDone() || canUse();

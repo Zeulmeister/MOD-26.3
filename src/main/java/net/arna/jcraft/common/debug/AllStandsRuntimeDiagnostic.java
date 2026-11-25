@@ -105,7 +105,9 @@ public final class AllStandsRuntimeDiagnostic {
                 JStandTypeRegistry.METALLICA,
                 JStandTypeRegistry.THE_HAND,
                 JStandTypeRegistry.MANDOM,
-                JStandTypeRegistry.AEROSMITH
+                JStandTypeRegistry.AEROSMITH,
+                JStandTypeRegistry.CRAZY_DIAMOND,
+                JStandTypeRegistry.CHARIOT_REQUIEM
         );
     }
 
@@ -393,6 +395,248 @@ public final class AllStandsRuntimeDiagnostic {
                 assertTrue(anubisNpc.getMainHandItem().is(JItemRegistry.ANUBIS_SHEATHED.get()),
                         "AnubisSpecUser auto-sheathes Anubis out of combat");
                 anubisNpc.discard();
+
+                JCraft.LOGGER.info("[ALLSTANDS-DEBUG] === Phase 6: Combat & Game Feel Live Verification ===");
+                // 1. Safe Micro-Hitstop: active only when ENABLE_HITSTOP=true, ignores barrages (<6 dmg), never overwrites longer TS
+                boolean prevHitstop = net.arna.jcraft.common.config.JServerConfig.ENABLE_HITSTOP.getValue();
+                try {
+                    net.arna.jcraft.common.config.JServerConfig.ENABLE_HITSTOP.setValue(true);
+                    Husk hitVictim = new Husk(EntityTypes.HUSK, world);
+                    hitVictim.setPos(ARENA_X + 2.0, ARENA_Y, ARENA_Z + 2.0);
+                    world.addFreshEntity(hitVictim);
+
+                    // Light/barrage hit (< 6.0 dmg) must not apply hitstop
+                    net.arna.jcraft.api.Attacks.tryApplyHitstop(user, hitVictim, 2.5f);
+                    int lightTicks = JComponentPlatformUtils.getTimeStopData(hitVictim).map(d -> d.getTicks()).orElse(-1);
+                    assertTrue(lightTicks == 0, "Barrage/light hit (< 6.0 dmg) applies 0 hitstop ticks (got=" + lightTicks + ")");
+
+                    // Heavy hit (12.0 dmg) applies 3 ticks of micro-hitstop
+                    net.arna.jcraft.api.Attacks.tryApplyHitstop(user, hitVictim, 12.0f);
+                    int heavyTicks = JComponentPlatformUtils.getTimeStopData(hitVictim).map(d -> d.getTicks()).orElse(-1);
+                    assertTrue(heavyTicks == 3, "Heavy hit (12.0 dmg) applies 3 micro-hitstop ticks (got=" + heavyTicks + ")");
+
+                    // Must NEVER overwrite an existing longer Time Stop (e.g. 60 ticks)
+                    JComponentPlatformUtils.getTimeStopData(hitVictim).ifPresent(d -> d.setTicks(60));
+                    net.arna.jcraft.api.Attacks.tryApplyHitstop(user, hitVictim, 18.0f);
+                    int preservedTs = JComponentPlatformUtils.getTimeStopData(hitVictim).map(d -> d.getTicks()).orElse(-1);
+                    assertTrue(preservedTs == 60, "Hitstop must never shorten an active Time Stop (got=" + preservedTs + ")");
+                    JComponentPlatformUtils.getTimeStopData(hitVictim).ifPresent(d -> d.setTicks(0));
+                    JComponentPlatformUtils.getTimeStopData(user).ifPresent(d -> d.setTicks(0));
+                    hitVictim.discard();
+                } finally {
+                    net.arna.jcraft.common.config.JServerConfig.ENABLE_HITSTOP.setValue(prevHitstop);
+                }
+
+                // 2. AI Collider Fence/Obstacle Detection (even when visual hasLineOfSight is true or slightly off-center)
+                BlockPos fencePos = BlockPos.containing(ARENA_X, ARENA_Y, ARENA_Z + 1.0);
+                Husk fenceMob = new Husk(EntityTypes.HUSK, world);
+                fenceMob.setPos(ARENA_X + 0.18, ARENA_Y, ARENA_Z - 0.5);
+                Husk fenceTarget = new Husk(EntityTypes.HUSK, world);
+                fenceTarget.setPos(ARENA_X + 0.18, ARENA_Y, ARENA_Z + 2.5);
+                world.addFreshEntity(fenceMob);
+                world.addFreshEntity(fenceTarget);
+                world.setBlockAndUpdate(fencePos, Blocks.AIR.defaultBlockState());
+                assertTrue(!net.arna.jcraft.api.attack.IAttacker.isPathBlockedByBreakableObstacle(fenceMob, fenceTarget),
+                        "Open air path is not blocked");
+                world.setBlockAndUpdate(fencePos, Blocks.OAK_FENCE.defaultBlockState());
+                assertTrue(net.arna.jcraft.api.attack.IAttacker.isPathBlockedByBreakableObstacle(fenceMob, fenceTarget),
+                        "OAK_FENCE collider obstacle detected by AI for barrage break-through");
+                world.setBlockAndUpdate(fencePos, Blocks.BEDROCK.defaultBlockState());
+                assertTrue(!net.arna.jcraft.api.attack.IAttacker.isPathBlockedByBreakableObstacle(fenceMob, fenceTarget),
+                        "Unbreakable BEDROCK is excluded from AI breakable-obstacle detection");
+                world.setBlockAndUpdate(fencePos, Blocks.AIR.defaultBlockState());
+                fenceMob.discard();
+                fenceTarget.discard();
+
+                // 3. StandEntity transient Attributes.ATTACK_SPEED modifier during active move & cleanup on desummon
+                com.mojang.authlib.GameProfile diagProfile = new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "GameFeelDiag");
+                net.minecraft.server.level.ServerPlayer attackSpeedPlayer = new net.minecraft.server.level.ServerPlayer(
+                        server, world, diagProfile, net.minecraft.server.level.ClientInformation.createDefault());
+                net.minecraft.network.Connection dummyConn = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
+                attackSpeedPlayer.connection = new net.minecraft.server.network.ServerGamePacketListenerImpl(
+                        server, dummyConn, attackSpeedPlayer,
+                        net.minecraft.server.network.CommonListenerCookie.createInitial(diagProfile, false)) {
+                    @Override
+                    public void send(net.minecraft.network.protocol.Packet<?> packet) {}
+
+                    @Override
+                    public void send(net.minecraft.network.protocol.Packet<?> packet,
+                                     @org.jetbrains.annotations.Nullable io.netty.channel.ChannelFutureListener listener) {}
+
+                    @Override
+                    public boolean hasClientLoaded() {
+                        return true;
+                    }
+                };
+                attackSpeedPlayer.setPos(ARENA_X, ARENA_Y, ARENA_Z);
+                JComponentPlatformUtils.getStandComponent(attackSpeedPlayer).setType(JStandTypeRegistry.STAR_PLATINUM.get());
+                StandEntity<?, ?> spStand = JCraft.summon(world, attackSpeedPlayer);
+                assertTrue(spStand != null, "Summoned Star Platinum for AttackSpeed modifier check");
+                if (spStand != null) {
+                    spStand.initMove(net.arna.jcraft.api.attack.enums.MoveClass.LIGHT);
+                    spStand.tick();
+                    var atkAttr = attackSpeedPlayer.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_SPEED);
+                    assertTrue(atkAttr != null && atkAttr.hasModifier(StandEntity.STAND_ATTACK_SPEED_MODIFIER_ID),
+                            "Stand attack applies clean transient Attributes.ATTACK_SPEED penalty to user (no Mining Fatigue)");
+                    spStand.cancelMove();
+                    assertTrue(atkAttr != null && !atkAttr.hasModifier(StandEntity.STAND_ATTACK_SPEED_MODIFIER_ID),
+                            "Stand cancelMove immediately cleans up transient Attributes.ATTACK_SPEED penalty");
+                    spStand.initMove(net.arna.jcraft.api.attack.enums.MoveClass.LIGHT);
+                    spStand.tick();
+                    spStand.discard();
+                    assertTrue(atkAttr != null && !atkAttr.hasModifier(StandEntity.STAND_ATTACK_SPEED_MODIFIER_ID),
+                            "Stand removal/desummon immediately cleans up transient Attributes.ATTACK_SPEED penalty");
+                }
+
+                // 4. Deterministic HamonMoveStep tracking
+                var hamonComp = JComponentPlatformUtils.getHamon(attackSpeedPlayer);
+                hamonComp.setLastZoomPunched(target.getUUID());
+                assertTrue(hamonComp.getLastHamonMove() == net.arna.jcraft.api.component.living.CommonHamonComponent.HamonMoveStep.ZOOM_PUNCH,
+                        "HamonMoveStep tracks ZOOM_PUNCH");
+                hamonComp.setLastSendoed(target.getUUID());
+                assertTrue(hamonComp.getLastHamonMove() == net.arna.jcraft.api.component.living.CommonHamonComponent.HamonMoveStep.SENDO,
+                        "HamonMoveStep tracks SENDO");
+                hamonComp.setLastSendoAired(target.getUUID());
+                assertTrue(hamonComp.getLastHamonMove() == net.arna.jcraft.api.component.living.CommonHamonComponent.HamonMoveStep.SENDO_AIR,
+                        "HamonMoveStep tracks SENDO_AIR");
+                hamonComp.setLastStomped(target.getUUID());
+                assertTrue(hamonComp.getLastHamonMove() == net.arna.jcraft.api.component.living.CommonHamonComponent.HamonMoveStep.STOMP,
+                        "HamonMoveStep tracks STOMP");
+
+                JCraft.LOGGER.info("[ALLSTANDS-DEBUG] === Phase 7: Content & Balance (Crazy Diamond, Chariot Requiem, Hidden Configs) ===");
+                // 1. Obtainability & evolution separation (CD is regular Stand Arrow drop; SCR is evolution-only)
+                boolean cdInRegular = net.arna.jcraft.api.stand.StandTypeUtil.streamAllRegular()
+                        .anyMatch(t -> t == JStandTypeRegistry.CRAZY_DIAMOND.get());
+                boolean crInRegular = net.arna.jcraft.api.stand.StandTypeUtil.streamAllRegular()
+                        .anyMatch(t -> t == JStandTypeRegistry.CHARIOT_REQUIEM.get());
+                boolean crInEvolutions = net.arna.jcraft.api.stand.StandTypeUtil.streamAllEvolutions()
+                        .anyMatch(t -> t == JStandTypeRegistry.CHARIOT_REQUIEM.get());
+                assertTrue(cdInRegular, "Crazy Diamond is obtainable as a regular Stand Arrow roll");
+                assertTrue(!crInRegular && crInEvolutions, "Chariot Requiem is evolution-only (excluded from regular Stand Arrow)");
+
+                boolean hasScToScr = net.arna.jcraft.common.util.EvolutionItemHandler.getEvolutionsFor(JStandTypeRegistry.SILVER_CHARIOT.get())
+                        .stream().anyMatch(e -> e.item() == JItemRegistry.REQUIEM_ARROW.get()
+                                && e.target() == JStandTypeRegistry.CHARIOT_REQUIEM.get());
+                assertTrue(hasScToScr, "EvolutionItemHandler registers Silver Chariot + Requiem Arrow -> Chariot Requiem");
+
+                // 2. Crazy Diamond live 9-slot moveset & ally healing
+                resetFighters();
+                CommonStandComponent cdComp = JComponentPlatformUtils.getStandComponent(user);
+                cdComp.setType(JStandTypeRegistry.CRAZY_DIAMOND.get());
+                StandEntity<?, ?> cdStand = JCraft.summon(world, user);
+                assertTrue(cdStand instanceof CrazyDiamondEntity, "Summoned CrazyDiamondEntity for live test");
+                if (cdStand instanceof CrazyDiamondEntity cd) {
+                    assertTrue(cd.getMoveMap().getEntries().size() >= 9,
+                            "Crazy Diamond MoveMap has full moveset (" + cd.getMoveMap().getEntries().size() + " entries)");
+                    target.setHealth(100.0f);
+                    target.setPos(ARENA_X + 1.5, ARENA_Y, ARENA_Z);
+                    cd.initMove(MoveClass.SPECIAL1);
+                    for (int t = 0; t < 14; t++) {
+                        user.positionRider(cd);
+                        cd.tick();
+                    }
+                    assertTrue(target.getHealth() > 100.0f,
+                            "Crazy Diamond Restoration Hand heals ally target even with ENABLE_FRIENDLY_FIRE=false (hp=" + target.getHealth() + ")");
+                    cd.desummon();
+                }
+
+                // 3. Chariot Requiem live 9-slot moveset, Soul Swap & Requiem Counter
+                resetFighters();
+                CommonStandComponent crComp = JComponentPlatformUtils.getStandComponent(user);
+                crComp.setType(JStandTypeRegistry.CHARIOT_REQUIEM.get());
+                StandEntity<?, ?> crStand = JCraft.summon(world, user);
+                assertTrue(crStand instanceof ChariotRequiemEntity, "Summoned ChariotRequiemEntity for live test");
+                if (crStand instanceof ChariotRequiemEntity cr) {
+                    assertTrue(cr.getMoveMap().getEntries().size() >= 9,
+                            "Chariot Requiem MoveMap has full moveset (" + cr.getMoveMap().getEntries().size() + " entries)");
+                    Husk swapA = new Husk(EntityTypes.HUSK, world);
+                    Husk swapB = new Husk(EntityTypes.HUSK, world);
+                    swapA.setNoAi(true);
+                    swapB.setNoAi(true);
+                    swapA.setPos(ARENA_X + 1.0, ARENA_Y, ARENA_Z - 1.0);
+                    swapB.setPos(ARENA_X + 1.0, ARENA_Y, ARENA_Z + 1.0);
+                    world.addFreshEntity(swapA);
+                    world.addFreshEntity(swapB);
+                    ChariotRequiemEntity.SOUL_SWAP.perform(cr, user);
+                    assertTrue(swapA.getZ() > ARENA_Z && swapB.getZ() < ARENA_Z,
+                            "Chariot Requiem Soul Swap swaps positions of caught targets (zA=" + swapA.getZ() + ", zB=" + swapB.getZ() + ")");
+
+                    ChariotRequiemEntity.STAND_REBELLION.counter(cr, swapA, world.damageSources().mobAttack(swapA));
+                    assertTrue(swapA.hasEffect(JStatusRegistry.STANDLESS.asHolder()) && swapA.hasEffect(JStatusRegistry.DAZED.asHolder()),
+                            "Chariot Requiem Stand Rebellion counter inflicts Standless + Dazed");
+                    swapA.discard();
+                    swapB.discard();
+                    cr.desummon();
+                }
+
+                // 4. Live verification of newly exposed JServerConfig options
+                boolean prevUni = net.arna.jcraft.common.config.JServerConfig.UNIVERSAL_ABILITIES.getValue();
+                boolean prevSand = net.arna.jcraft.common.config.JServerConfig.USE_FOOLISH_SAND.getValue();
+                boolean prevCampfire = net.arna.jcraft.common.config.JServerConfig.SPTW_IGNITE_CAMPFIRES.getValue();
+                boolean prevRespawnGrav = net.arna.jcraft.common.config.JServerConfig.RESET_GRAVITY_ON_RESPAWN.getValue();
+                boolean prevVoidAbove = net.arna.jcraft.common.config.JServerConfig.VOID_DAMAGE_ABOVE_WORLD.getValue();
+                try {
+                    // Unified GravityChangerConfig sync verification live
+                    net.arna.jcraft.common.config.JServerConfig.RESET_GRAVITY_ON_RESPAWN.setValue(false);
+                    net.arna.jcraft.common.config.JServerConfig.VOID_DAMAGE_ABOVE_WORLD.setValue(true);
+                    net.arna.jcraft.common.config.JServerConfig.syncGravityConfig();
+                    assertTrue(!JCraft.gravityConfig.resetGravityOnRespawn && JCraft.gravityConfig.voidDamageAboveWorld,
+                            "JServerConfig.syncGravityConfig() unifies and syncs resetGravityOnRespawn + voidDamageAboveWorld");
+                    // UNIVERSAL_ABILITIES gates DashData.tryDash
+                    net.arna.jcraft.common.config.JServerConfig.UNIVERSAL_ABILITIES.setValue(false);
+                    JCraft.dashes.remove(user);
+                    JComponentPlatformUtils.getCooldowns(user).setCooldown(CooldownType.DASH, 0);
+                    user.setOnGround(true);
+                    net.arna.jcraft.common.util.DashData.tryDash(1, 0, user);
+                    assertTrue(!net.arna.jcraft.common.util.DashData.isDashing(user),
+                            "UNIVERSAL_ABILITIES=false blocks DashData.tryDash");
+                    net.arna.jcraft.common.config.JServerConfig.UNIVERSAL_ABILITIES.setValue(true);
+                    net.arna.jcraft.common.util.DashData.tryDash(1, 0, user);
+                    assertTrue(net.arna.jcraft.common.util.DashData.isDashing(user),
+                            "UNIVERSAL_ABILITIES=true enables DashData.tryDash");
+                    JCraft.dashes.remove(user);
+
+                    // SPTW_IGNITE_CAMPFIRES gates campfire ignition on SPTWGroundSlamAttack
+                    BlockPos campPos = BlockPos.containing(ARENA_X + 1.0, ARENA_Y, ARENA_Z);
+                    world.setBlockAndUpdate(campPos, Blocks.CAMPFIRE.defaultBlockState()
+                            .setValue(net.minecraft.world.level.block.CampfireBlock.LIT, false));
+                    JComponentPlatformUtils.getStandComponent(user).setType(JStandTypeRegistry.STAR_PLATINUM_THE_WORLD.get());
+                    StandEntity<?, ?> sptwTest = JCraft.summon(world, user);
+                    if (sptwTest instanceof SPTWEntity sptw) {
+                        net.arna.jcraft.common.config.JServerConfig.SPTW_IGNITE_CAMPFIRES.setValue(false);
+                        SPTWEntity.GROUND_SLAM.perform(sptw, user);
+                        assertTrue(!world.getBlockState(campPos).getValue(net.minecraft.world.level.block.CampfireBlock.LIT),
+                                "SPTW_IGNITE_CAMPFIRES=false keeps unlit campfire unlit");
+                        net.arna.jcraft.common.config.JServerConfig.SPTW_IGNITE_CAMPFIRES.setValue(true);
+                        SPTWEntity.GROUND_SLAM.perform(sptw, user);
+                        assertTrue(world.getBlockState(campPos).getValue(net.minecraft.world.level.block.CampfireBlock.LIT),
+                                "SPTW_IGNITE_CAMPFIRES=true ignites nearby unlit campfire on Ground Slam");
+                        sptw.desummon();
+                    }
+                    world.setBlockAndUpdate(campPos, Blocks.AIR.defaultBlockState());
+
+                    // USE_FOOLISH_SAND gates TheFoolEntity.createFoolishSand
+                    JComponentPlatformUtils.getStandComponent(user).setType(JStandTypeRegistry.THE_FOOL.get());
+                    StandEntity<?, ?> foolStand = JCraft.summon(world, user);
+                    if (foolStand instanceof TheFoolEntity fool) {
+                        net.arna.jcraft.common.config.JServerConfig.USE_FOOLISH_SAND.setValue(false);
+                        BlockPos sandPos = BlockPos.containing(ARENA_X + 2.0, ARENA_Y + 2.0, ARENA_Z);
+                        int beforeSand = world.getEntitiesOfClass(net.minecraft.world.entity.item.FallingBlockEntity.class,
+                                new AABB(sandPos).inflate(3.0)).size();
+                        TheFoolEntity.createFoolishSand(world, fool, sandPos, Vec3.ZERO);
+                        int afterSand = world.getEntitiesOfClass(net.minecraft.world.entity.item.FallingBlockEntity.class,
+                                new AABB(sandPos).inflate(3.0)).size();
+                        assertTrue(afterSand == beforeSand, "USE_FOOLISH_SAND=false suppresses Foolish Sand spawning");
+                        fool.desummon();
+                    }
+                } finally {
+                    net.arna.jcraft.common.config.JServerConfig.UNIVERSAL_ABILITIES.setValue(prevUni);
+                    net.arna.jcraft.common.config.JServerConfig.USE_FOOLISH_SAND.setValue(prevSand);
+                    net.arna.jcraft.common.config.JServerConfig.SPTW_IGNITE_CAMPFIRES.setValue(prevCampfire);
+                    net.arna.jcraft.common.config.JServerConfig.RESET_GRAVITY_ON_RESPAWN.setValue(prevRespawnGrav);
+                    net.arna.jcraft.common.config.JServerConfig.VOID_DAMAGE_ABOVE_WORLD.setValue(prevVoidAbove);
+                    net.arna.jcraft.common.config.JServerConfig.syncGravityConfig();
+                }
 
                 finish(server);
             }

@@ -18,17 +18,17 @@ import java.util.Objects;
 import java.util.WeakHashMap;
 import java.util.function.Consumer;
 
-// TODO: fix time sync between server and client so it doesn't jump at the end
-
 /**
  * Packet sent to clients when MIH's time acceleration ult is used.
- * Sent either when the ult starts or when it (for some reason) gets cancelled.
- * Also sent to clients who joined during the use of the ult. (Or at least, it should be)
+ * Sent on start and stop (with authoritative server dayTime for smooth client ease-out resync).
  */
 public class TimeAccelStatePacket {
+    private static final int SMOOTH_RESYNC_TICKS = 20;
     private static final Int2ObjectMap<TimeAcceleration> accelerations = new Int2ObjectOpenHashMap<>();
     private static final Object lock = new Object();
     private static final WeakHashMap<Level, Long> startDayTime = new WeakHashMap<>();
+    private static final WeakHashMap<Level, Long> lastAppliedDayTime = new WeakHashMap<>();
+    private static final WeakHashMap<Level, SmoothTimeSync> smoothSyncs = new WeakHashMap<>();
 
     public static void init() {
         // Decrease all durations.
@@ -48,6 +48,31 @@ public class TimeAccelStatePacket {
         tick(null);
     }
 
+    public static boolean hasActiveAcceleration() {
+        synchronized (lock) {
+            return !accelerations.isEmpty();
+        }
+    }
+
+    public static float getMaxAccelerationIntensity() {
+        synchronized (lock) {
+            if (accelerations.isEmpty()) {
+                return 0.0f;
+            }
+            long now = System.currentTimeMillis();
+            double best = 0.0;
+            for (TimeAcceleration ta : accelerations.values()) {
+                double durMs = Math.max(50.0, ta.getInitialDuration() * 50.0);
+                double x = Mth.clamp((now - ta.getStartTime()) / durMs, 0.0, 1.0);
+                double curve = someBsArnaPutTogetherInDesmos(x);
+                if (curve > best) {
+                    best = curve;
+                }
+            }
+            return (float) Mth.clamp(best, 0.25, 1.0);
+        }
+    }
+
     public static void addAcceleration(final int mihEntityId, final int duration, final long startTime) {
         synchronized (lock) {
             accelerations.put(mihEntityId, new TimeAcceleration(duration, mihEntityId, startTime));
@@ -58,6 +83,29 @@ public class TimeAccelStatePacket {
         synchronized (lock) {
             accelerations.remove(mihEntityId);
         }
+    }
+
+    public static void finishAccelerationWithSmoothSync(final int mihEntityId, final Level clientWorld, final long authoritativeServerDayTime) {
+        synchronized (lock) {
+            accelerations.remove(mihEntityId);
+            if (clientWorld != null && accelerations.isEmpty() && authoritativeServerDayTime >= 0L) {
+                long from = lastAppliedDayTime.getOrDefault(clientWorld, net.arna.jcraft.common.util.JUtils.getDayTime(clientWorld));
+                if (from != authoritativeServerDayTime) {
+                    smoothSyncs.put(clientWorld, new SmoothTimeSync(from, authoritativeServerDayTime, SMOOTH_RESYNC_TICKS, SMOOTH_RESYNC_TICKS));
+                }
+            }
+        }
+    }
+
+    /**
+     * Cubic ease-out interpolation used to glide client dayTime smoothly onto the authoritative server dayTime
+     * at the end of Made in Heaven's Time Acceleration, avoiding any abrupt sun/moon snap.
+     */
+    public static long interpolateSmoothDayTime(final long fromDayTime, final long toDayTime, final float progress) {
+        final float p = Mth.clamp(progress, 0.0f, 1.0f);
+        final float inv = 1.0f - p;
+        final float eased = 1.0f - inv * inv * inv;
+        return fromDayTime + Math.round((toDayTime - fromDayTime) * (double) eased);
     }
 
     public static void sendStart(@NonNull final MadeInHeavenEntity mih, int duration) {
@@ -88,10 +136,12 @@ public class TimeAccelStatePacket {
 
     public static void sendStop(@NonNull final MadeInHeavenEntity mih) {
         final var server = Objects.requireNonNull(mih.level().getServer());
+        final long finalDayTime = net.arna.jcraft.common.util.JUtils.getDayTime(mih.level());
         if (server.isDedicatedServer() || server.isPublished()) {
             final FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
             buf.writeEnum(State.STOP);
             buf.writeVarInt(mih.getId());
+            buf.writeLong(finalDayTime);
 
             var recipients = ((ServerLevel) mih.level()).players().stream()
                     .filter(p -> server.isDedicatedServer() || !server.isSingleplayerOwner(p.nameAndId()))
@@ -117,23 +167,39 @@ public class TimeAccelStatePacket {
     }
 
     public static void applyAcceleration(Level world, Consumer<Long> dayTimeSetter) {
-        if (accelerations.isEmpty()) {
-            startDayTime.put(world, -1L);
-            return;
+        synchronized (lock) {
+            if (accelerations.isEmpty()) {
+                startDayTime.put(world, -1L);
+                SmoothTimeSync sync = smoothSyncs.get(world);
+                if (sync != null) {
+                    float progress = 1.0f - (sync.ticksRemaining / (float) Math.max(1, sync.totalTicks));
+                    long smoothed = interpolateSmoothDayTime(sync.fromDayTime, sync.targetDayTime, progress);
+                    lastAppliedDayTime.put(world, smoothed);
+                    dayTimeSetter.accept(smoothed);
+                    sync.ticksRemaining--;
+                    if (sync.ticksRemaining < 0) {
+                        smoothSyncs.remove(world);
+                    }
+                }
+                return;
+            }
+
+            smoothSyncs.remove(world);
+            long start = startDayTime.getOrDefault(world, -1L);
+            if (start < 0) {
+                startDayTime.put(world, start = net.arna.jcraft.common.util.JUtils.getDayTime(world));
+            }
+
+            long total = accelerations.values().stream()
+                    .filter(ta -> ta.isValid(world))
+                    .mapToLong(ta -> (long) Mth.lerp(integralOfSomeBsArnaPutTogetherInDesmos(Math.min(1,
+                            (System.currentTimeMillis() - ta.getStartTime()) / (ta.getInitialDuration() * 50d))), 0, 240000))
+                    .sum();
+
+            long nextTime = start + total;
+            lastAppliedDayTime.put(world, nextTime);
+            dayTimeSetter.accept(nextTime);
         }
-
-        long start = startDayTime.getOrDefault(world, -1L);
-        if (start < 0) {
-            startDayTime.put(world, start = net.arna.jcraft.common.util.JUtils.getDayTime(world));
-        }
-
-        long total = accelerations.values().stream()
-                .filter(ta -> ta.isValid(world))
-                .mapToLong(ta -> (long) Mth.lerp(integralOfSomeBsArnaPutTogetherInDesmos(Math.min(1,
-                        (System.currentTimeMillis() - ta.getStartTime()) / (ta.getInitialDuration() * 50d))), 0, 240000))
-                .sum();
-
-        dayTimeSetter.accept(start + total);
     }
 
     private static void tick(Object o) {
@@ -158,6 +224,20 @@ public class TimeAccelStatePacket {
 
     public enum State {
         START, STOP
+    }
+
+    private static final class SmoothTimeSync {
+        final long fromDayTime;
+        final long targetDayTime;
+        int ticksRemaining;
+        final int totalTicks;
+
+        SmoothTimeSync(long fromDayTime, long targetDayTime, int ticksRemaining, int totalTicks) {
+            this.fromDayTime = fromDayTime;
+            this.targetDayTime = targetDayTime;
+            this.ticksRemaining = ticksRemaining;
+            this.totalTicks = totalTicks;
+        }
     }
 
     @Data

@@ -9,6 +9,7 @@ import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
 import net.arna.jcraft.api.attack.enums.MobilityType;
 import net.arna.jcraft.api.registry.JStatusRegistry;
+import net.arna.jcraft.common.config.JServerConfig;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -39,7 +40,10 @@ public final class GravitationalHopMove<A extends IAttacker<? extends A, ?>> ext
             if (user.hasEffect(JStatusRegistry.WEIGHTLESS.asHolder())) {
                 user.removeEffect(JStatusRegistry.WEIGHTLESS.asHolder());
             }
-            user.addEffect(new MobEffectInstance(JStatusRegistry.WEIGHTLESS.asHolder(), getWeightlessDuration(), 1));
+            final int configuredDuration = JServerConfig.CMOON_UTIL_DURATION.getValue();
+            if (configuredDuration > 0) {
+                user.addEffect(new MobEffectInstance(JStatusRegistry.WEIGHTLESS.asHolder(), configuredDuration, 1));
+            }
         } else {
             user.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, getSlowFallingDuration(), 1));
             user.push(0, 1.0, 0);

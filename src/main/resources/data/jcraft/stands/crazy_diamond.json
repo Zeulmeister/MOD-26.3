@@ -1,15 +1,23 @@
 {
   "idle_rotation": -45.0,
   "info": {
-    "con_count": 0,
+    "con_count": 2,
     "free_space": {
       "translate": "entity.jcraft.crazydiamond.info.freeSpace"
     },
     "name": {
       "translate": "entity.jcraft.crazydiamond"
     },
-    "pro_count": 0,
-    "skin_names": []
+    "pro_count": 4,
+    "skin_names": [
+      {
+        "translate": "entity.jcraft.crazydiamond.info.skin1"
+      }
+    ]
   },
-  "obtainable": false
+  "summon_data": {
+    "sound": {
+      "sound_id": "jcraft:gesummon"
+    }
+  }
 }

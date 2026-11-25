@@ -23,6 +23,7 @@ public class JClientConfig implements ConfigData {
     // private boolean clientsidePrediction = false;
     private int horizontalHudOffset = 0;
     private int verticalHudOffset = 0;
+    private float hudScale = 1.0f;
     private boolean iconHudPeekAllMoves = true;
     private boolean iconHud = true;
     private boolean animeHudEnabled = true;
@@ -41,6 +42,10 @@ public class JClientConfig implements ConfigData {
     private boolean showStandUserWarningPlayer = true;
     private boolean showStandUserWarningMob = true;
     private boolean disableMihAfterimages = false;
+
+    public float getClampedHudScale() {
+        return net.minecraft.util.Mth.clamp(this.hudScale, 0.75f, 1.50f);
+    }
 
     public static void load() {
         instance = AutoConfig.getConfigHolder(JClientConfig.class).getConfig();

@@ -1,0 +1,37 @@
+name: Build & Verify JCraft 26.3
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build, validate AccessWidener & run verifyMod (Dedicated-Server Isolation Gate)
+        run: ./gradlew clean build --no-daemon --console=plain
+
+      - name: Verify reproducible JAR artifact exists
+        run: ls -lh build/libs/jcraft-fabric-26.3-*.jar
+
+      - name: Upload built mod JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: jcraft-fabric-26.3
+          path: build/libs/jcraft-fabric-26.3-*.jar
+          if-no-files-found: error

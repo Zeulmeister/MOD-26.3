@@ -429,6 +429,7 @@ public class HamonSpec extends JSpec<HamonSpec, HamonSpec.State> {
         hamon.resetLastSendoed();
         hamon.resetLastSendoAired();
         hamon.resetLastStomped();
+        hamon.setLastHamonMove(CommonHamonComponent.HamonMoveStep.NONE);
         if (user instanceof final ServerPlayer player) {
             JUtils.revokeAdvancement(player, Hamon1Trigger.ID);
             JUtils.revokeAdvancement(player, Hamon2Trigger.ID);

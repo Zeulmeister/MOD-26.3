@@ -1,70 +1,1738 @@
 {
-	"format_version": "1.8.0",
-	"animations": {
-		"animation.silver_chariot_requiem.pose": {
-			"loop": true,
-			"bones": {
-				"legRight": {
-					"rotation": {
-						"vector": [7.82902, 7.49282, 2.52154]
-					}
-				},
-				"lower_legRight": {
-					"rotation": {
-						"vector": [5, 0, 0]
-					}
-				},
-				"legLeft": {
-					"rotation": {
-						"vector": [-4.77914, -5.10425, -2.50757]
-					}
-				},
-				"lower_legLeft": {
-					"rotation": {
-						"vector": [2.5, 0, 0]
-					}
-				},
-				"body": {
-					"rotation": {
-						"vector": [5, 0, 0]
-					}
-				},
-				"upperBody": {
-					"rotation": {
-						"vector": [0, 0, 0]
-					}
-				},
-				"head": {
-					"rotation": {
-						"vector": [5, 0, 0]
-					}
-				},
-				"leaf": {
-					"rotation": {
-						"vector": [0.96671, -14.50011, -5.57712]
-					}
-				},
-				"armRight": {
-					"rotation": {
-						"vector": [8.80349, 4.88607, 10.0272]
-					}
-				},
-				"lower_armRight": {
-					"rotation": {
-						"vector": [-20, 0, 0]
-					}
-				},
-				"armLeft": {
-					"rotation": {
-						"vector": [13.27109, -14.25665, -8.49589]
-					}
-				},
-				"lower_armLeft": {
-					"rotation": {
-						"vector": [-15, 0, 0]
-					}
-				}
-			}
-		}
-	}
+    "format_version":  "1.8.0",
+    "animations":  {
+                       "animation.silver_chariot_requiem.pose":  {
+                                                                     "loop":  true,
+                                                                     "bones":  {
+                                                                                   "legRight":  {
+                                                                                                    "rotation":  {
+                                                                                                                     "vector":  [
+                                                                                                                                    7.82902,
+                                                                                                                                    7.49282,
+                                                                                                                                    2.52154
+                                                                                                                                ]
+                                                                                                                 }
+                                                                                                },
+                                                                                   "lower_legRight":  {
+                                                                                                          "rotation":  {
+                                                                                                                           "vector":  [
+                                                                                                                                          5,
+                                                                                                                                          0,
+                                                                                                                                          0
+                                                                                                                                      ]
+                                                                                                                       }
+                                                                                                      },
+                                                                                   "legLeft":  {
+                                                                                                   "rotation":  {
+                                                                                                                    "vector":  [
+                                                                                                                                   -4.77914,
+                                                                                                                                   -5.10425,
+                                                                                                                                   -2.50757
+                                                                                                                               ]
+                                                                                                                }
+                                                                                               },
+                                                                                   "lower_legLeft":  {
+                                                                                                         "rotation":  {
+                                                                                                                          "vector":  [
+                                                                                                                                         2.5,
+                                                                                                                                         0,
+                                                                                                                                         0
+                                                                                                                                     ]
+                                                                                                                      }
+                                                                                                     },
+                                                                                   "body":  {
+                                                                                                "rotation":  {
+                                                                                                                 "vector":  [
+                                                                                                                                5,
+                                                                                                                                0,
+                                                                                                                                0
+                                                                                                                            ]
+                                                                                                             }
+                                                                                            },
+                                                                                   "upperBody":  {
+                                                                                                     "rotation":  {
+                                                                                                                      "vector":  [
+                                                                                                                                     0,
+                                                                                                                                     0,
+                                                                                                                                     0
+                                                                                                                                 ]
+                                                                                                                  }
+                                                                                                 },
+                                                                                   "head":  {
+                                                                                                "rotation":  {
+                                                                                                                 "vector":  [
+                                                                                                                                5,
+                                                                                                                                0,
+                                                                                                                                0
+                                                                                                                            ]
+                                                                                                             }
+                                                                                            },
+                                                                                   "leaf":  {
+                                                                                                "rotation":  {
+                                                                                                                 "vector":  [
+                                                                                                                                0.96671,
+                                                                                                                                -14.50011,
+                                                                                                                                -5.57712
+                                                                                                                            ]
+                                                                                                             }
+                                                                                            },
+                                                                                   "armRight":  {
+                                                                                                    "rotation":  {
+                                                                                                                     "vector":  [
+                                                                                                                                    8.80349,
+                                                                                                                                    4.88607,
+                                                                                                                                    10.0272
+                                                                                                                                ]
+                                                                                                                 }
+                                                                                                },
+                                                                                   "lower_armRight":  {
+                                                                                                          "rotation":  {
+                                                                                                                           "vector":  [
+                                                                                                                                          -20,
+                                                                                                                                          0,
+                                                                                                                                          0
+                                                                                                                                      ]
+                                                                                                                       }
+                                                                                                      },
+                                                                                   "armLeft":  {
+                                                                                                   "rotation":  {
+                                                                                                                    "vector":  [
+                                                                                                                                   13.27109,
+                                                                                                                                   -14.25665,
+                                                                                                                                   -8.49589
+                                                                                                                               ]
+                                                                                                                }
+                                                                                               },
+                                                                                   "lower_armLeft":  {
+                                                                                                         "rotation":  {
+                                                                                                                          "vector":  [
+                                                                                                                                         -15,
+                                                                                                                                         0,
+                                                                                                                                         0
+                                                                                                                                     ]
+                                                                                                                      }
+                                                                                                     }
+                                                                               }
+                                                                 },
+                       "idle":  {
+                                    "loop":  true,
+                                    "animation_length":  3.2,
+                                    "bones":  {
+                                                  "torso":  {
+                                                                "position":  {
+                                                                                 "0.0":  {
+                                                                                             "vector":  [
+                                                                                                            0,
+                                                                                                            0.4,
+                                                                                                            0
+                                                                                                        ]
+                                                                                         },
+                                                                                 "1.6":  {
+                                                                                             "vector":  [
+                                                                                                            0,
+                                                                                                            -0.3,
+                                                                                                            0
+                                                                                                        ]
+                                                                                         },
+                                                                                 "3.2":  {
+                                                                                             "vector":  [
+                                                                                                            0,
+                                                                                                            0.4,
+                                                                                                            0
+                                                                                                        ]
+                                                                                         }
+                                                                             }
+                                                            },
+                                                  "body":  {
+                                                               "rotation":  {
+                                                                                "vector":  [
+                                                                                               5,
+                                                                                               0,
+                                                                                               0
+                                                                                           ]
+                                                                            }
+                                                           },
+                                                  "head":  {
+                                                               "rotation":  {
+                                                                                "0.0":  {
+                                                                                            "vector":  [
+                                                                                                           7,
+                                                                                                           0,
+                                                                                                           0
+                                                                                                       ]
+                                                                                        },
+                                                                                "1.6":  {
+                                                                                            "vector":  [
+                                                                                                           11,
+                                                                                                           0,
+                                                                                                           0
+                                                                                                       ]
+                                                                                        },
+                                                                                "3.2":  {
+                                                                                            "vector":  [
+                                                                                                           7,
+                                                                                                           0,
+                                                                                                           0
+                                                                                                       ]
+                                                                                        }
+                                                                            }
+                                                           },
+                                                  "leaf":  {
+                                                               "rotation":  {
+                                                                                "0.0":  {
+                                                                                            "vector":  [
+                                                                                                           1,
+                                                                                                           -14,
+                                                                                                           -5
+                                                                                                       ]
+                                                                                        },
+                                                                                "1.6":  {
+                                                                                            "vector":  [
+                                                                                                           4,
+                                                                                                           -10,
+                                                                                                           -9
+                                                                                                       ]
+                                                                                        },
+                                                                                "3.2":  {
+                                                                                            "vector":  [
+                                                                                                           1,
+                                                                                                           -14,
+                                                                                                           -5
+                                                                                                       ]
+                                                                                        }
+                                                                            }
+                                                           },
+                                                  "armRight":  {
+                                                                   "rotation":  {
+                                                                                    "vector":  [
+                                                                                                   9,
+                                                                                                   5,
+                                                                                                   10
+                                                                                               ]
+                                                                                }
+                                                               },
+                                                  "lower_armRight":  {
+                                                                         "rotation":  {
+                                                                                          "vector":  [
+                                                                                                         -22,
+                                                                                                         0,
+                                                                                                         0
+                                                                                                     ]
+                                                                                      }
+                                                                     },
+                                                  "armLeft":  {
+                                                                  "rotation":  {
+                                                                                   "vector":  [
+                                                                                                  13,
+                                                                                                  -14,
+                                                                                                  -9
+                                                                                              ]
+                                                                               }
+                                                              },
+                                                  "lower_armLeft":  {
+                                                                        "rotation":  {
+                                                                                         "vector":  [
+                                                                                                        -18,
+                                                                                                        0,
+                                                                                                        0
+                                                                                                    ]
+                                                                                     }
+                                                                    },
+                                                  "legRight":  {
+                                                                   "rotation":  {
+                                                                                    "vector":  [
+                                                                                                   8,
+                                                                                                   7,
+                                                                                                   2.5
+                                                                                               ]
+                                                                                }
+                                                               },
+                                                  "lower_legRight":  {
+                                                                         "rotation":  {
+                                                                                          "vector":  [
+                                                                                                         6,
+                                                                                                         0,
+                                                                                                         0
+                                                                                                     ]
+                                                                                      }
+                                                                     },
+                                                  "legLeft":  {
+                                                                  "rotation":  {
+                                                                                   "vector":  [
+                                                                                                  -5,
+                                                                                                  -5,
+                                                                                                  -2.5
+                                                                                              ]
+                                                                               }
+                                                              },
+                                                  "lower_legLeft":  {
+                                                                        "rotation":  {
+                                                                                         "vector":  [
+                                                                                                        4,
+                                                                                                        0,
+                                                                                                        0
+                                                                                                    ]
+                                                                                     }
+                                                                    }
+                                              }
+                                },
+                       "summon":  {
+                                      "loop":  "hold_on_last_frame",
+                                      "animation_length":  0.8,
+                                      "bones":  {
+                                                    "torso":  {
+                                                                  "position":  {
+                                                                                   "0.0":  {
+                                                                                               "vector":  [
+                                                                                                              0,
+                                                                                                              -4,
+                                                                                                              2
+                                                                                                          ]
+                                                                                           },
+                                                                                   "0.55":  {
+                                                                                                "vector":  [
+                                                                                                               0,
+                                                                                                               0.6,
+                                                                                                               0
+                                                                                                           ]
+                                                                                            },
+                                                                                   "0.8":  {
+                                                                                               "vector":  [
+                                                                                                              0,
+                                                                                                              0.4,
+                                                                                                              0
+                                                                                                          ]
+                                                                                           }
+                                                                               }
+                                                              },
+                                                    "head":  {
+                                                                 "rotation":  {
+                                                                                  "0.0":  {
+                                                                                              "vector":  [
+                                                                                                             26,
+                                                                                                             0,
+                                                                                                             0
+                                                                                                         ]
+                                                                                          },
+                                                                                  "0.6":  {
+                                                                                              "vector":  [
+                                                                                                             6,
+                                                                                                             0,
+                                                                                                             0
+                                                                                                         ]
+                                                                                          }
+                                                                              }
+                                                             },
+                                                    "armRight":  {
+                                                                     "rotation":  {
+                                                                                      "0.0":  {
+                                                                                                  "vector":  [
+                                                                                                                 -10,
+                                                                                                                 0,
+                                                                                                                 48
+                                                                                                             ]
+                                                                                              },
+                                                                                      "0.6":  {
+                                                                                                  "vector":  [
+                                                                                                                 9,
+                                                                                                                 5,
+                                                                                                                 10
+                                                                                                             ]
+                                                                                              }
+                                                                                  }
+                                                                 },
+                                                    "armLeft":  {
+                                                                    "rotation":  {
+                                                                                     "0.0":  {
+                                                                                                 "vector":  [
+                                                                                                                -10,
+                                                                                                                0,
+                                                                                                                -48
+                                                                                                            ]
+                                                                                             },
+                                                                                     "0.6":  {
+                                                                                                 "vector":  [
+                                                                                                                13,
+                                                                                                                -14,
+                                                                                                                -9
+                                                                                                            ]
+                                                                                             }
+                                                                                 }
+                                                                }
+                                                }
+                                  },
+                       "block":  {
+                                     "loop":  true,
+                                     "animation_length":  1.6,
+                                     "bones":  {
+                                                   "body":  {
+                                                                "rotation":  {
+                                                                                 "vector":  [
+                                                                                                8,
+                                                                                                0,
+                                                                                                0
+                                                                                            ]
+                                                                             }
+                                                            },
+                                                   "head":  {
+                                                                "rotation":  {
+                                                                                 "vector":  [
+                                                                                                14,
+                                                                                                0,
+                                                                                                0
+                                                                                            ]
+                                                                             }
+                                                            },
+                                                   "armRight":  {
+                                                                    "rotation":  {
+                                                                                     "vector":  [
+                                                                                                    -58,
+                                                                                                    -24,
+                                                                                                    22
+                                                                                                ]
+                                                                                 }
+                                                                },
+                                                   "lower_armRight":  {
+                                                                          "rotation":  {
+                                                                                           "vector":  [
+                                                                                                          -65,
+                                                                                                          0,
+                                                                                                          0
+                                                                                                      ]
+                                                                                       }
+                                                                      },
+                                                   "armLeft":  {
+                                                                   "rotation":  {
+                                                                                    "vector":  [
+                                                                                                   -58,
+                                                                                                   24,
+                                                                                                   -22
+                                                                                               ]
+                                                                                }
+                                                               },
+                                                   "lower_armLeft":  {
+                                                                         "rotation":  {
+                                                                                          "vector":  [
+                                                                                                         -65,
+                                                                                                         0,
+                                                                                                         0
+                                                                                                     ]
+                                                                                      }
+                                                                     }
+                                               }
+                                 },
+                       "light":  {
+                                     "loop":  "hold_on_last_frame",
+                                     "animation_length":  0.55,
+                                     "bones":  {
+                                                   "torso":  {
+                                                                 "position":  {
+                                                                                  "0.0":  {
+                                                                                              "vector":  [
+                                                                                                             0,
+                                                                                                             0,
+                                                                                                             1
+                                                                                                         ]
+                                                                                          },
+                                                                                  "0.28":  {
+                                                                                               "vector":  [
+                                                                                                              0,
+                                                                                                              0,
+                                                                                                              -3.5
+                                                                                                          ]
+                                                                                           }
+                                                                              },
+                                                                 "rotation":  {
+                                                                                  "0.0":  {
+                                                                                              "vector":  [
+                                                                                                             0,
+                                                                                                             -18,
+                                                                                                             0
+                                                                                                         ]
+                                                                                          },
+                                                                                  "0.28":  {
+                                                                                               "vector":  [
+                                                                                                              6,
+                                                                                                              28,
+                                                                                                              0
+                                                                                                          ]
+                                                                                           },
+                                                                                  "0.5":  {
+                                                                                              "vector":  [
+                                                                                                             4,
+                                                                                                             16,
+                                                                                                             0
+                                                                                                         ]
+                                                                                          }
+                                                                              }
+                                                             },
+                                                   "armRight":  {
+                                                                    "rotation":  {
+                                                                                     "0.0":  {
+                                                                                                 "vector":  [
+                                                                                                                -22,
+                                                                                                                12,
+                                                                                                                24
+                                                                                                            ]
+                                                                                             },
+                                                                                     "0.28":  {
+                                                                                                  "vector":  [
+                                                                                                                 -92,
+                                                                                                                 -16,
+                                                                                                                 12
+                                                                                                             ]
+                                                                                              }
+                                                                                 }
+                                                                },
+                                                   "lower_armRight":  {
+                                                                          "rotation":  {
+                                                                                           "0.0":  {
+                                                                                                       "vector":  [
+                                                                                                                      -72,
+                                                                                                                      0,
+                                                                                                                      0
+                                                                                                                  ]
+                                                                                                   },
+                                                                                           "0.28":  {
+                                                                                                        "vector":  [
+                                                                                                                       -12,
+                                                                                                                       0,
+                                                                                                                       0
+                                                                                                                   ]
+                                                                                                    }
+                                                                                       }
+                                                                      },
+                                                   "armLeft":  {
+                                                                   "rotation":  {
+                                                                                    "vector":  [
+                                                                                                   18,
+                                                                                                   -14,
+                                                                                                   -24
+                                                                                               ]
+                                                                                }
+                                                               },
+                                                   "head":  {
+                                                                "rotation":  {
+                                                                                 "0.0":  {
+                                                                                             "vector":  [
+                                                                                                            8,
+                                                                                                            14,
+                                                                                                            0
+                                                                                                        ]
+                                                                                         },
+                                                                                 "0.28":  {
+                                                                                              "vector":  [
+                                                                                                             6,
+                                                                                                             -20,
+                                                                                                             0
+                                                                                                         ]
+                                                                                          }
+                                                                             }
+                                                            }
+                                               }
+                                 },
+                       "light_followup":  {
+                                              "loop":  "hold_on_last_frame",
+                                              "animation_length":  0.7,
+                                              "bones":  {
+                                                            "torso":  {
+                                                                          "position":  {
+                                                                                           "0.0":  {
+                                                                                                       "vector":  [
+                                                                                                                      0,
+                                                                                                                      0,
+                                                                                                                      1
+                                                                                                                  ]
+                                                                                                   },
+                                                                                           "0.3":  {
+                                                                                                       "vector":  [
+                                                                                                                      0,
+                                                                                                                      0,
+                                                                                                                      -4
+                                                                                                                  ]
+                                                                                                   }
+                                                                                       },
+                                                                          "rotation":  {
+                                                                                           "0.0":  {
+                                                                                                       "vector":  [
+                                                                                                                      4,
+                                                                                                                      24,
+                                                                                                                      0
+                                                                                                                  ]
+                                                                                                   },
+                                                                                           "0.3":  {
+                                                                                                       "vector":  [
+                                                                                                                      8,
+                                                                                                                      -30,
+                                                                                                                      0
+                                                                                                                  ]
+                                                                                                   },
+                                                                                           "0.65":  {
+                                                                                                        "vector":  [
+                                                                                                                       4,
+                                                                                                                       -14,
+                                                                                                                       0
+                                                                                                                   ]
+                                                                                                    }
+                                                                                       }
+                                                                      },
+                                                            "armLeft":  {
+                                                                            "rotation":  {
+                                                                                             "0.0":  {
+                                                                                                         "vector":  [
+                                                                                                                        -28,
+                                                                                                                        -12,
+                                                                                                                        -34
+                                                                                                                    ]
+                                                                                                     },
+                                                                                             "0.3":  {
+                                                                                                         "vector":  [
+                                                                                                                        -90,
+                                                                                                                        14,
+                                                                                                                        -10
+                                                                                                                    ]
+                                                                                                     }
+                                                                                         }
+                                                                        },
+                                                            "lower_armLeft":  {
+                                                                                  "rotation":  {
+                                                                                                   "0.0":  {
+                                                                                                               "vector":  [
+                                                                                                                              -78,
+                                                                                                                              0,
+                                                                                                                              0
+                                                                                                                          ]
+                                                                                                           },
+                                                                                                   "0.3":  {
+                                                                                                               "vector":  [
+                                                                                                                              -10,
+                                                                                                                              0,
+                                                                                                                              0
+                                                                                                                          ]
+                                                                                                           }
+                                                                                               }
+                                                                              },
+                                                            "armRight":  {
+                                                                             "rotation":  {
+                                                                                              "vector":  [
+                                                                                                             28,
+                                                                                                             16,
+                                                                                                             28
+                                                                                                         ]
+                                                                                          }
+                                                                         },
+                                                            "head":  {
+                                                                         "rotation":  {
+                                                                                          "0.0":  {
+                                                                                                      "vector":  [
+                                                                                                                     6,
+                                                                                                                     -18,
+                                                                                                                     0
+                                                                                                                 ]
+                                                                                                  },
+                                                                                          "0.3":  {
+                                                                                                      "vector":  [
+                                                                                                                     6,
+                                                                                                                     22,
+                                                                                                                     0
+                                                                                                                 ]
+                                                                                                  }
+                                                                                      }
+                                                                     }
+                                                        }
+                                          },
+                       "heavy":  {
+                                     "loop":  "hold_on_last_frame",
+                                     "animation_length":  1.3,
+                                     "bones":  {
+                                                   "torso":  {
+                                                                 "position":  {
+                                                                                  "0.0":  {
+                                                                                              "vector":  [
+                                                                                                             0,
+                                                                                                             1,
+                                                                                                             2
+                                                                                                         ]
+                                                                                          },
+                                                                                  "0.55":  {
+                                                                                               "vector":  [
+                                                                                                              0,
+                                                                                                              3.5,
+                                                                                                              3
+                                                                                                          ]
+                                                                                           },
+                                                                                  "0.8":  {
+                                                                                              "vector":  [
+                                                                                                             0,
+                                                                                                             -2,
+                                                                                                             -5
+                                                                                                         ]
+                                                                                          }
+                                                                              },
+                                                                 "rotation":  {
+                                                                                  "0.0":  {
+                                                                                              "vector":  [
+                                                                                                             -8,
+                                                                                                             0,
+                                                                                                             0
+                                                                                                         ]
+                                                                                          },
+                                                                                  "0.55":  {
+                                                                                               "vector":  [
+                                                                                                              -22,
+                                                                                                              -25,
+                                                                                                              0
+                                                                                                          ]
+                                                                                           },
+                                                                                  "0.8":  {
+                                                                                              "vector":  [
+                                                                                                             26,
+                                                                                                             18,
+                                                                                                             0
+                                                                                                         ]
+                                                                                          },
+                                                                                  "1.25":  {
+                                                                                               "vector":  [
+                                                                                                              12,
+                                                                                                              8,
+                                                                                                              0
+                                                                                                          ]
+                                                                                           }
+                                                                              }
+                                                             },
+                                                   "armRight":  {
+                                                                    "rotation":  {
+                                                                                     "0.0":  {
+                                                                                                 "vector":  [
+                                                                                                                -45,
+                                                                                                                0,
+                                                                                                                22
+                                                                                                            ]
+                                                                                             },
+                                                                                     "0.55":  {
+                                                                                                  "vector":  [
+                                                                                                                 -148,
+                                                                                                                 10,
+                                                                                                                 18
+                                                                                                             ]
+                                                                                              },
+                                                                                     "0.8":  {
+                                                                                                 "vector":  [
+                                                                                                                -46,
+                                                                                                                -14,
+                                                                                                                14
+                                                                                                            ]
+                                                                                             }
+                                                                                 }
+                                                                },
+                                                   "lower_armRight":  {
+                                                                          "rotation":  {
+                                                                                           "0.0":  {
+                                                                                                       "vector":  [
+                                                                                                                      -40,
+                                                                                                                      0,
+                                                                                                                      0
+                                                                                                                  ]
+                                                                                                   },
+                                                                                           "0.8":  {
+                                                                                                       "vector":  [
+                                                                                                                      -15,
+                                                                                                                      0,
+                                                                                                                      0
+                                                                                                                  ]
+                                                                                                   }
+                                                                                       }
+                                                                      },
+                                                   "armLeft":  {
+                                                                   "rotation":  {
+                                                                                    "0.0":  {
+                                                                                                "vector":  [
+                                                                                                               -45,
+                                                                                                               0,
+                                                                                                               -22
+                                                                                                           ]
+                                                                                            },
+                                                                                    "0.55":  {
+                                                                                                 "vector":  [
+                                                                                                                -148,
+                                                                                                                -10,
+                                                                                                                -18
+                                                                                                            ]
+                                                                                             },
+                                                                                    "0.8":  {
+                                                                                                "vector":  [
+                                                                                                               -46,
+                                                                                                               14,
+                                                                                                               -14
+                                                                                                           ]
+                                                                                            }
+                                                                                }
+                                                               },
+                                                   "lower_armLeft":  {
+                                                                         "rotation":  {
+                                                                                          "0.0":  {
+                                                                                                      "vector":  [
+                                                                                                                     -40,
+                                                                                                                     0,
+                                                                                                                     0
+                                                                                                                 ]
+                                                                                                  },
+                                                                                          "0.8":  {
+                                                                                                      "vector":  [
+                                                                                                                     -15,
+                                                                                                                     0,
+                                                                                                                     0
+                                                                                                                 ]
+                                                                                                  }
+                                                                                      }
+                                                                     },
+                                                   "head":  {
+                                                                "rotation":  {
+                                                                                 "0.0":  {
+                                                                                             "vector":  [
+                                                                                                            4,
+                                                                                                            0,
+                                                                                                            0
+                                                                                                        ]
+                                                                                         },
+                                                                                 "0.55":  {
+                                                                                              "vector":  [
+                                                                                                             -12,
+                                                                                                             18,
+                                                                                                             0
+                                                                                                         ]
+                                                                                          },
+                                                                                 "0.8":  {
+                                                                                             "vector":  [
+                                                                                                            18,
+                                                                                                            -10,
+                                                                                                            0
+                                                                                                        ]
+                                                                                         }
+                                                                             }
+                                                            }
+                                               }
+                                 },
+                       "barrage":  {
+                                       "loop":  true,
+                                       "animation_length":  0.6,
+                                       "bones":  {
+                                                     "torso":  {
+                                                                   "position":  {
+                                                                                    "vector":  [
+                                                                                                   0,
+                                                                                                   0,
+                                                                                                   -2
+                                                                                               ]
+                                                                                },
+                                                                   "rotation":  {
+                                                                                    "0.0":  {
+                                                                                                "vector":  [
+                                                                                                               10,
+                                                                                                               -18,
+                                                                                                               0
+                                                                                                           ]
+                                                                                            },
+                                                                                    "0.15":  {
+                                                                                                 "vector":  [
+                                                                                                                10,
+                                                                                                                18,
+                                                                                                                0
+                                                                                                            ]
+                                                                                             },
+                                                                                    "0.3":  {
+                                                                                                "vector":  [
+                                                                                                               10,
+                                                                                                               -18,
+                                                                                                               0
+                                                                                                           ]
+                                                                                            },
+                                                                                    "0.45":  {
+                                                                                                 "vector":  [
+                                                                                                                10,
+                                                                                                                18,
+                                                                                                                0
+                                                                                                            ]
+                                                                                             },
+                                                                                    "0.6":  {
+                                                                                                "vector":  [
+                                                                                                               10,
+                                                                                                               -18,
+                                                                                                               0
+                                                                                                           ]
+                                                                                            }
+                                                                                }
+                                                               },
+                                                     "armRight":  {
+                                                                      "rotation":  {
+                                                                                       "0.0":  {
+                                                                                                   "vector":  [
+                                                                                                                  -88,
+                                                                                                                  -10,
+                                                                                                                  10
+                                                                                                              ]
+                                                                                               },
+                                                                                       "0.15":  {
+                                                                                                    "vector":  [
+                                                                                                                   24,
+                                                                                                                   14,
+                                                                                                                   32
+                                                                                                               ]
+                                                                                                },
+                                                                                       "0.3":  {
+                                                                                                   "vector":  [
+                                                                                                                  -88,
+                                                                                                                  -10,
+                                                                                                                  10
+                                                                                                              ]
+                                                                                               },
+                                                                                       "0.45":  {
+                                                                                                    "vector":  [
+                                                                                                                   24,
+                                                                                                                   14,
+                                                                                                                   32
+                                                                                                               ]
+                                                                                                },
+                                                                                       "0.6":  {
+                                                                                                   "vector":  [
+                                                                                                                  -88,
+                                                                                                                  -10,
+                                                                                                                  10
+                                                                                                              ]
+                                                                                               }
+                                                                                   }
+                                                                  },
+                                                     "lower_armRight":  {
+                                                                            "rotation":  {
+                                                                                             "0.0":  {
+                                                                                                         "vector":  [
+                                                                                                                        -12,
+                                                                                                                        0,
+                                                                                                                        0
+                                                                                                                    ]
+                                                                                                     },
+                                                                                             "0.15":  {
+                                                                                                          "vector":  [
+                                                                                                                         -85,
+                                                                                                                         0,
+                                                                                                                         0
+                                                                                                                     ]
+                                                                                                      },
+                                                                                             "0.3":  {
+                                                                                                         "vector":  [
+                                                                                                                        -12,
+                                                                                                                        0,
+                                                                                                                        0
+                                                                                                                    ]
+                                                                                                     },
+                                                                                             "0.45":  {
+                                                                                                          "vector":  [
+                                                                                                                         -85,
+                                                                                                                         0,
+                                                                                                                         0
+                                                                                                                     ]
+                                                                                                      },
+                                                                                             "0.6":  {
+                                                                                                         "vector":  [
+                                                                                                                        -12,
+                                                                                                                        0,
+                                                                                                                        0
+                                                                                                                    ]
+                                                                                                     }
+                                                                                         }
+                                                                        },
+                                                     "armLeft":  {
+                                                                     "rotation":  {
+                                                                                      "0.0":  {
+                                                                                                  "vector":  [
+                                                                                                                 24,
+                                                                                                                 -14,
+                                                                                                                 -32
+                                                                                                             ]
+                                                                                              },
+                                                                                      "0.15":  {
+                                                                                                   "vector":  [
+                                                                                                                  -88,
+                                                                                                                  10,
+                                                                                                                  -10
+                                                                                                              ]
+                                                                                               },
+                                                                                      "0.3":  {
+                                                                                                  "vector":  [
+                                                                                                                 24,
+                                                                                                                 -14,
+                                                                                                                 -32
+                                                                                                             ]
+                                                                                              },
+                                                                                      "0.45":  {
+                                                                                                   "vector":  [
+                                                                                                                  -88,
+                                                                                                                  10,
+                                                                                                                  -10
+                                                                                                              ]
+                                                                                               },
+                                                                                      "0.6":  {
+                                                                                                  "vector":  [
+                                                                                                                 24,
+                                                                                                                 -14,
+                                                                                                                 -32
+                                                                                                             ]
+                                                                                              }
+                                                                                  }
+                                                                 },
+                                                     "lower_armLeft":  {
+                                                                           "rotation":  {
+                                                                                            "0.0":  {
+                                                                                                        "vector":  [
+                                                                                                                       -85,
+                                                                                                                       0,
+                                                                                                                       0
+                                                                                                                   ]
+                                                                                                    },
+                                                                                            "0.15":  {
+                                                                                                         "vector":  [
+                                                                                                                        -12,
+                                                                                                                        0,
+                                                                                                                        0
+                                                                                                                    ]
+                                                                                                     },
+                                                                                            "0.3":  {
+                                                                                                        "vector":  [
+                                                                                                                       -85,
+                                                                                                                       0,
+                                                                                                                       0
+                                                                                                                   ]
+                                                                                                    },
+                                                                                            "0.45":  {
+                                                                                                         "vector":  [
+                                                                                                                        -12,
+                                                                                                                        0,
+                                                                                                                        0
+                                                                                                                    ]
+                                                                                                     },
+                                                                                            "0.6":  {
+                                                                                                        "vector":  [
+                                                                                                                       -85,
+                                                                                                                       0,
+                                                                                                                       0
+                                                                                                                   ]
+                                                                                                    }
+                                                                                        }
+                                                                       },
+                                                     "head":  {
+                                                                  "rotation":  {
+                                                                                   "vector":  [
+                                                                                                  6,
+                                                                                                  0,
+                                                                                                  0
+                                                                                              ]
+                                                                               }
+                                                              }
+                                                 }
+                                   },
+                       "somnolence":  {
+                                          "loop":  "hold_on_last_frame",
+                                          "animation_length":  1.1,
+                                          "bones":  {
+                                                        "torso":  {
+                                                                      "position":  {
+                                                                                       "0.0":  {
+                                                                                                   "vector":  [
+                                                                                                                  0,
+                                                                                                                  0,
+                                                                                                                  0
+                                                                                                              ]
+                                                                                               },
+                                                                                       "0.55":  {
+                                                                                                    "vector":  [
+                                                                                                                   0,
+                                                                                                                   3,
+                                                                                                                   0
+                                                                                                               ]
+                                                                                                },
+                                                                                       "1.05":  {
+                                                                                                    "vector":  [
+                                                                                                                   0,
+                                                                                                                   1,
+                                                                                                                   0
+                                                                                                               ]
+                                                                                                }
+                                                                                   }
+                                                                  },
+                                                        "head":  {
+                                                                     "rotation":  {
+                                                                                      "0.0":  {
+                                                                                                  "vector":  [
+                                                                                                                 12,
+                                                                                                                 0,
+                                                                                                                 0
+                                                                                                             ]
+                                                                                              },
+                                                                                      "0.55":  {
+                                                                                                   "vector":  [
+                                                                                                                  -14,
+                                                                                                                  0,
+                                                                                                                  0
+                                                                                                              ]
+                                                                                               },
+                                                                                      "1.05":  {
+                                                                                                   "vector":  [
+                                                                                                                  6,
+                                                                                                                  0,
+                                                                                                                  0
+                                                                                                              ]
+                                                                                               }
+                                                                                  }
+                                                                 },
+                                                        "armRight":  {
+                                                                         "rotation":  {
+                                                                                          "0.0":  {
+                                                                                                      "vector":  [
+                                                                                                                     10,
+                                                                                                                     0,
+                                                                                                                     12
+                                                                                                                 ]
+                                                                                                  },
+                                                                                          "0.55":  {
+                                                                                                       "vector":  [
+                                                                                                                      -20,
+                                                                                                                      0,
+                                                                                                                      82
+                                                                                                                  ]
+                                                                                                   },
+                                                                                          "1.05":  {
+                                                                                                       "vector":  [
+                                                                                                                      -12,
+                                                                                                                      0,
+                                                                                                                      64
+                                                                                                                  ]
+                                                                                                   }
+                                                                                      }
+                                                                     },
+                                                        "lower_armRight":  {
+                                                                               "rotation":  {
+                                                                                                "vector":  [
+                                                                                                               -18,
+                                                                                                               0,
+                                                                                                               0
+                                                                                                           ]
+                                                                                            }
+                                                                           },
+                                                        "armLeft":  {
+                                                                        "rotation":  {
+                                                                                         "0.0":  {
+                                                                                                     "vector":  [
+                                                                                                                    10,
+                                                                                                                    0,
+                                                                                                                    -12
+                                                                                                                ]
+                                                                                                 },
+                                                                                         "0.55":  {
+                                                                                                      "vector":  [
+                                                                                                                     -20,
+                                                                                                                     0,
+                                                                                                                     -82
+                                                                                                                 ]
+                                                                                                  },
+                                                                                         "1.05":  {
+                                                                                                      "vector":  [
+                                                                                                                     -12,
+                                                                                                                     0,
+                                                                                                                     -64
+                                                                                                                 ]
+                                                                                                  }
+                                                                                     }
+                                                                    },
+                                                        "lower_armLeft":  {
+                                                                              "rotation":  {
+                                                                                               "vector":  [
+                                                                                                              -18,
+                                                                                                              0,
+                                                                                                              0
+                                                                                                          ]
+                                                                                           }
+                                                                          }
+                                                    }
+                                      },
+                       "soul_swap":  {
+                                         "loop":  "hold_on_last_frame",
+                                         "animation_length":  1.1,
+                                         "bones":  {
+                                                       "torso":  {
+                                                                     "position":  {
+                                                                                      "0.0":  {
+                                                                                                  "vector":  [
+                                                                                                                 0,
+                                                                                                                 0,
+                                                                                                                 0
+                                                                                                             ]
+                                                                                              },
+                                                                                      "0.55":  {
+                                                                                                   "vector":  [
+                                                                                                                  0,
+                                                                                                                  2.5,
+                                                                                                                  0
+                                                                                                              ]
+                                                                                               },
+                                                                                      "1.05":  {
+                                                                                                   "vector":  [
+                                                                                                                  0,
+                                                                                                                  0.5,
+                                                                                                                  0
+                                                                                                              ]
+                                                                                               }
+                                                                                  },
+                                                                     "rotation":  {
+                                                                                      "0.0":  {
+                                                                                                  "vector":  [
+                                                                                                                 0,
+                                                                                                                 0,
+                                                                                                                 0
+                                                                                                             ]
+                                                                                              },
+                                                                                      "0.55":  {
+                                                                                                   "vector":  [
+                                                                                                                  0,
+                                                                                                                  180,
+                                                                                                                  0
+                                                                                                              ]
+                                                                                               },
+                                                                                      "1.05":  {
+                                                                                                   "vector":  [
+                                                                                                                  0,
+                                                                                                                  360,
+                                                                                                                  0
+                                                                                                              ]
+                                                                                               }
+                                                                                  }
+                                                                 },
+                                                       "armRight":  {
+                                                                        "rotation":  {
+                                                                                         "0.0":  {
+                                                                                                     "vector":  [
+                                                                                                                    -40,
+                                                                                                                    0,
+                                                                                                                    28
+                                                                                                                ]
+                                                                                                 },
+                                                                                         "0.55":  {
+                                                                                                      "vector":  [
+                                                                                                                     -75,
+                                                                                                                     -20,
+                                                                                                                     42
+                                                                                                                 ]
+                                                                                                  }
+                                                                                     }
+                                                                    },
+                                                       "armLeft":  {
+                                                                       "rotation":  {
+                                                                                        "0.0":  {
+                                                                                                    "vector":  [
+                                                                                                                   -40,
+                                                                                                                   0,
+                                                                                                                   -28
+                                                                                                               ]
+                                                                                                },
+                                                                                        "0.55":  {
+                                                                                                     "vector":  [
+                                                                                                                    -75,
+                                                                                                                    20,
+                                                                                                                    -42
+                                                                                                                ]
+                                                                                                 }
+                                                                                    }
+                                                                   },
+                                                       "head":  {
+                                                                    "rotation":  {
+                                                                                     "vector":  [
+                                                                                                    8,
+                                                                                                    0,
+                                                                                                    0
+                                                                                                ]
+                                                                                 }
+                                                                }
+                                                   }
+                                     },
+                       "counter":  {
+                                       "loop":  "hold_on_last_frame",
+                                       "animation_length":  1.7,
+                                       "bones":  {
+                                                     "body":  {
+                                                                  "rotation":  {
+                                                                                   "vector":  [
+                                                                                                  -6,
+                                                                                                  0,
+                                                                                                  0
+                                                                                              ]
+                                                                               }
+                                                              },
+                                                     "head":  {
+                                                                  "rotation":  {
+                                                                                   "vector":  [
+                                                                                                  14,
+                                                                                                  0,
+                                                                                                  0
+                                                                                              ]
+                                                                               }
+                                                              },
+                                                     "armRight":  {
+                                                                      "rotation":  {
+                                                                                       "0.0":  {
+                                                                                                   "vector":  [
+                                                                                                                  10,
+                                                                                                                  0,
+                                                                                                                  12
+                                                                                                              ]
+                                                                                               },
+                                                                                       "0.25":  {
+                                                                                                    "vector":  [
+                                                                                                                   -48,
+                                                                                                                   -24,
+                                                                                                                   18
+                                                                                                               ]
+                                                                                                }
+                                                                                   }
+                                                                  },
+                                                     "lower_armRight":  {
+                                                                            "rotation":  {
+                                                                                             "vector":  [
+                                                                                                            -72,
+                                                                                                            0,
+                                                                                                            0
+                                                                                                        ]
+                                                                                         }
+                                                                        },
+                                                     "armLeft":  {
+                                                                     "rotation":  {
+                                                                                      "0.0":  {
+                                                                                                  "vector":  [
+                                                                                                                 10,
+                                                                                                                 0,
+                                                                                                                 -12
+                                                                                                             ]
+                                                                                              },
+                                                                                      "0.25":  {
+                                                                                                   "vector":  [
+                                                                                                                  -18,
+                                                                                                                  -10,
+                                                                                                                  -52
+                                                                                                              ]
+                                                                                               }
+                                                                                  }
+                                                                 },
+                                                     "lower_armLeft":  {
+                                                                           "rotation":  {
+                                                                                            "vector":  [
+                                                                                                           -32,
+                                                                                                           0,
+                                                                                                           0
+                                                                                                       ]
+                                                                                        }
+                                                                       }
+                                                 }
+                                   },
+                       "counter_miss":  {
+                                            "loop":  "hold_on_last_frame",
+                                            "animation_length":  0.9,
+                                            "bones":  {
+                                                          "body":  {
+                                                                       "rotation":  {
+                                                                                        "0.0":  {
+                                                                                                    "vector":  [
+                                                                                                                   -6,
+                                                                                                                   0,
+                                                                                                                   0
+                                                                                                               ]
+                                                                                                },
+                                                                                        "0.4":  {
+                                                                                                    "vector":  [
+                                                                                                                   18,
+                                                                                                                   0,
+                                                                                                                   0
+                                                                                                               ]
+                                                                                                }
+                                                                                    }
+                                                                   },
+                                                          "head":  {
+                                                                       "rotation":  {
+                                                                                        "0.0":  {
+                                                                                                    "vector":  [
+                                                                                                                   14,
+                                                                                                                   0,
+                                                                                                                   0
+                                                                                                               ]
+                                                                                                },
+                                                                                        "0.4":  {
+                                                                                                    "vector":  [
+                                                                                                                   26,
+                                                                                                                   0,
+                                                                                                                   0
+                                                                                                               ]
+                                                                                                }
+                                                                                    }
+                                                                   },
+                                                          "armRight":  {
+                                                                           "rotation":  {
+                                                                                            "vector":  [
+                                                                                                           24,
+                                                                                                           0,
+                                                                                                           22
+                                                                                                       ]
+                                                                                        }
+                                                                       },
+                                                          "armLeft":  {
+                                                                          "rotation":  {
+                                                                                           "vector":  [
+                                                                                                          24,
+                                                                                                          0,
+                                                                                                          -22
+                                                                                                      ]
+                                                                                       }
+                                                                      }
+                                                      }
+                                        },
+                       "dominion":  {
+                                        "loop":  "hold_on_last_frame",
+                                        "animation_length":  1.7,
+                                        "bones":  {
+                                                      "torso":  {
+                                                                    "position":  {
+                                                                                     "0.0":  {
+                                                                                                 "vector":  [
+                                                                                                                0,
+                                                                                                                0,
+                                                                                                                0
+                                                                                                            ]
+                                                                                             },
+                                                                                     "0.8":  {
+                                                                                                 "vector":  [
+                                                                                                                0,
+                                                                                                                5.5,
+                                                                                                                0
+                                                                                                            ]
+                                                                                             },
+                                                                                     "1.05":  {
+                                                                                                  "vector":  [
+                                                                                                                 0,
+                                                                                                                 2.5,
+                                                                                                                 -2
+                                                                                                             ]
+                                                                                              },
+                                                                                     "1.65":  {
+                                                                                                  "vector":  [
+                                                                                                                 0,
+                                                                                                                 1,
+                                                                                                                 0
+                                                                                                             ]
+                                                                                              }
+                                                                                 }
+                                                                },
+                                                      "body":  {
+                                                                   "rotation":  {
+                                                                                    "0.0":  {
+                                                                                                "vector":  [
+                                                                                                               12,
+                                                                                                               0,
+                                                                                                               0
+                                                                                                           ]
+                                                                                            },
+                                                                                    "0.8":  {
+                                                                                                "vector":  [
+                                                                                                               -16,
+                                                                                                               0,
+                                                                                                               0
+                                                                                                           ]
+                                                                                            },
+                                                                                    "1.05":  {
+                                                                                                 "vector":  [
+                                                                                                                12,
+                                                                                                                0,
+                                                                                                                0
+                                                                                                            ]
+                                                                                             }
+                                                                                }
+                                                               },
+                                                      "head":  {
+                                                                   "rotation":  {
+                                                                                    "0.0":  {
+                                                                                                "vector":  [
+                                                                                                               18,
+                                                                                                               0,
+                                                                                                               0
+                                                                                                           ]
+                                                                                            },
+                                                                                    "0.8":  {
+                                                                                                "vector":  [
+                                                                                                               -22,
+                                                                                                               0,
+                                                                                                               0
+                                                                                                           ]
+                                                                                            },
+                                                                                    "1.05":  {
+                                                                                                 "vector":  [
+                                                                                                                8,
+                                                                                                                0,
+                                                                                                                0
+                                                                                                            ]
+                                                                                             }
+                                                                                }
+                                                               },
+                                                      "armRight":  {
+                                                                       "rotation":  {
+                                                                                        "0.0":  {
+                                                                                                    "vector":  [
+                                                                                                                   -35,
+                                                                                                                   -24,
+                                                                                                                   18
+                                                                                                               ]
+                                                                                                },
+                                                                                        "0.8":  {
+                                                                                                    "vector":  [
+                                                                                                                   -120,
+                                                                                                                   0,
+                                                                                                                   65
+                                                                                                               ]
+                                                                                                },
+                                                                                        "1.05":  {
+                                                                                                     "vector":  [
+                                                                                                                    -25,
+                                                                                                                    0,
+                                                                                                                    98
+                                                                                                                ]
+                                                                                                 }
+                                                                                    }
+                                                                   },
+                                                      "lower_armRight":  {
+                                                                             "rotation":  {
+                                                                                              "0.0":  {
+                                                                                                          "vector":  [
+                                                                                                                         -60,
+                                                                                                                         0,
+                                                                                                                         0
+                                                                                                                     ]
+                                                                                                      },
+                                                                                              "1.05":  {
+                                                                                                           "vector":  [
+                                                                                                                          -10,
+                                                                                                                          0,
+                                                                                                                          0
+                                                                                                                      ]
+                                                                                                       }
+                                                                                          }
+                                                                         },
+                                                      "armLeft":  {
+                                                                      "rotation":  {
+                                                                                       "0.0":  {
+                                                                                                   "vector":  [
+                                                                                                                  -35,
+                                                                                                                  24,
+                                                                                                                  -18
+                                                                                                              ]
+                                                                                               },
+                                                                                       "0.8":  {
+                                                                                                   "vector":  [
+                                                                                                                  -120,
+                                                                                                                  0,
+                                                                                                                  -65
+                                                                                                              ]
+                                                                                               },
+                                                                                       "1.05":  {
+                                                                                                    "vector":  [
+                                                                                                                   -25,
+                                                                                                                   0,
+                                                                                                                   -98
+                                                                                                               ]
+                                                                                                }
+                                                                                   }
+                                                                  },
+                                                      "lower_armLeft":  {
+                                                                            "rotation":  {
+                                                                                             "0.0":  {
+                                                                                                         "vector":  [
+                                                                                                                        -60,
+                                                                                                                        0,
+                                                                                                                        0
+                                                                                                                    ]
+                                                                                                     },
+                                                                                             "1.05":  {
+                                                                                                          "vector":  [
+                                                                                                                         -10,
+                                                                                                                         0,
+                                                                                                                         0
+                                                                                                                     ]
+                                                                                                      }
+                                                                                         }
+                                                                        }
+                                                  }
+                                    },
+                       "shadow_step":  {
+                                           "loop":  "hold_on_last_frame",
+                                           "animation_length":  0.35,
+                                           "bones":  {
+                                                         "torso":  {
+                                                                       "rotation":  {
+                                                                                        "0.0":  {
+                                                                                                    "vector":  [
+                                                                                                                   0,
+                                                                                                                   0,
+                                                                                                                   0
+                                                                                                               ]
+                                                                                                },
+                                                                                        "0.2":  {
+                                                                                                    "vector":  [
+                                                                                                                   18,
+                                                                                                                   0,
+                                                                                                                   0
+                                                                                                               ]
+                                                                                                }
+                                                                                    },
+                                                                       "position":  {
+                                                                                        "0.0":  {
+                                                                                                    "vector":  [
+                                                                                                                   0,
+                                                                                                                   0,
+                                                                                                                   0
+                                                                                                               ]
+                                                                                                },
+                                                                                        "0.2":  {
+                                                                                                    "vector":  [
+                                                                                                                   0,
+                                                                                                                   1,
+                                                                                                                   -4
+                                                                                                               ]
+                                                                                                }
+                                                                                    }
+                                                                   },
+                                                         "armRight":  {
+                                                                          "rotation":  {
+                                                                                           "vector":  [
+                                                                                                          26,
+                                                                                                          0,
+                                                                                                          20
+                                                                                                      ]
+                                                                                       }
+                                                                      },
+                                                         "armLeft":  {
+                                                                         "rotation":  {
+                                                                                          "vector":  [
+                                                                                                         26,
+                                                                                                         0,
+                                                                                                         -20
+                                                                                                     ]
+                                                                                      }
+                                                                     }
+                                                     }
+                                       },
+                       "itemthrow_charge":  {
+                                                "loop":  "hold_on_last_frame",
+                                                "animation_length":  1,
+                                                "bones":  {
+                                                              "torso":  {
+                                                                            "rotation":  {
+                                                                                             "0.0":  {
+                                                                                                         "vector":  [
+                                                                                                                        0,
+                                                                                                                        0,
+                                                                                                                        0
+                                                                                                                    ]
+                                                                                                     },
+                                                                                             "0.45":  {
+                                                                                                          "vector":  [
+                                                                                                                         -8,
+                                                                                                                         -38,
+                                                                                                                         0
+                                                                                                                     ]
+                                                                                                      }
+                                                                                         }
+                                                                        },
+                                                              "armRight":  {
+                                                                               "rotation":  {
+                                                                                                "0.0":  {
+                                                                                                            "vector":  [
+                                                                                                                           -35,
+                                                                                                                           0,
+                                                                                                                           22
+                                                                                                                       ]
+                                                                                                        },
+                                                                                                "0.45":  {
+                                                                                                             "vector":  [
+                                                                                                                            -132,
+                                                                                                                            18,
+                                                                                                                            30
+                                                                                                                        ]
+                                                                                                         }
+                                                                                            }
+                                                                           },
+                                                              "lower_armRight":  {
+                                                                                     "rotation":  {
+                                                                                                      "vector":  [
+                                                                                                                     -72,
+                                                                                                                     0,
+                                                                                                                     0
+                                                                                                                 ]
+                                                                                                  }
+                                                                                 },
+                                                              "armLeft":  {
+                                                                              "rotation":  {
+                                                                                               "vector":  [
+                                                                                                              -58,
+                                                                                                              -14,
+                                                                                                              -14
+                                                                                                          ]
+                                                                                           }
+                                                                          }
+                                                          }
+                                            },
+                       "itemthrow":  {
+                                         "loop":  "hold_on_last_frame",
+                                         "animation_length":  0.35,
+                                         "bones":  {
+                                                       "torso":  {
+                                                                     "rotation":  {
+                                                                                      "0.0":  {
+                                                                                                  "vector":  [
+                                                                                                                 -8,
+                                                                                                                 -38,
+                                                                                                                 0
+                                                                                                             ]
+                                                                                              },
+                                                                                      "0.2":  {
+                                                                                                  "vector":  [
+                                                                                                                 12,
+                                                                                                                 32,
+                                                                                                                 0
+                                                                                                             ]
+                                                                                              }
+                                                                                  }
+                                                                 },
+                                                       "armRight":  {
+                                                                        "rotation":  {
+                                                                                         "0.0":  {
+                                                                                                     "vector":  [
+                                                                                                                    -132,
+                                                                                                                    18,
+                                                                                                                    30
+                                                                                                                ]
+                                                                                                 },
+                                                                                         "0.2":  {
+                                                                                                     "vector":  [
+                                                                                                                    -64,
+                                                                                                                    -16,
+                                                                                                                    12
+                                                                                                                ]
+                                                                                                 }
+                                                                                     }
+                                                                    },
+                                                       "lower_armRight":  {
+                                                                              "rotation":  {
+                                                                                               "vector":  [
+                                                                                                              -12,
+                                                                                                              0,
+                                                                                                              0
+                                                                                                          ]
+                                                                                           }
+                                                                          }
+                                                   }
+                                     }
+                   }
 }

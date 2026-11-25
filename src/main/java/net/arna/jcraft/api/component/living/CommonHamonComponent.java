@@ -72,4 +72,16 @@ public interface CommonHamonComponent extends JComponent {
 
     void resetLessonTicks(final int lesson);
 
+    enum HamonMoveStep {
+        NONE,
+        ZOOM_PUNCH,
+        SENDO,
+        SENDO_AIR,
+        STOMP,
+        OTHER
+    }
+
+    HamonMoveStep getLastHamonMove();
+
+    void setLastHamonMove(final @NonNull HamonMoveStep step);
 }

@@ -41,7 +41,7 @@ public final class GravityShiftPulseMove<A extends IAttacker<? extends A, ?>> ex
 
     @Override
     public @NonNull GravityShiftPulseMove<A> copy() {
-        return copyExtras(new GravityShiftPulseMove<>(getCooldown(), getWindup(), getDuration(), getMoveDistance(), 16));
+        return copyExtras(new GravityShiftPulseMove<>(getCooldown(), getWindup(), getDuration(), getMoveDistance(), getRadius()));
     }
 
     public static class Type extends AbstractMove.Type<GravityShiftPulseMove<?>> {

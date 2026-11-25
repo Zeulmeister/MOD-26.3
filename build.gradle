@@ -92,7 +92,7 @@ processResources {
 tasks.withType(JavaCompile).configureEach {
     it.options.release = 25
     it.options.encoding = "UTF-8"
-    it.options.compilerArgs.addAll(["-Xmaxerrs", "2000"])
+    it.options.compilerArgs.addAll(["-Xmaxerrs", "2000", "-Xlint:removal"])
 }
 
 java {
@@ -100,22 +100,70 @@ java {
     targetCompatibility = JavaVersion.VERSION_25
 }
 
+// Reproducible, deterministic JAR builds (stable SHA-256 across rebuilds)
+tasks.withType(org.gradle.api.tasks.bundling.AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
 tasks.withType(org.gradle.jvm.tasks.Jar).configureEach {
     it.zip64 = true
 }
 
-tasks.named('test') {
-    enabled = false
-}
-
 tasks.register('verifyMod', JavaExec) {
     group = 'verification'
-    description = 'Runs the JCraft 26.3 asset, metadata, Mixin, and combat/physics verification suite.'
+    description = 'Runs the JCraft 26.3 asset, metadata, Mixin, Dedicated-Server Isolation, and combat/UI verification suite.'
     dependsOn testClasses, processResources
     classpath = sourceSets.test.output + sourceSets.main.output + sourceSets.main.compileClasspath
     mainClass = 'net.arna.jcraft.JCraft263ValidationTest'
 }
 
+// Wire standard `./gradlew test` and `./gradlew check` directly to verifyMod
+tasks.named('test') {
+    enabled = false
+    dependsOn 'verifyMod'
+}
+
 tasks.named('check') {
     dependsOn 'verifyMod'
+}
+
+tasks.register('deployMod') {
+    group = 'distribution'
+    description = 'Copies the built JCraft 26.3 JAR to the repository root and any paths specified via -Pjcraft.deploy.targets (semicolon-separated).'
+    dependsOn 'build'
+    doLast {
+        def builtJar = tasks.named('jar').get().archiveFile.get().asFile
+        def targets = [file("${projectDir}/jcraft-fabric-26.3.jar")]
+        def extra = project.findProperty('jcraft.deploy.targets')?.toString()
+        if (extra) {
+            extra.split(';').each { raw ->
+                def trimmed = raw.trim()
+                if (trimmed) {
+                    targets << file(trimmed)
+                }
+            }
+        }
+        def digest = java.security.MessageDigest.getInstance('SHA-256')
+        def hashHex = { File f ->
+            digest.reset()
+            f.withInputStream { is ->
+                byte[] buf = new byte[8192]
+                int n
+                while ((n = is.read(buf)) > 0) digest.update(buf, 0, n)
+            }
+            digest.digest().collect { String.format('%02X', it) }.join('')
+        }
+        def srcHash = hashHex(builtJar)
+        println "Built JAR SHA-256: ${srcHash} (${builtJar})"
+        targets.each { File dest ->
+            dest.parentFile?.mkdirs()
+            dest.bytes = builtJar.bytes
+            def dstHash = hashHex(dest)
+            if (dstHash != srcHash) {
+                throw new GradleException("SHA-256 mismatch after deploy to ${dest}: expected ${srcHash}, got ${dstHash}")
+            }
+            println "Deployed OK (${dstHash}) -> ${dest}"
+        }
+    }
 }

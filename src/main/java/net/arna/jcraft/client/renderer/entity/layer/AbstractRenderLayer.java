@@ -36,7 +36,7 @@ public abstract class AbstractRenderLayer<T extends Entity> implements AzRenderL
 
     public static <T extends Entity> void setDefaultGlow(final @NonNull AzRendererPipelineContext<UUID, T> pc) {
         pc.setPackedLight(15728640);
-        pc.setPackedLight(OverlayTexture.NO_OVERLAY);
+        pc.setPackedOverlay(OverlayTexture.NO_OVERLAY);
         net.arna.jcraft.client.util.JAzRenderAccess.setRenderColorRgb(pc, 1f, 1f, 1f);
         JAzRenderAccess.setAlpha(pc, 1f);
     }

@@ -7,6 +7,7 @@ import net.arna.jcraft.api.registry.JStatRegistry;
 import net.arna.jcraft.api.registry.JStatusRegistry;
 import net.arna.jcraft.api.spec.JSpec;
 import net.arna.jcraft.api.spec.JSpecHolder;
+import net.arna.jcraft.common.config.JServerConfig;
 import net.arna.jcraft.common.network.s2c.PlayerAnimPacket;
 import net.arna.jcraft.common.spec.RangerSpec;
 import net.arna.jcraft.platform.JComponentPlatformUtils;
@@ -51,6 +52,9 @@ public class DashData {
     }
 
     public static void tryDash(int forward, int side, LivingEntity entity) {
+        if (!JServerConfig.UNIVERSAL_ABILITIES.getValue()) {
+            return;
+        }
         CommonCooldownsComponent cooldowns = JComponentPlatformUtils.getCooldowns(entity);
         if (cooldowns.getCooldown(CooldownType.DASH) > 0 || !entity.onGround() || entity.hasEffect(JStatusRegistry.DAZED.asHolder()) || entity.hasEffect(JStatusRegistry.KNOCKDOWN.asHolder()) ||
                 JUtils.getSpec(entity) instanceof RangerSpec && JComponentPlatformUtils.getGunslinger(entity).isFocusActive()) {

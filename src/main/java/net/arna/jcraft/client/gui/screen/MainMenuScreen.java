@@ -1,27 +1,43 @@
 package net.arna.jcraft.client.gui.screen;
 
 import net.arna.jcraft.JCraft;
+import net.arna.jcraft.api.registry.JStandTypeRegistry;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.api.stand.StandInfo;
 import net.arna.jcraft.api.stand.StandTypeUtil;
-import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.menu.MainMenu;
 import net.arna.jcraft.common.util.JUtils;
-import net.arna.jcraft.api.registry.JStandTypeRegistry;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
+
+import java.util.List;
 
 @Environment(EnvType.CLIENT)
 public class MainMenuScreen extends AbstractContainerScreen<MainMenu> {
 
-    protected StandEntity<?,?> stand;
+    protected StandEntity<?, ?> stand;
 
     public MainMenuScreen(final MainMenu menu, final Inventory playerInventory, final Component title) {
         super(menu, playerInventory, title);
         stand = JUtils.getStand(playerInventory.player);
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+        int btnW = 86;
+        this.addRenderableWidget(Button.builder(Component.translatable("jcraft.config.open_guide"),
+                        b -> Minecraft.getInstance().gui.setScreen(new StandGuideScreen(this)))
+                .bounds(this.leftPos + this.imageWidth - btnW - 6, this.topPos + this.imageHeight - 22, btnW, 16)
+                .build());
     }
 
     @Override
@@ -32,32 +48,58 @@ public class MainMenuScreen extends AbstractContainerScreen<MainMenu> {
 
     @Override
     protected void extractLabels(final GuiGraphicsExtractor guiGraphics, final int mouseX, final int mouseY) {
-        int row = 0;
-        drawText(guiGraphics, this.title, row++, 0);
+        final int maxW = Math.max(80, this.imageWidth - 16);
+        final int maxY = this.imageHeight - 28;
+        int y = this.titleLabelY;
+
+        y = drawWrappedText(guiGraphics, this.title, y, maxW, maxY, 0xFF3A2A5E);
         if (stand == null || StandTypeUtil.isNone(stand.getStandType())) {
-            drawText(guiGraphics, JStandTypeRegistry.NONE.get().getData().getInfo().getName(), row++, 0);
+            drawWrappedText(guiGraphics, JStandTypeRegistry.NONE.get().getData().getInfo().getName(), y, maxW, maxY, 4210752);
+            return;
         }
-        else {
-            StandInfo info = stand.getStandData().getInfo();
-            drawText(guiGraphics, info.getName(), row++, 0);
-            final String desc = String.format("%s%s.info.desc", info.getNameKey(),
-                    stand.getModeOrdinal() == 0 ? "" : Integer.toString(stand.getModeOrdinal()));
-            drawText(guiGraphics, Component.translatable(desc), row++, 0);
-            drawText(guiGraphics, Component.literal("PROS"), row++, 0);
-            final int pros = info.getProCount();
-            for (int p = 1; p <= pros; p++) {
-                final Component pro = Component.literal("● ").append(Component.translatable(
-                        String.format("%s.info.pro%d", info.getNameKey(), p)));
-                drawText(guiGraphics, pro, row++, 0);
-            }
-            drawText(guiGraphics, Component.literal("CONS"), row++, 0);
-            final int cons = info.getConCount();
-            for (int c = 1; c <= cons; c++) {
-                final Component con = Component.literal("● ").append(Component.translatable(
-                        String.format("%s.info.con%d", info.getNameKey(), c)));
-                drawText(guiGraphics, con, row++, 0);
+
+        StandInfo info = stand.getStandData().getInfo();
+        y = drawWrappedText(guiGraphics, info.getName(), y, maxW, maxY, 0xFF5B21B6);
+
+        final String descKey = String.format("%s%s.info.desc", info.getNameKey(),
+                stand.getModeOrdinal() == 0 ? "" : Integer.toString(stand.getModeOrdinal()));
+        if (Language.getInstance().has(descKey)) {
+            y = drawWrappedText(guiGraphics, Component.translatable(descKey), y, maxW, maxY, 4210752);
+        }
+
+        final int pros = info.getProCount();
+        if (pros > 0 && y < maxY) {
+            y = drawWrappedText(guiGraphics, Component.literal("PROS"), y + 2, maxW, maxY, 0xFF0F766E);
+            for (int p = 1; p <= pros && y < maxY; p++) {
+                String k = String.format("%s.info.pro%d", info.getNameKey(), p);
+                if (Language.getInstance().has(k)) {
+                    y = drawWrappedText(guiGraphics, Component.literal("• ").append(Component.translatable(k)), y, maxW, maxY, 4210752);
+                }
             }
         }
+
+        final int cons = info.getConCount();
+        if (cons > 0 && y < maxY) {
+            y = drawWrappedText(guiGraphics, Component.literal("CONS"), y + 2, maxW, maxY, 0xFFB91C1C);
+            for (int c = 1; c <= cons && y < maxY; c++) {
+                String k = String.format("%s.info.con%d", info.getNameKey(), c);
+                if (Language.getInstance().has(k)) {
+                    y = drawWrappedText(guiGraphics, Component.literal("• ").append(Component.translatable(k)), y, maxW, maxY, 4210752);
+                }
+            }
+        }
+    }
+
+    protected int drawWrappedText(final GuiGraphicsExtractor guiGraphics, final Component text, int y, final int maxW, final int maxY, final int color) {
+        final List<FormattedCharSequence> lines = this.font.split(text, maxW);
+        for (FormattedCharSequence line : lines) {
+            if (y >= maxY) {
+                break;
+            }
+            guiGraphics.text(this.font, line, this.titleLabelX, y, color, false);
+            y += 9;
+        }
+        return y;
     }
 
     protected void drawText(final GuiGraphicsExtractor guiGraphics, final Component text, final int row, final int col) {
@@ -65,6 +107,6 @@ public class MainMenuScreen extends AbstractContainerScreen<MainMenu> {
     }
 
     protected void drawText(final GuiGraphicsExtractor guiGraphics, final Component text, final int row, final int col, final int color) {
-        guiGraphics.text(this.font, text, this.titleLabelX+10*col, this.titleLabelY+10*row, color, false);
+        guiGraphics.text(this.font, text, this.titleLabelX + 10 * col, this.titleLabelY + 10 * row, color, false);
     }
 }

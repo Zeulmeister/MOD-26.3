@@ -5,6 +5,7 @@ import net.arna.jcraft.api.component.living.CommonHamonComponent;
 import net.arna.jcraft.api.component.living.CommonMiscComponent;
 import net.arna.jcraft.api.component.living.CommonStandComponent;
 import net.arna.jcraft.api.component.living.CommonVampireComponent;
+import net.arna.jcraft.api.registry.JEntityTypeRegistry;
 import net.arna.jcraft.api.registry.JItemRegistry;
 import net.arna.jcraft.api.registry.JSpecTypeRegistry;
 import net.arna.jcraft.api.registry.JSplatterTypeRegistry;
@@ -13,14 +14,16 @@ import net.arna.jcraft.api.splatter.JSplatterManager;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.client.JClientConfig;
 import net.arna.jcraft.client.JCraftClient;
-import net.arna.jcraft.client.renderer.effects.AttackHitboxEffectRenderer;
 import net.arna.jcraft.client.rendering.MihAfterimageTrail;
 import net.arna.jcraft.client.rendering.handler.ColorShiftShaderHandler;
 import net.arna.jcraft.client.rendering.handler.CrimsonShaderHandler;
 import net.arna.jcraft.client.rendering.handler.JPostEffectManager;
 import net.arna.jcraft.client.rendering.handler.MandomRewindShaderHandler;
 import net.arna.jcraft.client.rendering.handler.ZaWarudoShaderHandler;
+import net.arna.jcraft.client.rendering.skybox.SkyBoxManager;
+import net.arna.jcraft.common.entity.spec.BrawlerSpecUser;
 import net.arna.jcraft.common.entity.stand.MadeInHeavenEntity;
+import net.arna.jcraft.common.entity.stand.TheSunEntity;
 import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
 import net.arna.jcraft.common.gravity.util.Gravity;
 import net.arna.jcraft.common.util.JUtils;
@@ -38,10 +41,12 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.monster.zombie.Husk;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelSettings;
@@ -235,7 +240,6 @@ public final class ClientVisualDiagnostic {
                     }
                 });
 
-                AttackHitboxEffectRenderer.addHitbox(new AABB(-0.3, 100.2, 2.2, 1.3, 102.0, 3.8), 6000L, false);
                 client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
                 phase = 2;
                 waitTicks = 12;
@@ -464,6 +468,83 @@ public final class ClientVisualDiagnostic {
                 waitTicks = 8;
             }
             case 20 -> {
+                JCraft.LOGGER.info("[CLIENT-VISUAL] === Phase 5: Time Erase SkyBox, The Sun Emissive & SpecUserMob Armor ===");
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerLevel overworld = srv.getLevel(Level.OVERWORLD);
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (overworld == null || sp == null) return;
+                    if (JUtils.getStand(sp) != null) {
+                        JUtils.getStand(sp).desummon();
+                    }
+                    // Open-sky observation deck at y=112
+                    for (int x = -3; x <= 4; x++) {
+                        for (int z = -2; z <= 8; z++) {
+                            overworld.setBlockAndUpdate(new BlockPos(x, 112, z),
+                                    ((x + z) & 1) == 0 ? Blocks.QUARTZ_BLOCK.defaultBlockState() : Blocks.SMOOTH_STONE.defaultBlockState());
+                            for (int y = 113; y <= 122; y++) {
+                                overworld.setBlockAndUpdate(new BlockPos(x, y, z), Blocks.AIR.defaultBlockState());
+                            }
+                        }
+                    }
+                    sp.setGameMode(GameType.CREATIVE);
+                    sp.teleportTo(overworld, 0.5, 113.0, 0.0, java.util.Set.of(), 0.0f, -20.0f, false);
+
+                    // Summon The Sun overhead for unshaded emissive + corona verification
+                    CommonStandComponent sc = JComponentPlatformUtils.getStandComponent(sp);
+                    sc.setType(JStandTypeRegistry.THE_SUN.get());
+                    StandEntity<?, ?> sunStand = JCraft.summon(overworld, sp);
+                    if (sunStand instanceof TheSunEntity sun) {
+                        sun.setPos(2.6, 116.8, 6.2);
+                    }
+
+                    // Spawn SpecUserMob wearing full diamond armor + Stone Mask to validate SpecUserArmorLayer
+                    BrawlerSpecUser npc = JEntityTypeRegistry.BRAWLER_SPEC_USER.get().create(overworld, EntitySpawnReason.COMMAND);
+                    if (npc != null) {
+                        npc.setNoAi(true);
+                        npc.setPos(-0.8, 113.0, 3.4);
+                        npc.setYRot(170.0f);
+                        npc.setYHeadRot(170.0f);
+                        npc.setItemSlot(EquipmentSlot.HEAD, new ItemStack(JItemRegistry.STONE_MASK.get()));
+                        npc.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.DIAMOND_CHESTPLATE));
+                        npc.setItemSlot(EquipmentSlot.LEGS, new ItemStack(Items.DIAMOND_LEGGINGS));
+                        npc.setItemSlot(EquipmentSlot.FEET, new ItemStack(Items.DIAMOND_BOOTS));
+                        overworld.addFreshEntity(npc);
+                    }
+                });
+                client.options.setCameraType(CameraType.FIRST_PERSON);
+                SkyBoxManager.timeEraseSkyDraws = 0;
+                SkyBoxManager.getInstance().setForceTimeErase(true);
+                phase = 21;
+                waitTicks = 10;
+            }
+            case 21 -> {
+                LocalPlayer p = client.player;
+                if (p != null) {
+                    p.setYRot(0.0f);
+                    p.setXRot(-22.0f);
+                }
+                assertTrue(SkyBoxManager.timeEraseSkyDraws > 0,
+                        "Time Erase SkyBox rendered natively on GPU via SkyRendererMixin (draws=" + SkyBoxManager.timeEraseSkyDraws + ")");
+                capture(client, "08_skybox_time_erase_and_the_sun.png");
+
+                // Switch to Made in Heaven celestial star-trails skybox
+                SkyBoxManager.getInstance().setForceTimeErase(false);
+                SkyBoxManager.timeAccelStarTrailDraws = 0;
+                SkyBoxManager.getInstance().setForceTimeAccel(true);
+                phase = 22;
+                waitTicks = 8;
+            }
+            case 22 -> {
+                JCraft.LOGGER.info("[CLIENT-VISUAL] === Phase 6: MIH Celestial Star-Trails SkyBox ===");
+                assertTrue(SkyBoxManager.timeAccelStarTrailDraws > 0,
+                        "MIH celestial star-trails rendered natively on GPU via SkyRendererMixin (draws=" + SkyBoxManager.timeAccelStarTrailDraws + ")");
+                capture(client, "09_skybox_mih_and_spec_armor.png");
+                SkyBoxManager.getInstance().setForceTimeAccel(false);
+                phase = 23;
+                waitTicks = 8;
+            }
+            case 23 -> {
                 File shotDir = new File(getOutDir(), "screenshots");
                 for (String name : expectedScreenshots) {
                     File f = new File(shotDir, name);

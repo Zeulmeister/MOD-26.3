@@ -59,6 +59,9 @@ public final class JCraftHudOverlay {
         }
 
         final JClientConfig cfg = JClientConfig.getInstance();
+        if (!cfg.isAnimeHudEnabled()) {
+            return;
+        }
         final int sw = client.getWindow().getGuiScaledWidth();
         final int sh = client.getWindow().getGuiScaledHeight();
         final Font font = client.font;
@@ -66,7 +69,6 @@ public final class JCraftHudOverlay {
         final StandEntity<?, ?> stand = JUtils.getStand(player);
         final JSpec<?, ?> spec = JUtils.getSpec(player);
         final CommonMiscComponent misc = JComponentPlatformUtils.getMiscData(player);
-        final CommonVampireComponent vamp = JComponentPlatformUtils.getVampirism(player);
         final CommonHamonComponent hamon = JComponentPlatformUtils.getHamon(player);
 
         final int gaugeX = switch (cfg.getUiPosition()) {
@@ -77,12 +79,14 @@ public final class JCraftHudOverlay {
 
         final boolean dockVisible = stand != null && cfg.isIconHud() && cfg.getUiDuration() != JClientConfig.UIDuration.NEVER;
         final boolean hasBottomSpecBar = hamon.getHamonCharge() > 0.01F || hamon.isHamonizeReady();
+        final float hudScale = JCraftAbilityHud.getClampedHudScale();
+        final int scaledDockLift = Math.round(72.0f * hudScale);
 
         int yCursor;
         if (cfg.getUiPosition() == JClientConfig.UIPos.MIDDLE) {
-            yCursor = (dockVisible ? sh - 102 : sh - 58) + cfg.getVerticalHudOffset();
+            yCursor = (dockVisible ? sh - 66 - Math.round(42.0f * hudScale) : sh - 58) + cfg.getVerticalHudOffset();
         } else {
-            yCursor = (dockVisible ? sh - 80 : sh - 26) + cfg.getVerticalHudOffset();
+            yCursor = (dockVisible ? sh - 8 - scaledDockLift : sh - 26) + cfg.getVerticalHudOffset();
         }
         if (hasBottomSpecBar) {
             yCursor -= 11;

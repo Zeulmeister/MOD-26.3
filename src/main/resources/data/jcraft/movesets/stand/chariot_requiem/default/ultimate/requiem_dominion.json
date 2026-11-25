@@ -1,0 +1,69 @@
+{
+  "anim_state": "DOMINION",
+  "class": "ULTIMATE",
+  "cooldown_type": "STAND_ULTIMATE",
+  "move": {
+    "type": "jcraft:shared_knockdown_attack",
+    "attack_extras": {
+      "backstab": true,
+      "block_stun": 10,
+      "blockable_type": "NON_BLOCKABLE_EFFECTS_ONLY",
+      "hit_animation": "CRUSH",
+      "hit_spark": "HIT_SPARK_3",
+      "shockwaves": true
+    },
+    "cooldown": 640,
+    "damage": 12.0,
+    "duration": 34,
+    "extras": {
+      "actions": [
+        {
+          "type": "jcraft:play_sound",
+          "run": "at_init",
+          "sound": "jcraft:timeerase"
+        },
+        {
+          "type": "jcraft:play_sound",
+          "bind": false,
+          "run": "on_hit",
+          "sound": "jcraft:impact10"
+        },
+        {
+          "type": "jcraft:effect",
+          "effects": [
+            {
+              "amplifier": 0,
+              "duration": 120,
+              "effect": "jcraft:standless"
+            },
+            {
+              "amplifier": 2,
+              "duration": 120,
+              "effect": "minecraft:slowness"
+            },
+            {
+              "amplifier": 0,
+              "duration": 100,
+              "effect": "minecraft:darkness"
+            }
+          ],
+          "run": "on_strike"
+        }
+      ],
+      "armor": 2147483647,
+      "description": {
+        "translate": "move.jcraft.chariot_requiem.default.requiem_dominion.description"
+      },
+      "name": {
+        "translate": "move.jcraft.chariot_requiem.default.requiem_dominion.name"
+      }
+    },
+    "hitbox_size": 6.0,
+    "knockback": 0.8,
+    "knockdown_duration": 45,
+    "move_distance": 0.5,
+    "offset": 0.0,
+    "stun": 20,
+    "windup": 20
+  }
+}

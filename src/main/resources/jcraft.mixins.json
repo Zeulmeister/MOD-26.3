@@ -45,6 +45,7 @@
     "client.ParticleAccessor",
     "client.ParticleGroupMixin",
     "client.RenderTargetMixin",
+    "client.SkyRendererMixin",
     "client.SoundEngineMixin"
   ],
   "injectors": {

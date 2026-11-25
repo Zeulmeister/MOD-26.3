@@ -1,0 +1,22 @@
+{
+  "anim_state": "JUMP",
+  "class": "UTILITY",
+  "cooldown_type": "UTILITY",
+  "move": {
+    "type": "jcraft:shared_jump_move",
+    "cooldown": 260,
+    "duration": 12,
+    "extras": {
+      "description": {
+        "translate": "move.jcraft.crazy_diamond.default.shard_leap.description"
+      },
+      "mobility_type": "DASH",
+      "name": {
+        "translate": "move.jcraft.crazy_diamond.default.shard_leap.name"
+      }
+    },
+    "move_distance": 1.0,
+    "strength": 1.45,
+    "windup": 4
+  }
+}

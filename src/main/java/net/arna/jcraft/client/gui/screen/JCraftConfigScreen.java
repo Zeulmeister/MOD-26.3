@@ -118,6 +118,8 @@ public final class JCraftConfigScreen extends Screen {
         rows.add(serverTicks(JServerConfig.TWOH_TIME_STOP_DURATION, 5, 20, 1200));
         rows.add(serverTicks(JServerConfig.KC_TIME_ERASURE_DURATION, 5, 20, 1200));
         rows.add(serverTicks(JServerConfig.MIH_TIME_ACCELERATION_DURATION, 20, 100, 3600));
+        rows.add(serverTicks(JServerConfig.CMOON_UTIL_DURATION, 20, 100, 3600));
+        rows.add(serverInt(JServerConfig.CMOON_ULT_RANGE, 5, 20, 0, 256));
 
         // Cooldowns & Combat Balance
         rows.add(serverBool(JServerConfig.ENABLE_MOVE_COOLDOWNS));
@@ -150,6 +152,11 @@ public final class JCraftConfigScreen extends Screen {
         rows.add(serverBool(JServerConfig.PLAYER_VAMPS_DIE_TO_HAMON));
         rows.add(serverBool(JServerConfig.MANDOM_AFFECTS_BLOCKS));
         rows.add(serverBool(JServerConfig.WS_STEAL_STANDS_FROM_PLAYERS));
+        rows.add(serverBool(JServerConfig.UNIVERSAL_ABILITIES));
+        rows.add(serverBool(JServerConfig.SPTW_IGNITE_CAMPFIRES));
+        rows.add(serverInt(JServerConfig.SHA_SEARCH_RADIUS, 1, 5, 3, 32));
+        rows.add(serverBool(JServerConfig.MIH_ACCELERATE_TICKS));
+        rows.add(serverBool(JServerConfig.USE_FOOLISH_SAND));
         rows.add(serverBool(JServerConfig.REDUCE_DEADLY_EXPLOSIONS));
         rows.add(serverBool(JServerConfig.DISABLE_COMBAT_ELYTRA));
         return rows;
@@ -157,6 +164,7 @@ public final class JCraftConfigScreen extends Screen {
 
     private List<ConfigRow> buildGameplayTab() {
         List<ConfigRow> rows = new ArrayList<>();
+        rows.add(serverBool(JServerConfig.ENABLE_HITSTOP));
         rows.add(serverBool(JServerConfig.EXCLUSIVE_STANDS));
         rows.add(serverBool(JServerConfig.START_WITH_STAND));
         rows.add(serverBool(JServerConfig.START_WITH_SPEC));
@@ -173,6 +181,8 @@ public final class JCraftConfigScreen extends Screen {
         rows.add(serverMs(JServerConfig.GRAVITY_ROTATION_TIME, 50, 250, 5000));
         rows.add(serverBool(JServerConfig.GRAVITY_WORLD_VELOCITY));
         rows.add(serverBool(JServerConfig.RESET_GRAVITY_ON_DIMENSION_CHANGE));
+        rows.add(serverBool(JServerConfig.RESET_GRAVITY_ON_RESPAWN));
+        rows.add(serverBool(JServerConfig.VOID_DAMAGE_ABOVE_WORLD));
         return rows;
     }
 
@@ -181,6 +191,7 @@ public final class JCraftConfigScreen extends Screen {
         List<ConfigRow> rows = new ArrayList<>();
         rows.add(clientBool("jcraft.config.anime_hud", "Modern JoJo Anime HUD", cfg::isAnimeHudEnabled, cfg::setAnimeHudEnabled, true));
         rows.add(clientBool("text.autoconfig.jcraft.option.iconHud", "Icon HUD", cfg::isIconHud, cfg::setIconHud, true));
+        rows.add(clientFloat("jcraft.config.hud_scale", "HUD Scale", cfg::getHudScale, cfg::setHudScale, 0.05f, 0.25f, 0.75f, 1.50f, 1.0f, "x"));
         rows.add(clientBool("text.autoconfig.jcraft.option.iconHudPeekAllMoves", "Peek Moves in Icon HUD", cfg::isIconHudPeekAllMoves, cfg::setIconHudPeekAllMoves, true));
         rows.add(clientEnum("text.autoconfig.jcraft.option.uiPosition", "UI Position", cfg::getUiPosition, cfg::setUiPosition, JClientConfig.UIPos.values(), JClientConfig.UIPos.RIGHT));
         rows.add(clientEnum("text.autoconfig.jcraft.option.uiDuration", "UI Duration", cfg::getUiDuration, cfg::setUiDuration, JClientConfig.UIDuration.values(), JClientConfig.UIDuration.COOLDOWN));
@@ -345,6 +356,18 @@ public final class JCraftConfigScreen extends Screen {
         return Language.getInstance().has(key) ? Component.translatable(key) : Component.literal(fallback);
     }
 
+    private static @Nullable Component clientTooltip(String key) {
+        String tipKey = key + ".tooltip";
+        if (Language.getInstance().has(tipKey)) {
+            return Component.translatable(tipKey);
+        }
+        String clothTip = key + ".@Tooltip";
+        if (Language.getInstance().has(clothTip)) {
+            return Component.translatable(clothTip);
+        }
+        return null;
+    }
+
     private ConfigRow serverTicks(IntOption opt, int smallStep, int bigStep, int maxCap) {
         int max = opt.getMax() != null ? opt.getMax() : maxCap;
         return new ConfigRow(
@@ -418,7 +441,7 @@ public final class JCraftConfigScreen extends Screen {
         return new ConfigRow(
                 false,
                 clientLabel(key, fallback),
-                null,
+                clientTooltip(key),
                 () -> get.getAsBoolean() ? "ON" : "OFF",
                 () -> get.getAsBoolean() ? 0xFF34D399 : 0xFFF87171,
                 () -> boolControls(get, v -> {
@@ -433,7 +456,7 @@ public final class JCraftConfigScreen extends Screen {
         return new ConfigRow(
                 false,
                 clientLabel(key, fallback),
-                null,
+                clientTooltip(key),
                 () -> Integer.toString(get.getAsInt()),
                 () -> 0xFF93C5FD,
                 () -> intControls(get, v -> {
@@ -448,7 +471,7 @@ public final class JCraftConfigScreen extends Screen {
         return new ConfigRow(
                 false,
                 clientLabel(key, fallback),
-                null,
+                clientTooltip(key),
                 () -> String.format(Locale.ROOT, "%.2f%s", get.get(), suffix),
                 () -> 0xFF93C5FD,
                 () -> floatControls(get, v -> {
@@ -462,7 +485,7 @@ public final class JCraftConfigScreen extends Screen {
         return new ConfigRow(
                 false,
                 clientLabel(key, fallback),
-                null,
+                clientTooltip(key),
                 () -> get.get().name(),
                 () -> 0xFF38BDF8,
                 () -> List.of(
@@ -729,7 +752,39 @@ public final class JCraftConfigScreen extends Screen {
             this.init();
             return true;
         }
+        int key = event.key();
+        if (key >= InputConstants.KEY_1 && key <= InputConstants.KEY_6) {
+            switchTab(key - InputConstants.KEY_1);
+            return true;
+        }
+        if (key == InputConstants.KEY_UP) {
+            return scrollRows(-1);
+        }
+        if (key == InputConstants.KEY_DOWN) {
+            return scrollRows(1);
+        }
+        if (key == InputConstants.KEY_PAGEUP) {
+            return scrollRows(-rowsPerPage);
+        }
+        if (key == InputConstants.KEY_PAGEDOWN) {
+            return scrollRows(rowsPerPage);
+        }
         return super.keyPressed(event);
+    }
+
+    private boolean scrollRows(int delta) {
+        List<ConfigRow> activeRows = tabs.get(activeTab);
+        int maxStart = Math.max(0, activeRows.size() - rowsPerPage);
+        if (maxStart <= 0 || delta == 0) {
+            return false;
+        }
+        int next = Mth.clamp(scrollOffset + delta, 0, maxStart);
+        if (next != scrollOffset) {
+            scrollOffset = next;
+            this.init();
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -836,17 +891,26 @@ public final class JCraftConfigScreen extends Screen {
             gui.text(this.font, modMsg, this.panelLeft + this.panelW - this.font.width(modMsg) - 10, footerY, 0xFF34D399, false);
         }
 
-        // Tooltip popup for hovered row
+        // Tooltip popup for hovered row (exact font.split wrapping so text never overflows)
         if (hoveredRow != null && hoveredRow.tooltip() != null) {
-            int tipW = Math.min(240, this.width - 20);
-            String tipStr = hoveredRow.tooltip().getString().replace('\n', ' ');
-            int lines = Math.max(1, (int) Math.ceil(this.font.width(tipStr) / (double) (tipW - 10)));
-            int tipH = 12 + lines * 10;
-            int tx = Mth.clamp(mouseX + 8, 6, this.width - tipW - 6);
-            int ty = Mth.clamp(mouseY - tipH - 6, 6, this.height - tipH - 6);
-            gui.fill(tx, ty, tx + tipW, ty + tipH, 0xF0100A1C);
-            gui.outline(tx, ty, tipW, tipH, 0xFFFACC15);
-            gui.textWithWordWrap(this.font, Component.literal(tipStr), tx + 5, ty + 5, tipW - 10, 0xFFE5E7EB, false);
+            int tipW = Math.min(250, this.width - 20);
+            int innerW = Math.max(60, tipW - 12);
+            List<net.minecraft.util.FormattedCharSequence> wrapped = this.font.split(hoveredRow.tooltip(), innerW);
+            int actualW = 0;
+            for (var line : wrapped) {
+                actualW = Math.max(actualW, this.font.width(line));
+            }
+            int boxW = Math.min(tipW, Math.max(80, actualW + 12));
+            int boxH = 10 + wrapped.size() * 10;
+            int tx = Mth.clamp(mouseX + 10, 6, this.width - boxW - 6);
+            int ty = Mth.clamp(mouseY - boxH - 6, 6, this.height - boxH - 6);
+            gui.fill(tx, ty, tx + boxW, ty + boxH, 0xF2100A1C);
+            gui.outline(tx, ty, boxW, boxH, 0xFFFACC15);
+            int ly = ty + 5;
+            for (var line : wrapped) {
+                gui.text(this.font, line, tx + 6, ly, 0xFFE5E7EB, false);
+                ly += 10;
+            }
         }
     }
 

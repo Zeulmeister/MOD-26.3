@@ -1,15 +1,20 @@
 {
+  "evolution": true,
   "idle_rotation": -45.0,
   "info": {
-    "con_count": 0,
+    "con_count": 2,
     "free_space": {
       "translate": "entity.jcraft.chariot_requiem.info.freeSpace"
     },
     "name": {
       "translate": "entity.jcraft.chariot_requiem"
     },
-    "pro_count": 0,
+    "pro_count": 4,
     "skin_names": []
   },
-  "obtainable": false
+  "summon_data": {
+    "sound": {
+      "sound_id": "jcraft:scsummon"
+    }
+  }
 }

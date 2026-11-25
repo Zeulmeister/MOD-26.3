@@ -7,6 +7,7 @@ import net.arna.jcraft.api.JRegistries;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.common.attack.moves.aerosmith.*;
 import net.arna.jcraft.common.attack.moves.anubis.*;
+import net.arna.jcraft.common.attack.moves.chariotrequiem.*;
 import net.arna.jcraft.common.attack.moves.cmoon.*;
 import net.arna.jcraft.common.attack.moves.cream.*;
 import net.arna.jcraft.common.attack.moves.dirtydeedsdonedirtcheap.*;
@@ -213,6 +214,9 @@ public interface JMoveTypeRegistry {
     RegistrySupplier<MoveType<?>> SILVERCHARIOT_SC_COUNTER_ATTACK = register("silverchariot_sc_counter_attack", SCCounterAttack.Type.INSTANCE);
     RegistrySupplier<MoveType<?>> SILVERCHARIOT_SPIN_BARRAGE_ATTACK = register("silverchariot_spin_barrage_attack", SpinBarrageAttack.Type.INSTANCE);
     RegistrySupplier<MoveType<?>> SILVERCHARIOT_TOSS_MOVE = register("silverchariot_toss_move", SilverChariotTossMove.Type.INSTANCE);
+
+    RegistrySupplier<MoveType<?>> CHARIOTREQUIEM_REQUIEM_COUNTER_ATTACK = register("chariotrequiem_requiem_counter_attack", RequiemCounterAttack.Type.INSTANCE);
+    RegistrySupplier<MoveType<?>> CHARIOTREQUIEM_SOUL_SWAP_ATTACK = register("chariotrequiem_soul_swap_attack", SoulSwapAttack.Type.INSTANCE);
 
     RegistrySupplier<MoveType<?>> STARPLATINUM_BLOCK_BREAKING_ATTACK = register("starplatinum_block_breaking_attack", BlockBreakingAttack.Type.INSTANCE);
     RegistrySupplier<MoveType<?>> STARPLATINUM_INHALE_ATTACK = register("starplatinum_inhale_attack", InhaleAttack.Type.INSTANCE);
