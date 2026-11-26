@@ -80,7 +80,7 @@ public final class KQBTDEntity extends AbstractKillerQueenEntity<KQBTDEntity, KQ
                     Component.literal("Elbow"),
                     Component.literal("fast, short-range knockback, very low blockstun")
             );
-    public static final BubbleCounterAttack BUBBLE_COUNTER = new BubbleCounterAttack(480, 5, 20, 1f)
+    public static final BubbleCounterAttack<KQBTDEntity> BUBBLE_COUNTER = new BubbleCounterAttack<KQBTDEntity>(480, 5, 20, 1f)
             .withInfo(
                     Component.literal("Stray Cat Counter"),
                     Component.literal("0.25s windup counter, turns opponent into your primary bomb")

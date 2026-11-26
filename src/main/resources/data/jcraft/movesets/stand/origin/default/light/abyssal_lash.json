@@ -1,0 +1,85 @@
+{
+  "anim_state": "LIGHT",
+  "class": "LIGHT",
+  "cooldown_type": "STAND_LIGHT",
+  "crouching_variant": {
+    "anim_state": "UPPERCUT",
+    "class": "LIGHT",
+    "cooldown_type": "STAND_LIGHT",
+    "move": {
+      "type": "jcraft:shared_simple_uppercut_attack",
+      "attack_extras": {
+        "backstab": true,
+        "block_stun": 10,
+        "extra_hit_boxes": [
+          {
+            "size": 1.25,
+            "vertical_offset": 0.35
+          }
+        ],
+        "hit_animation": "MID",
+        "hit_spark": "HIT_SPARK_2"
+      },
+      "cooldown": 0,
+      "damage": 5.5,
+      "duration": 12,
+      "extras": {
+        "actions": [
+          {
+            "type": "jcraft:play_sound",
+            "bind": false,
+            "run": "on_hit",
+            "sound": "jcraft:impact1"
+          }
+        ],
+        "description": {
+          "translate": "move.jcraft.origin.default.abyssal_uppercut.description"
+        },
+        "name": {
+          "translate": "move.jcraft.origin.default.abyssal_uppercut.name"
+        }
+      },
+      "hitbox_size": 1.5,
+      "knockback": 0.45,
+      "move_distance": 1.35,
+      "offset": 0.2,
+      "strength": 0.65,
+      "stun": 16,
+      "windup": 6
+    }
+  },
+  "move": {
+    "type": "jcraft:shared_simple_attack",
+    "attack_extras": {
+      "backstab": true,
+      "block_stun": 4,
+      "hit_animation": "MID",
+      "hit_spark": "HIT_SPARK_2"
+    },
+    "cooldown": 10,
+    "damage": 4.5,
+    "duration": 9,
+    "extras": {
+      "actions": [
+        {
+          "type": "jcraft:play_sound",
+          "bind": false,
+          "run": "on_hit",
+          "sound": "jcraft:impact1"
+        }
+      ],
+      "description": {
+        "translate": "move.jcraft.origin.default.light.description"
+      },
+      "name": {
+        "translate": "move.jcraft.origin.default.light.name"
+      }
+    },
+    "hitbox_size": 1.5,
+    "knockback": 0.25,
+    "move_distance": 1.35,
+    "offset": 0.1,
+    "stun": 12,
+    "windup": 4
+  }
+}

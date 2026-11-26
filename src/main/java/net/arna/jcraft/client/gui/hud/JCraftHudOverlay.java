@@ -113,10 +113,10 @@ public final class JCraftHudOverlay {
             yCursor -= BAR_STEP;
         } else if (stand instanceof PurpleHazeDistortionEntity phd) {
             yCursor = drawPhdModePill(ctx, font, gaugeX, yCursor - 10, phd.getSyncedPoisonType()) - 4;
-        } else if (stand instanceof MadeInHeavenEntity mih && mih.getAccelTime() > 0) {
-            float ratio = Mth.clamp(mih.getSpeedometer() / (float) MadeInHeavenEntity.MAXIMUM_SPEEDOMETER, 0.0F, 1.0F);
+        } else if (stand instanceof net.arna.jcraft.api.stand.ITimeAccelCapable ta && ta.getAccelTime() > 0) {
+            float ratio = Mth.clamp(ta.getSpeedometer() / (float) MadeInHeavenEntity.MAXIMUM_SPEEDOMETER, 0.0F, 1.0F);
             String label = Component.translatable("jcraft.hud.gauge.speedometer").getString()
-                    + " " + mih.getSpeedometer() + "/" + MadeInHeavenEntity.MAXIMUM_SPEEDOMETER;
+                    + " " + ta.getSpeedometer() + "/" + MadeInHeavenEntity.MAXIMUM_SPEEDOMETER;
             drawGaugeBar(ctx, font, gaugeX, yCursor, ratio, 0xCCFACC15, label);
             yCursor -= BAR_STEP;
         }

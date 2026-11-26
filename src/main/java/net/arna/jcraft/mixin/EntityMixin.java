@@ -471,7 +471,7 @@ public abstract class EntityMixin implements EntityAddon {
     private void jcraft$shouldSpawnSprintingParticles(CallbackInfoReturnable<Boolean> cir) {
         if ((Object) this instanceof LivingEntity living) {
             StandEntity<?, ?> stand = JUtils.getStand(living);
-            if (stand instanceof KingCrimsonEntity kc && kc.getTETime() > 0) {
+            if (stand instanceof net.arna.jcraft.api.stand.ITimeEraseCapable te && te.getTETime() > 0) {
                 cir.setReturnValue(false);
             }
         }

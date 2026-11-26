@@ -1096,10 +1096,10 @@ public final class JUtils {
         if (!(entity instanceof LivingEntity living)) {
             return false;
         }
-        if (!(getStand(living) instanceof KingCrimsonEntity kc)) {
+        if (!(getStand(living) instanceof net.arna.jcraft.api.stand.ITimeEraseCapable te)) {
             return false;
         }
-        return kc.getTETime() > 0;
+        return te.getTETime() > 0;
     }
 
     /**

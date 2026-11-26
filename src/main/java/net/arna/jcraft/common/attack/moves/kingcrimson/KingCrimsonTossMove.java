@@ -35,7 +35,7 @@ public final class KingCrimsonTossMove extends AbstractTossMove<KingCrimsonTossM
     @Override
     public @NonNull Set<LivingEntity> perform(final KingCrimsonEntity attacker, final LivingEntity user) {
         if (attacker.getTETime() > 0) {
-            final TimeEraseMove te = attacker.getTimeEraseMove();
+            final TimeEraseMove<?> te = attacker.getTimeEraseMove();
             if (te != null) {
                 te.cancelTE(attacker);
             }

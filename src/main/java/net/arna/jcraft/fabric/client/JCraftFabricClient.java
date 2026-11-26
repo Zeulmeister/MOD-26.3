@@ -39,7 +39,9 @@ public final class JCraftFabricClient implements ClientModInitializer {
             net.arna.jcraft.client.renderer.effects.SplatterEffectRenderer.render(matrices, camPos, world, tickDelta, collector);
             net.arna.jcraft.client.renderer.effects.TimeErasePredictionEffectRenderer.render(matrices, camPos, world, tickDelta, collector, camState);
             net.arna.jcraft.client.renderer.effects.TimeAccelerationEffectRenderer.render(world);
+            net.arna.jcraft.client.renderer.effects.StandRunicCircleRenderer.render(matrices, camPos, world, tickDelta, collector);
             net.arna.jcraft.client.rendering.MihAfterimageTrail.renderAll(matrices, camPos, world, tickDelta, collector, camState);
+            net.arna.jcraft.client.rendering.AuraAfterimageManager.renderAll(matrices, camPos, world, tickDelta, collector, camState);
         });
     }
 }

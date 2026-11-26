@@ -454,6 +454,7 @@ public interface Attacks {
         damage *= scaling;
 
         tryApplyHitstop(attacker, ent, damage);
+        trySendImpactEffect(attacker, ent, damage);
 
         if (JServerConfig.HEALTH_TO_DAMAGE_SCALING.getValue() && !net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(ent.getType()).is(JTagRegistry.IGNORES_DAMAGE_SCALING)) {
             float healthRatio = ent.getMaxHealth() / 20.0f;
@@ -556,6 +557,16 @@ public interface Attacks {
         }
     }
 
+    static void trySendImpactEffect(@Nullable Entity attacker, LivingEntity victim, float damage) {
+        if (victim == null || !(victim.level() instanceof ServerLevel serverLevel) || damage < 7.0f) {
+            return;
+        }
+        boolean isUlt = damage >= 12.0f;
+        float intensity = isUlt ? 0.95f : Mth.clamp((damage - 5.0f) / 10.0f, 0.35f, 0.72f);
+        int rgb = JVisualFeedback.resolveAuraRgb(attacker, null);
+        JVisualFeedback.sendImpactEffect(serverLevel, victim.getEyePosition(), intensity, rgb, isUlt);
+    }
+
     /**
      * Basic damage method, ignores potion effects and enchantments, accounts for armor and damage scaling
      *
@@ -573,6 +584,7 @@ public interface Attacks {
         damage *= scaling;
 
         tryApplyHitstop(damageSource.getEntity(), ent, damage);
+        trySendImpactEffect(damageSource.getEntity(), ent, damage);
 
         // Send damage number packet for training dummies
         if (ent instanceof TrainingDummyEntity && !ent.level().isClientSide() && damage > 0) {

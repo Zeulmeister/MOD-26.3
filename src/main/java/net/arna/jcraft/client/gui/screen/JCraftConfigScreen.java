@@ -171,6 +171,7 @@ public final class JCraftConfigScreen extends Screen {
         rows.add(serverBool(JServerConfig.STAND_USER_SIGHT));
         rows.add(serverBool(JServerConfig.CREAM_VOID_VISIBLE));
         rows.add(serverBool(JServerConfig.SPAWNER_STANDS));
+        rows.add(serverBool(JServerConfig.ORIGIN_FREE_BINDS));
         return rows;
     }
 
@@ -209,6 +210,10 @@ public final class JCraftConfigScreen extends Screen {
         rows.add(clientBool("text.autoconfig.jcraft.option.showStandUserWarningPlayer", "Stand Warning (Players)", cfg::isShowStandUserWarningPlayer, cfg::setShowStandUserWarningPlayer, true));
         rows.add(clientBool("text.autoconfig.jcraft.option.showStandUserWarningMob", "Stand Warning (Mobs)", cfg::isShowStandUserWarningMob, cfg::setShowStandUserWarningMob, true));
         rows.add(clientBool("text.autoconfig.jcraft.option.disableMihAfterimages", "Disable MiH Afterimages", cfg::isDisableMihAfterimages, cfg::setDisableMihAfterimages, false));
+        rows.add(clientBool("jcraft.config.aura_afterimages", "Aura Afterimage Trails", cfg::isAuraAfterimagesEnabled, cfg::setAuraAfterimagesEnabled, true));
+        rows.add(clientBool("jcraft.config.impact_effects", "Impact Frames & Shockwave", cfg::isImpactEffectsEnabled, cfg::setImpactEffectsEnabled, true));
+        rows.add(clientFloat("jcraft.config.screen_shake_strength", "Screen Shake Strength", cfg::getScreenShakeStrength, cfg::setScreenShakeStrength, 0.1f, 0.25f, 0.0f, 2.0f, 1.0f, "x"));
+        rows.add(clientBool("jcraft.config.runic_charge_circles", "Runic Charge Circles", cfg::isRunicChargeCirclesEnabled, cfg::setRunicChargeCirclesEnabled, true));
         return rows;
     }
 

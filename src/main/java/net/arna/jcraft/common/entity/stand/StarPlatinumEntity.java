@@ -39,7 +39,8 @@ import java.util.function.Supplier;
  * @see net.arna.jcraft.common.attack.moves.starplatinum.BlockBreakingAttack BlockBreakingAttack
  * @see InhaleAttack
  */
-public final class StarPlatinumEntity extends AbstractStarPlatinumEntity<StarPlatinumEntity, StarPlatinumEntity.State> {
+public final class StarPlatinumEntity extends AbstractStarPlatinumEntity<StarPlatinumEntity, StarPlatinumEntity.State>
+        implements net.arna.jcraft.api.stand.IInhaleCapable {
     public static final MoveSet<StarPlatinumEntity, State> MOVE_SET = MoveSetManager.create(JStandTypeRegistry.STAR_PLATINUM,
             StarPlatinumEntity::registerMoves, StarPlatinumEntity.class, State.class);
     public static final StandData DATA = StandData.builder()
@@ -191,7 +192,7 @@ public final class StarPlatinumEntity extends AbstractStarPlatinumEntity<StarPla
                     Component.translatable("jcraft.starplatinum.toss"),
                     Component.literal("Best throw in the mod. Long minimum windup, high velocity and decent max charge time.")
             );
-    public static final InhaleAttack INHALE = new InhaleAttack(800, 5, 5, 1f, 80)
+    public static final InhaleAttack<StarPlatinumEntity> INHALE = new InhaleAttack<StarPlatinumEntity>(800, 5, 5, 1f, 80)
             .withInfo(
                     Component.translatable("jcraft.starplatinum.ult"),
                     Component.literal("Vacuums looked entities for 4 seconds.")

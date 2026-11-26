@@ -1,0 +1,48 @@
+{
+  "anim_state": "BARRAGE",
+  "class": "BARRAGE",
+  "cooldown_type": "STAND_BARRAGE",
+  "move": {
+    "type": "jcraft:shared_main_barrage_attack",
+    "attack_extras": {
+      "backstab": true,
+      "block_stun": 3,
+      "hit_animation": "MID",
+      "shockwaves": true,
+      "stun_type": "WINDED"
+    },
+    "cooldown": 80,
+    "damage": 1.15,
+    "duration": 45,
+    "extras": {
+      "actions": [
+        {
+          "type": "jcraft:play_sound",
+          "run": "at_init",
+          "sound": "jcraft:origin_barrage"
+        },
+        {
+          "type": "jcraft:play_sound",
+          "bind": false,
+          "run": "on_hit",
+          "sound": "jcraft:impact3"
+        }
+      ],
+      "description": {
+        "translate": "move.jcraft.origin.default.barrage.description"
+      },
+      "is_holdable": true,
+      "name": {
+        "translate": "move.jcraft.origin.default.barrage.name"
+      }
+    },
+    "hitbox_size": 1.8,
+    "interval": 3,
+    "knockback": 0.12,
+    "mineable_hardness": 50.0,
+    "move_distance": 1.45,
+    "offset": 0.0,
+    "stun": 10,
+    "windup": 5
+  }
+}

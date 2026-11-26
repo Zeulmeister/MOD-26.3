@@ -12,12 +12,12 @@ import net.arna.jcraft.api.component.living.CommonCooldownsComponent;
 import net.arna.jcraft.api.component.living.CommonStandComponent;
 import net.arna.jcraft.api.registry.JSoundRegistry;
 import net.arna.jcraft.api.registry.JStatusRegistry;
+import net.arna.jcraft.api.stand.ITimeEraseCapable;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.ai.AttackerBrainInfo;
 import net.arna.jcraft.common.attack.moves.shared.TossChargeMove;
 import net.arna.jcraft.common.attack.moves.shared.TossMove;
 import net.arna.jcraft.common.entity.PlayerCloneEntity;
-import net.arna.jcraft.common.entity.stand.KingCrimsonEntity;
 import net.arna.jcraft.common.network.s2c.ShaderActivationPacket;
 import net.arna.jcraft.common.network.s2c.ShaderDeactivationPacket;
 import net.arna.jcraft.common.tickable.JEnemies;
@@ -39,7 +39,7 @@ import java.lang.ref.WeakReference;
 import java.util.Set;
 
 @Getter
-public final class TimeEraseMove extends AbstractMove<TimeEraseMove, KingCrimsonEntity> {
+public final class TimeEraseMove<A extends StandEntity<? extends A, ?>> extends AbstractMove<TimeEraseMove<A>, A> {
     private WeakReference<Mob> doppelganger;
     private final int erasureDuration;
 
@@ -49,12 +49,12 @@ public final class TimeEraseMove extends AbstractMove<TimeEraseMove, KingCrimson
     }
 
     @Override
-    public @NonNull MoveType<TimeEraseMove> getMoveType() {
-        return Type.INSTANCE;
+    public @NonNull MoveType<TimeEraseMove<A>> getMoveType() {
+        return Type.INSTANCE.cast();
     }
 
     @Override
-    public void onInitiate(final KingCrimsonEntity attacker) {
+    public void onInitiate(final A attacker) {
         super.onInitiate(attacker);
 
         if (attacker.getUser() instanceof final ServerPlayer player) {
@@ -64,15 +64,17 @@ public final class TimeEraseMove extends AbstractMove<TimeEraseMove, KingCrimson
     }
 
     @Override
-    public void tick(final KingCrimsonEntity attacker) {
+    public void tick(final A attacker) {
         if (!attacker.hasUser()) return;
         tickTimeErase(attacker);
     }
 
     @Override
-    public @NonNull Set<LivingEntity> perform(final KingCrimsonEntity attacker, final LivingEntity user) {
+    public @NonNull Set<LivingEntity> perform(final A attacker, final LivingEntity user) {
         int duration = net.arna.jcraft.common.config.JServerConfig.KC_TIME_ERASURE_DURATION.getValue();
-        attacker.setTETime(duration);
+        if (attacker instanceof ITimeEraseCapable te) {
+            te.setTETime(duration);
+        }
 
         attacker.setCurrentMove(null);
         Mob doppelganger = null;
@@ -130,7 +132,7 @@ public final class TimeEraseMove extends AbstractMove<TimeEraseMove, KingCrimson
         return Set.of();
     }
 
-    private void summonFakeKC(final KingCrimsonEntity attacker) {
+    private void summonFakeKC(final StandEntity<?, ?> attacker) {
         Mob doppelganger = this.doppelganger == null ? null : this.doppelganger.get();
         CommonStandComponent standData = JComponentPlatformUtils.getStandComponent(doppelganger);
         standData.setTypeAndSkin(attacker.getStandType(), attacker.getSkin(), false);
@@ -145,11 +147,14 @@ public final class TimeEraseMove extends AbstractMove<TimeEraseMove, KingCrimson
         clone.setSilent(true);
     }
 
-    public void tickTimeErase(final KingCrimsonEntity attacker) {
+    public void tickTimeErase(final StandEntity<?, ?> attacker) {
+        if (!(attacker instanceof ITimeEraseCapable te)) {
+            return;
+        }
         LivingEntity user = attacker.getUserOrThrow();
-        int teTime = attacker.getTETime();
+        int teTime = te.getTETime();
         if (teTime > 0) {
-            attacker.setTETime(--teTime);
+            te.setTETime(--teTime);
 
             if (attacker.blocking || (
                     (attacker.getCurrentMove() != null && !(attacker.getCurrentMove() instanceof TossChargeMove<?>) && !(attacker.getCurrentMove() instanceof TossMove<?>))
@@ -196,12 +201,15 @@ public final class TimeEraseMove extends AbstractMove<TimeEraseMove, KingCrimson
         }
     }
 
-    public void cancelTE(KingCrimsonEntity attacker) {
+    public void cancelTE(final StandEntity<?, ?> attacker) {
+        if (!(attacker instanceof ITimeEraseCapable te)) {
+            return;
+        }
         final LivingEntity user = attacker.getUserOrThrow();
         final CommonCooldownsComponent cooldowns = JComponentPlatformUtils.getCooldowns(user);
-        cooldowns.setCooldown(CooldownType.STAND_ULTIMATE, cooldowns.getCooldown(CooldownType.STAND_ULTIMATE) - attacker.getTETime() * 2);
+        cooldowns.setCooldown(CooldownType.STAND_ULTIMATE, cooldowns.getCooldown(CooldownType.STAND_ULTIMATE) - te.getTETime() * 2);
 
-        attacker.setTETime(0);
+        te.setTETime(0);
         Mob doppelganger = this.doppelganger == null ? null : this.doppelganger.get();
         if (doppelganger != null) {
             doppelganger.discard();
@@ -215,20 +223,20 @@ public final class TimeEraseMove extends AbstractMove<TimeEraseMove, KingCrimson
     }
 
     @Override
-    protected @NonNull TimeEraseMove getThis() {
+    protected @NonNull TimeEraseMove<A> getThis() {
         return this;
     }
 
     @Override
-    public @NonNull TimeEraseMove copy() {
-        return copyExtras(new TimeEraseMove(getCooldown(), getWindup(), getDuration(), getMoveDistance(), getErasureDuration()));
+    public @NonNull TimeEraseMove<A> copy() {
+        return copyExtras(new TimeEraseMove<>(getCooldown(), getWindup(), getDuration(), getMoveDistance(), getErasureDuration()));
     }
 
-    public static class Type extends AbstractMove.Type<TimeEraseMove> {
+    public static class Type extends AbstractMove.Type<TimeEraseMove<?>> {
         public static final Type INSTANCE = new Type();
 
         @Override
-        protected @NonNull App<RecordCodecBuilder.Mu<TimeEraseMove>, TimeEraseMove> buildCodec(RecordCodecBuilder.Instance<TimeEraseMove> instance) {
+        protected @NonNull App<RecordCodecBuilder.Mu<TimeEraseMove<?>>, TimeEraseMove<?>> buildCodec(RecordCodecBuilder.Instance<TimeEraseMove<?>> instance) {
             return baseDefault(instance).and(Codec.INT.fieldOf("erasure_duration").forGetter(TimeEraseMove::getErasureDuration))
                     .apply(instance, applyExtras(TimeEraseMove::new));
         }

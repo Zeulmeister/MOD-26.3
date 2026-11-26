@@ -66,7 +66,8 @@ import java.util.UUID;
  * @see SpeedSliceAttack
  * @see TimeAccelerationMove
  */
-public class MadeInHeavenEntity extends StandEntity<MadeInHeavenEntity, MadeInHeavenEntity.State> {
+public class MadeInHeavenEntity extends StandEntity<MadeInHeavenEntity, MadeInHeavenEntity.State>
+        implements net.arna.jcraft.api.stand.ITimeAccelCapable {
     public static final MoveSet<MadeInHeavenEntity, State> MOVE_SET = MoveSetManager.create(JStandTypeRegistry.MADE_IN_HEAVEN,
             MadeInHeavenEntity::registerMoves, MadeInHeavenEntity.class, State.class);
     public static final StandData DATA = StandData.builder()
@@ -195,7 +196,7 @@ public class MadeInHeavenEntity extends StandEntity<MadeInHeavenEntity, MadeInHe
                     Component.literal("Roundabout Donut"),
                     Component.literal("feigns stand desummon, uninterruptible combo starter")
             );
-    public static final TimeAccelerationMove TIME_ACCELERATION = new TimeAccelerationMove(1400, 20,
+    public static final TimeAccelerationMove<MadeInHeavenEntity> TIME_ACCELERATION = new TimeAccelerationMove<MadeInHeavenEntity>(1400, 20,
             40, 1f, Either.right(JServerConfig.MIH_TIME_ACCELERATION_DURATION))
             .withSound(JSoundRegistry.MIH_TACCEL)
             .withInfo(
@@ -334,6 +335,11 @@ public class MadeInHeavenEntity extends StandEntity<MadeInHeavenEntity, MadeInHe
 
     public boolean getAfterimage() {
         return entityData.get(AFTER_IMAGE);
+    }
+
+    @Override
+    public boolean isAfterimage() {
+        return getAfterimage();
     }
 
     public void setAfterimage(boolean a) {

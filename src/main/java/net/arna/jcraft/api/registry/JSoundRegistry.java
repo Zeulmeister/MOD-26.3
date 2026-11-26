@@ -371,6 +371,13 @@ public interface JSoundRegistry {
     RegistrySupplier<SoundEvent> ROAD_ROLLER_IGNITION = register("rrignition");
     RegistrySupplier<SoundEvent> ROAD_ROLLER_ACTIVE = register("rractive");
 
+    // ORIGIN
+    RegistrySupplier<SoundEvent> ORIGIN_SUMMON = register("origin_summon");
+    RegistrySupplier<SoundEvent> ORIGIN_BARRAGE = register("origin_barrage");
+    RegistrySupplier<SoundEvent> ORIGIN_HEAVY = register("origin_heavy");
+    RegistrySupplier<SoundEvent> ORIGIN_ULT = register("origin_ult");
+    RegistrySupplier<SoundEvent> ORIGIN_BIND = register("origin_bind");
+
     static void init() {
         // intentionally left empty
     }

@@ -42,9 +42,17 @@ public class JClientConfig implements ConfigData {
     private boolean showStandUserWarningPlayer = true;
     private boolean showStandUserWarningMob = true;
     private boolean disableMihAfterimages = false;
+    private boolean auraAfterimagesEnabled = true;
+    private boolean impactEffectsEnabled = true;
+    private float screenShakeStrength = 1.0f;
+    private boolean runicChargeCirclesEnabled = true;
 
     public float getClampedHudScale() {
         return net.minecraft.util.Mth.clamp(this.hudScale, 0.75f, 1.50f);
+    }
+
+    public float getClampedScreenShakeStrength() {
+        return net.minecraft.util.Mth.clamp(this.screenShakeStrength, 0.0f, 2.0f);
     }
 
     public static void load() {

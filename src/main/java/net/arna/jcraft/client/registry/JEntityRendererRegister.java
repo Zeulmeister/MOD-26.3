@@ -109,6 +109,7 @@ public interface JEntityRendererRegister {
             new RendererData<>(JEntityTypeRegistry.DRAGONS_DREAM, context -> new StandEntityRenderer<>(context, JStandTypeRegistry.DRAGONS_DREAM.get(), 0.0f, 1.5707f)),
             new RendererData<>(JEntityTypeRegistry.FOO_FIGHTERS, context -> new StandEntityRenderer<>(context, JStandTypeRegistry.FOO_FIGHTERS.get())),
             new RendererData<>(JEntityTypeRegistry.GOO_GOO_DOLLS, context -> new StandEntityRenderer<>(context, JStandTypeRegistry.GOO_GOO_DOLLS.get())),
+            new RendererData<>(JEntityTypeRegistry.ORIGIN, OriginRenderer::new),
 
             new RendererData<>(JEntityTypeRegistry.LASER_PROJECTILE, LaserProjectileRenderer::new),
             new RendererData<>(JEntityTypeRegistry.BLOOD_PROJECTILE, BloodProjectileRenderer::new),

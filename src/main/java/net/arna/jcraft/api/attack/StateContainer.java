@@ -40,6 +40,14 @@ public class StateContainer<S extends Enum<S>> {
         value = Optional.of(Enum.valueOf(stateClass, valueName));
     }
 
+    public void configureWithFallback(final Class<S> stateClass, final S fallback) {
+        try {
+            value = Optional.of(Enum.valueOf(stateClass, valueName));
+        } catch (IllegalArgumentException ignored) {
+            value = Optional.of(fallback);
+        }
+    }
+
     public StateContainer<S> copy() {
         return new StateContainer<>(valueName, value);
     }

@@ -36,7 +36,7 @@ public class TWOHEyesLayer extends AbstractRenderLayer<TheWorldOverHeavenEntity>
         pc.setRenderType(cameo);
         pc.setVertexConsumer(pc.multiBufferSource().getBuffer(cameo));
         pc.setPackedLight(15728640);
-        pc.setPackedLight(OverlayTexture.NO_OVERLAY);
+        pc.setPackedOverlay(OverlayTexture.NO_OVERLAY);
         final Vector3f color = OVERWRITE_COLORS.get(pc.animatable().getOverwriteType());
         net.arna.jcraft.client.util.JAzRenderAccess.setRenderColorRgb(pc, color.x(), color.y(), color.z());
         JAzRenderAccess.setAlpha(pc, 1f);

@@ -108,7 +108,7 @@ public class TimeAccelStatePacket {
         return fromDayTime + Math.round((toDayTime - fromDayTime) * (double) eased);
     }
 
-    public static void sendStart(@NonNull final MadeInHeavenEntity mih, int duration) {
+    public static void sendStart(@NonNull final net.arna.jcraft.api.stand.StandEntity<?, ?> mih, int duration) {
         final long time = System.currentTimeMillis();
         final var server = Objects.requireNonNull(mih.getEntityWorld().getServer());
 
@@ -134,7 +134,7 @@ public class TimeAccelStatePacket {
         }
     }
 
-    public static void sendStop(@NonNull final MadeInHeavenEntity mih) {
+    public static void sendStop(@NonNull final net.arna.jcraft.api.stand.StandEntity<?, ?> mih) {
         final var server = Objects.requireNonNull(mih.level().getServer());
         final long finalDayTime = net.arna.jcraft.common.util.JUtils.getDayTime(mih.level());
         if (server.isDedicatedServer() || server.isPublished()) {
@@ -255,7 +255,7 @@ public class TimeAccelStatePacket {
         }
 
         public boolean isValid(Level world) {
-            return world.isClientSide() || world.getEntity(entityId) instanceof MadeInHeavenEntity;
+            return world.isClientSide() || world.getEntity(entityId) instanceof net.arna.jcraft.api.stand.ITimeAccelCapable;
         }
 
         public void decrementDuration() {

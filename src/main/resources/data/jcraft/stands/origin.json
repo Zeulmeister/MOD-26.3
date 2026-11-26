@@ -1,0 +1,37 @@
+{
+  "evolution": false,
+  "idle_rotation": -45.0,
+  "info": {
+    "con_count": 1,
+    "free_space": {
+      "translate": "entity.jcraft.origin.info.freeSpace"
+    },
+    "name": {
+      "translate": "entity.jcraft.origin"
+    },
+    "pro_count": 4,
+    "skin_names": [
+      {
+        "translate": "entity.jcraft.origin.skin1"
+      },
+      {
+        "translate": "entity.jcraft.origin.skin2"
+      },
+      {
+        "translate": "entity.jcraft.origin.skin3"
+      },
+      {
+        "translate": "entity.jcraft.origin.skin4"
+      },
+      {
+        "translate": "entity.jcraft.origin.skin5"
+      }
+    ]
+  },
+  "summon_data": {
+    "anim_duration": 24,
+    "sound": {
+      "sound_id": "jcraft:origin_summon"
+    }
+  }
+}

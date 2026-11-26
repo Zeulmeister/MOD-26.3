@@ -117,7 +117,7 @@ public class ChariotRequiemEntity extends StandEntity<ChariotRequiemEntity, Char
                     Component.translatable("move.jcraft.chariot_requiem.default.soul_swap.description")
             );
 
-    public static final RequiemCounterAttack STAND_REBELLION = new RequiemCounterAttack(
+    public static final RequiemCounterAttack<ChariotRequiemEntity> STAND_REBELLION = new RequiemCounterAttack<ChariotRequiemEntity>(
             400, 5, 34, 1.0f)
             .withSound(JSoundRegistry.SC_ARMOROFF)
             .withInfo(

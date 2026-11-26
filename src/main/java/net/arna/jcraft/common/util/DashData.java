@@ -78,6 +78,7 @@ public class DashData {
         }
 
         JCraft.dashes.put(entity, new DashData(rotVec.normalize().scale(dashSpeed), entity));
+        JVisualFeedback.sendAfterimageTrail(entity, 9);
 
         final JSpec<?, ?> spec = JUtils.getSpec(entity);
 

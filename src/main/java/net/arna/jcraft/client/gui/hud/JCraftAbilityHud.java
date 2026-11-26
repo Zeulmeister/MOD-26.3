@@ -319,10 +319,19 @@ public class JCraftAbilityHud {
                 }
             }
         }
+        Identifier iconOwner = standId;
+        String iconName = slot.iconName();
+        if (stand instanceof net.arna.jcraft.common.entity.stand.OriginEntity origin && slot.moveClass() != null) {
+            net.arna.jcraft.common.stand.OriginSkillCatalog.SkillEntry eq = origin.getEquippedSkill(slot.moveClass());
+            if (eq != null) {
+                iconOwner = eq.standId();
+                iconName = eq.getIconName();
+            }
+        }
         return new ResolvedSlot(
                 slot.cooldownType(),
-                standId,
-                slot.iconName(),
+                iconOwner,
+                iconName,
                 activeNow,
                 crouching && hasCrouch,
                 airborne && hasAerial

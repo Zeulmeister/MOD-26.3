@@ -290,6 +290,7 @@ public final class JCraft {
         net.arna.jcraft.common.network.JNetwork.registerReceiver(NetworkManager.c2s(), JPacketRegistry.C2S_REMOTE_CONTROL_TOGGLE, RemoteControlTogglePacket::handle);
         net.arna.jcraft.common.network.JNetwork.registerReceiver(NetworkManager.c2s(), JPacketRegistry.C2S_STAND_ROTATION, StandRotationPacket::handle);
         net.arna.jcraft.common.network.JNetwork.registerReceiver(NetworkManager.c2s(), JPacketRegistry.C2S_RADIAL_ACTION, RadialMenuActionPacket::handle);
+        net.arna.jcraft.common.network.JNetwork.registerReceiver(NetworkManager.c2s(), JPacketRegistry.C2S_ORIGIN_LOADOUT, OriginLoadoutPacket::handle);
 
         // Pre-register all S2C payload channels for dedicated server compatibility
         for (Identifier s2cId : List.of(

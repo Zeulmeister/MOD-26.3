@@ -1,0 +1,51 @@
+{
+  "type": "group",
+  "modifiers": [
+    {
+      "type": "group",
+      "conditions": ["USER_NOT_MOVING"],
+      "modifiers": [
+        {
+          "type": "group",
+          "conditions": ["LEFT_ARM_EMPTY"],
+          "modifiers": [
+            {
+              "type": "custom",
+              "operation": "ADD",
+              "part": "leftArm",
+              "property": "Z_ROT",
+              "value": -0.0800
+            },
+            {
+              "type": "custom",
+              "operation": "ADD",
+              "part": "leftArm",
+              "property": "X_ROT",
+              "value": -0.0400
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "conditions": ["RIGHT_ARM_EMPTY"],
+          "modifiers": [
+            {
+              "type": "custom",
+              "operation": "ADD",
+              "part": "rightArm",
+              "property": "Z_ROT",
+              "value": 0.0800
+            },
+            {
+              "type": "custom",
+              "operation": "ADD",
+              "part": "rightArm",
+              "property": "X_ROT",
+              "value": -0.0400
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

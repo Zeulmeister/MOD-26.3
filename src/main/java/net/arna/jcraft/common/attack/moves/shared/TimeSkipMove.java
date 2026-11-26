@@ -17,6 +17,7 @@ import net.arna.jcraft.common.tickable.Timestops;
 import net.arna.jcraft.common.util.CooldownType;
 import net.arna.jcraft.common.util.JCodecUtils;
 import net.arna.jcraft.common.util.JUtils;
+import net.arna.jcraft.common.util.JVisualFeedback;
 import net.arna.jcraft.platform.JComponentPlatformUtils;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
@@ -185,8 +186,10 @@ public final class TimeSkipMove<A extends IAttacker<? extends A, ?>> extends Abs
                 vehicle.setPos(tpPos.x, tpPos.y, tpPos.z);
             }
         }
+        final Vec3 fromPos = actor.position();
         actor.resetFallDistance();
         actor.teleportTo(tpPos.x, tpPos.y, tpPos.z);
+        JVisualFeedback.sendWarpAfterimage(actor, fromPos, tpPos);
 
         for (SoundEvent sound : sounds) {
             attacker.getEntityWorld().playSound(null, tpPos.x, tpPos.y, tpPos.z, sound, SoundSource.PLAYERS, 1f, 1f);

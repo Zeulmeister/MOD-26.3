@@ -2,6 +2,7 @@ package net.arna.jcraft.mixin.client;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import net.arna.jcraft.client.rendering.CombatImpactEffects;
 import net.arna.jcraft.client.zoom.StarPlatinumPrecisionHandler;
 import net.arna.jcraft.common.gravity.RotationAnimation;
 import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
@@ -90,6 +91,25 @@ public abstract class CameraMixin {
                 .orElseGet(() -> RotationUtil.getWorldRotationQuaternion(dir));
         Quaternionf camQuat = new Quaternionf(worldQuat).conjugate();
         this.rotation.premul(camQuat);
+        FORWARDS.rotate(this.rotation, this.forwards);
+        UP.rotate(this.rotation, this.up);
+        LEFT.rotate(this.rotation, this.left);
+    }
+
+    @Inject(method = "setRotation", at = @At("TAIL"))
+    private void jcraft$applyCombatImpactShake(float yRot, float xRot, CallbackInfo ci) {
+        if (this.entity == null) {
+            return;
+        }
+        float[] shakeDeg = CombatImpactEffects.computeShakeAnglesDeg(1.0f);
+        if (shakeDeg[0] == 0.0f && shakeDeg[1] == 0.0f && shakeDeg[2] == 0.0f) {
+            return;
+        }
+        this.rotation.rotateYXZ(
+                (float) Math.toRadians(shakeDeg[1]),
+                (float) Math.toRadians(shakeDeg[0]),
+                (float) Math.toRadians(shakeDeg[2])
+        );
         FORWARDS.rotate(this.rotation, this.forwards);
         UP.rotate(this.rotation, this.up);
         LEFT.rotate(this.rotation, this.left);

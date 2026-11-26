@@ -107,7 +107,8 @@ public final class AllStandsRuntimeDiagnostic {
                 JStandTypeRegistry.MANDOM,
                 JStandTypeRegistry.AEROSMITH,
                 JStandTypeRegistry.CRAZY_DIAMOND,
-                JStandTypeRegistry.CHARIOT_REQUIEM
+                JStandTypeRegistry.CHARIOT_REQUIEM,
+                JStandTypeRegistry.ORIGIN
         );
     }
 
@@ -636,6 +637,49 @@ public final class AllStandsRuntimeDiagnostic {
                     net.arna.jcraft.common.config.JServerConfig.RESET_GRAVITY_ON_RESPAWN.setValue(prevRespawnGrav);
                     net.arna.jcraft.common.config.JServerConfig.VOID_DAMAGE_ABOVE_WORLD.setValue(prevVoidAbove);
                     net.arna.jcraft.common.config.JServerConfig.syncGravityConfig();
+                }
+
+                // 5. Origin Stand, Skill Catalog & Cross-Stand Loadout Verification
+                {
+                    var allSkills = net.arna.jcraft.common.stand.OriginSkillCatalog.getAllSkills();
+                    assertTrue(allSkills.size() >= 80,
+                            "OriginSkillCatalog discovered compatible moves across Stands (count=" + allSkills.size() + ")");
+                    for (var preset : net.arna.jcraft.common.stand.OriginSkillCatalog.getPresets()) {
+                        assertTrue(preset.slots().size() == net.arna.jcraft.api.attack.enums.MoveClass.values().length,
+                                "Origin preset covers all 9 MoveClass slots: " + preset.id());
+                    }
+
+                    CommonStandComponent originComp = JComponentPlatformUtils.getStandComponent(user);
+                    originComp.setType(JStandTypeRegistry.ORIGIN.get());
+                    java.util.EnumMap<net.arna.jcraft.api.attack.enums.MoveClass, String> customLoadout =
+                            new java.util.EnumMap<>(net.arna.jcraft.api.attack.enums.MoveClass.class);
+                    customLoadout.put(net.arna.jcraft.api.attack.enums.MoveClass.LIGHT, "jcraft:star_platinum#light");
+                    customLoadout.put(net.arna.jcraft.api.attack.enums.MoveClass.HEAVY, "jcraft:the_world_over_heaven#heavy");
+                    customLoadout.put(net.arna.jcraft.api.attack.enums.MoveClass.BARRAGE, "jcraft:star_platinum#barrage");
+                    customLoadout.put(net.arna.jcraft.api.attack.enums.MoveClass.SPECIAL1, "jcraft:the_world_over_heaven#special3");
+                    customLoadout.put(net.arna.jcraft.api.attack.enums.MoveClass.SPECIAL2, "jcraft:king_crimson#ultimate");
+                    customLoadout.put(net.arna.jcraft.api.attack.enums.MoveClass.SPECIAL3, "jcraft:gold_experience_requiem#utility");
+                    customLoadout.put(net.arna.jcraft.api.attack.enums.MoveClass.ULTIMATE, "jcraft:the_world#ultimate");
+                    customLoadout.put(net.arna.jcraft.api.attack.enums.MoveClass.UTILITY, "jcraft:made_in_heaven#ultimate");
+                    customLoadout.put(net.arna.jcraft.api.attack.enums.MoveClass.TOSS, "jcraft:the_world#toss");
+                    originComp.setOriginLoadout(customLoadout);
+
+                    StandEntity<?, ?> originRaw = JCraft.summon(world, user);
+                    assertTrue(originRaw instanceof OriginEntity, "Summoned OriginEntity cleanly");
+                    if (originRaw instanceof OriginEntity origin) {
+                        origin.rebuildLoadoutFromUser(originComp);
+                        assertTrue(origin.getMoveMap().getEntries().size() >= 9,
+                                "Origin rebuilt dynamic cross-stand MoveMap (" + origin.getMoveMap().getEntries().size() + " entries)");
+                        var equippedBarrage = origin.getEquippedSkill(net.arna.jcraft.api.attack.enums.MoveClass.BARRAGE);
+                        assertTrue(equippedBarrage != null && "jcraft:star_platinum#barrage".equals(equippedBarrage.id()),
+                                "Origin equipped Star Platinum Barrage on BARRAGE bind");
+                        JComponentPlatformUtils.getCooldowns(user).setCooldown(CooldownType.STAND_HEAVY, 0);
+                        boolean startedMove = origin.initMove(net.arna.jcraft.api.attack.enums.MoveClass.HEAVY);
+                        assertTrue(startedMove, "Origin initiated cross-stand TWOH Heavy bind cleanly");
+                        origin.cancelMove();
+                        origin.desummon();
+                    }
+                    originComp.clearOriginLoadout();
                 }
 
                 finish(server);

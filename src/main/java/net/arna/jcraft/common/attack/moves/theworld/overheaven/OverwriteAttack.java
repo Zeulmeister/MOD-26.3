@@ -7,6 +7,8 @@ import lombok.NonNull;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.enums.MoveClass;
 import net.arna.jcraft.api.attack.moves.AbstractSimpleAttack;
+import net.arna.jcraft.api.stand.IOverwriteCapable;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.entity.stand.TheWorldOverHeavenEntity;
 import net.arna.jcraft.common.util.JUtils;
 import net.arna.jcraft.platform.JComponentPlatformUtils;
@@ -28,7 +30,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class OverwriteAttack extends AbstractSimpleAttack<OverwriteAttack, TheWorldOverHeavenEntity> {
+public final class OverwriteAttack<A extends StandEntity<? extends A, ?>> extends AbstractSimpleAttack<OverwriteAttack<A>, A> {
     public static final double NO_LOOK_RANGE = 512.0;
     private final List<Overwrite> overwrites = new ArrayList<>();
 
@@ -38,7 +40,7 @@ public final class OverwriteAttack extends AbstractSimpleAttack<OverwriteAttack,
     }
 
     @Override
-    public void tick(final TheWorldOverHeavenEntity attacker) {
+    public void tick(final A attacker) {
         if (!attacker.hasUser()) {
             return;
         }
@@ -47,13 +49,14 @@ public final class OverwriteAttack extends AbstractSimpleAttack<OverwriteAttack,
 
         // Mob TW:OH users normally don't swing after charging overwrite. This fixes that.
         RandomSource random = attacker.getRandom();
-        if (user instanceof Mob && attacker.getState() == TheWorldOverHeavenEntity.State.CHARGE_OVERWRITE && random.nextBoolean()) {
+        if (user instanceof Mob && attacker instanceof TheWorldOverHeavenEntity twoh
+                && twoh.getState() == TheWorldOverHeavenEntity.State.CHARGE_OVERWRITE && random.nextBoolean()) {
             attacker.initMove(random.nextBoolean() ? MoveClass.SPECIAL1 : MoveClass.SPECIAL2);
         }
 
         final int moveStun = attacker.getMoveStun();
-        if (moveStun <= 0 && attacker.getOverwriteType() != 0) {
-            attacker.setOverwriteType(0);
+        if (moveStun <= 0 && attacker instanceof IOverwriteCapable ow && ow.getOverwriteType() != 0) {
+            ow.setOverwriteType(0);
         }
 
         overwrites.removeIf(Overwrite::isInvalid);
@@ -91,10 +94,11 @@ public final class OverwriteAttack extends AbstractSimpleAttack<OverwriteAttack,
     }
 
     @Override
-    protected void processTarget(final TheWorldOverHeavenEntity attacker, final LivingEntity target, final Vec3 kbVec, final DamageSource damageSource) {
+    protected void processTarget(final A attacker, final LivingEntity target, final Vec3 kbVec, final DamageSource damageSource) {
         super.processTarget(attacker, target, kbVec, damageSource);
 
-        switch (attacker.getOverwriteType()) {
+        final int overwriteType = attacker instanceof IOverwriteCapable ow ? ow.getOverwriteType() : 0;
+        switch (overwriteType) {
             case 1 -> {
                 overwrites.add(new Overwrite(target, 200));
             }
@@ -117,26 +121,26 @@ public final class OverwriteAttack extends AbstractSimpleAttack<OverwriteAttack,
     }
 
     @Override
-    public @NonNull MoveType<OverwriteAttack> getMoveType() {
-        return Type.INSTANCE;
+    public @NonNull MoveType<OverwriteAttack<A>> getMoveType() {
+        return Type.INSTANCE.cast();
     }
 
     @Override
-    protected @NonNull OverwriteAttack getThis() {
+    protected @NonNull OverwriteAttack<A> getThis() {
         return this;
     }
 
     @Override
-    public @NonNull OverwriteAttack copy() {
-        return copyExtras(new OverwriteAttack(getCooldown(), getWindup(), getDuration(), getMoveDistance(),
+    public @NonNull OverwriteAttack<A> copy() {
+        return copyExtras(new OverwriteAttack<>(getCooldown(), getWindup(), getDuration(), getMoveDistance(),
                 getDamage(), getStun(), getHitboxSize(), getKnockback(), getOffset()));
     }
 
-    public static class Type extends AbstractSimpleAttack.Type<OverwriteAttack> {
+    public static class Type extends AbstractSimpleAttack.Type<OverwriteAttack<?>> {
         public static final Type INSTANCE = new Type();
 
         @Override
-        protected @NonNull App<RecordCodecBuilder.Mu<OverwriteAttack>, OverwriteAttack> buildCodec(RecordCodecBuilder.Instance<OverwriteAttack> instance) {
+        protected @NonNull App<RecordCodecBuilder.Mu<OverwriteAttack<?>>, OverwriteAttack<?>> buildCodec(RecordCodecBuilder.Instance<OverwriteAttack<?>> instance) {
             return attackDefault(instance, OverwriteAttack::new);
         }
     }

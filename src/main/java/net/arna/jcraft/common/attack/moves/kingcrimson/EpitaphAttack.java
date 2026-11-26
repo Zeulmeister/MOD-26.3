@@ -7,6 +7,7 @@ import net.arna.jcraft.JCraft;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.moves.AbstractCounterAttack;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.attack.moves.shared.CounterMissMove;
 import net.arna.jcraft.common.entity.stand.KingCrimsonEntity;
 import net.arna.jcraft.common.util.JUtils;
@@ -18,27 +19,30 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 
-public final class EpitaphAttack extends AbstractCounterAttack<EpitaphAttack, KingCrimsonEntity> {
-    private final CounterMissMove<KingCrimsonEntity> counterMiss = new CounterMissMove<>(20);
+public final class EpitaphAttack<A extends StandEntity<? extends A, ?>> extends AbstractCounterAttack<EpitaphAttack<A>, A> {
+    private final CounterMissMove<A> counterMiss = new CounterMissMove<>(20);
 
     public EpitaphAttack(final int cooldown, final int windup, final int duration, final float moveDistance) {
         super(cooldown, windup, duration, moveDistance);
     }
 
     @Override
-    public @NonNull MoveType<EpitaphAttack> getMoveType() {
-        return Type.INSTANCE;
+    public @NonNull MoveType<EpitaphAttack<A>> getMoveType() {
+        return Type.INSTANCE.cast();
     }
 
     @Override
-    public void whiff(final @NonNull KingCrimsonEntity attacker, final @NonNull LivingEntity user) {
-        attacker.setMove(counterMiss, KingCrimsonEntity.State.COUNTER_MISS);
+    public void whiff(final @NonNull A attacker, final @NonNull LivingEntity user) {
+        attacker.setMove(counterMiss, null);
+        if (attacker instanceof KingCrimsonEntity kc) {
+            kc.setState(KingCrimsonEntity.State.COUNTER_MISS);
+        }
         JCraft.stun(user, counterMiss.getDuration(), 0);
         attacker.playSound(JSoundRegistry.KC_RAGE.get(), 1, 1);
     }
 
     @Override
-    public void counter(final @NonNull KingCrimsonEntity attacker, final Entity countered, final DamageSource counteredDamageSource) {
+    public void counter(final @NonNull A attacker, final Entity countered, final DamageSource counteredDamageSource) {
         super.counter(attacker, countered, counteredDamageSource);
 
         if (countered == null) {
@@ -65,20 +69,20 @@ public final class EpitaphAttack extends AbstractCounterAttack<EpitaphAttack, Ki
     }
 
     @Override
-    protected @NonNull EpitaphAttack getThis() {
+    protected @NonNull EpitaphAttack<A> getThis() {
         return this;
     }
 
     @Override
-    public @NonNull EpitaphAttack copy() {
-        return copyExtras(new EpitaphAttack(getCooldown(), getWindup(), getDuration(), getMoveDistance()));
+    public @NonNull EpitaphAttack<A> copy() {
+        return copyExtras(new EpitaphAttack<>(getCooldown(), getWindup(), getDuration(), getMoveDistance()));
     }
 
-    public static class Type extends AbstractMove.Type<EpitaphAttack> {
+    public static class Type extends AbstractMove.Type<EpitaphAttack<?>> {
         public static final Type INSTANCE = new Type();
 
         @Override
-        protected @NonNull App<RecordCodecBuilder.Mu<EpitaphAttack>, EpitaphAttack> buildCodec(RecordCodecBuilder.Instance<EpitaphAttack> instance) {
+        protected @NonNull App<RecordCodecBuilder.Mu<EpitaphAttack<?>>, EpitaphAttack<?>> buildCodec(RecordCodecBuilder.Instance<EpitaphAttack<?>> instance) {
             return baseDefault(instance, EpitaphAttack::new);
         }
     }

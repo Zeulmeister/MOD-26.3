@@ -1,7 +1,9 @@
 package net.arna.jcraft.client.renderer.entity.stands;
 
 import lombok.NonNull;
+import net.arna.jcraft.JCraft;
 import net.arna.jcraft.api.registry.JStandTypeRegistry;
+import net.arna.jcraft.client.renderer.entity.layer.IconicStandGlowLayer;
 import net.arna.jcraft.client.renderer.entity.layer.TWOHEyesLayer;
 import net.arna.jcraft.common.entity.stand.TheWorldOverHeavenEntity;
 import net.fabricmc.api.EnvType;
@@ -17,7 +19,9 @@ public class TheWorldOverHeavenRenderer extends StandEntityRenderer<TheWorldOver
     public TheWorldOverHeavenRenderer(final @NonNull EntityRendererProvider.Context context) {
         super(context, b -> b
                 .addRenderLayer(new StandEntityRenderer.StandHandItemsRenderLayer<>())
-                .addRenderLayer(new TWOHEyesLayer()),
+                .addRenderLayer(new TWOHEyesLayer())
+                .addRenderLayer(new IconicStandGlowLayer<>(
+                        JCraft.id("textures/entity/stands/the_world_over_heaven/glow.png"), 0.78f, false)),
                 JStandTypeRegistry.THE_WORLD_OVER_HEAVEN.get(), -0.1745329251f, -0.31f);
     }
 

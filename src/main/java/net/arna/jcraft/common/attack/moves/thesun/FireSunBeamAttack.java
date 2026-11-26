@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.entity.projectile.SunBeamProjectile;
 import net.arna.jcraft.common.entity.stand.TheSunEntity;
 import net.arna.jcraft.common.util.JUtils;
@@ -18,7 +19,7 @@ import org.joml.Vector2f;
 
 import java.util.Set;
 
-public class FireSunBeamAttack extends AbstractMove<FireSunBeamAttack, TheSunEntity> {
+public class FireSunBeamAttack<A extends StandEntity<? extends A, ?>> extends AbstractMove<FireSunBeamAttack<A>, A> {
     @Getter
     private final int beams;
     @Getter
@@ -33,29 +34,36 @@ public class FireSunBeamAttack extends AbstractMove<FireSunBeamAttack, TheSunEnt
     }
 
     @Override
-    public @NonNull MoveType<FireSunBeamAttack> getMoveType() {
-        return Type.INSTANCE;
+    public @NonNull MoveType<FireSunBeamAttack<A>> getMoveType() {
+        return Type.INSTANCE.cast();
     }
 
     @Override
-    public void onInitiate(TheSunEntity attacker) {
+    public void onInitiate(A attacker) {
         super.onInitiate(attacker);
 
-        targetPosition = attacker.acquireTargetPosition();
+        if (attacker instanceof TheSunEntity sun) {
+            targetPosition = sun.acquireTargetPosition();
+        } else if (attacker.hasUser()) {
+            final LivingEntity user = attacker.getUserOrThrow();
+            targetPosition = user.getEyePosition().add(user.getLookAngle().scale(32.0));
+        } else {
+            targetPosition = attacker.getEyePosition().add(attacker.getLookAngle().scale(16.0));
+        }
     }
 
     @Override
-    public boolean shouldPerform(TheSunEntity attacker, int moveStun) {
+    public boolean shouldPerform(A attacker, int moveStun) {
         // If beams = 3, executes at tick windup, windup + 4 and windup + 8.
         return attacker.hasUser() && moveStun <= getWindupPoint() &&
                 (getWindupPoint() - moveStun) / 4 < beams && (getWindupPoint() - moveStun) % 4 == 0;
     }
 
     @Override
-    public @NonNull Set<LivingEntity> perform(TheSunEntity attacker, LivingEntity user) {
-        final Vec3 pos = attacker.randomPos();
+    public @NonNull Set<LivingEntity> perform(A attacker, LivingEntity user) {
+        final Vec3 pos = attacker instanceof TheSunEntity sun ? sun.randomPos() : attacker.getEyePosition().add(0.0, 0.35, 0.0);
 
-        final SunBeamProjectile sunBeam = new SunBeamProjectile(attacker.level(), user, attacker);
+        final SunBeamProjectile sunBeam = new SunBeamProjectile(attacker.level(), user, attacker instanceof TheSunEntity sun ? sun : null);
         sunBeam.setSkin(attacker.getSkin());
         sunBeam.setPos(pos);
 
@@ -78,20 +86,20 @@ public class FireSunBeamAttack extends AbstractMove<FireSunBeamAttack, TheSunEnt
     }
 
     @Override
-    protected @NonNull FireSunBeamAttack getThis() {
+    protected @NonNull FireSunBeamAttack<A> getThis() {
         return this;
     }
 
     @Override
-    public @NonNull FireSunBeamAttack copy() {
-        return copyExtras(new FireSunBeamAttack(getCooldown(), getWindup(), getDuration(), beams, divergence));
+    public @NonNull FireSunBeamAttack<A> copy() {
+        return copyExtras(new FireSunBeamAttack<>(getCooldown(), getWindup(), getDuration(), beams, divergence));
     }
 
-    public static class Type extends AbstractMove.Type<FireSunBeamAttack> {
+    public static class Type extends AbstractMove.Type<FireSunBeamAttack<?>> {
         public static final Type INSTANCE = new Type();
 
         @Override
-        protected @NonNull App<RecordCodecBuilder.Mu<FireSunBeamAttack>, FireSunBeamAttack> buildCodec(RecordCodecBuilder.Instance<FireSunBeamAttack> instance) {
+        protected @NonNull App<RecordCodecBuilder.Mu<FireSunBeamAttack<?>>, FireSunBeamAttack<?>> buildCodec(RecordCodecBuilder.Instance<FireSunBeamAttack<?>> instance) {
             return instance.group(extras(), cooldown(), windup(), duration(),
                     Codec.INT.fieldOf("beams").forGetter(FireSunBeamAttack::getBeams),
                     Codec.FLOAT.fieldOf("divergence").forGetter(FireSunBeamAttack::getDivergence))

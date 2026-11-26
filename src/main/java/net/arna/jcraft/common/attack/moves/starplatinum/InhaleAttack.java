@@ -8,7 +8,8 @@ import lombok.NonNull;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
 import net.arna.jcraft.api.attack.moves.AbstractSimpleAttack;
-import net.arna.jcraft.common.entity.stand.StarPlatinumEntity;
+import net.arna.jcraft.api.stand.IInhaleCapable;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
 import net.arna.jcraft.common.gravity.util.RotationUtil;
 import net.arna.jcraft.common.util.JUtils;
@@ -25,7 +26,7 @@ import java.util.Set;
 import static net.arna.jcraft.api.attack.moves.AbstractSimpleAttack.createBox;
 
 @Getter
-public final class InhaleAttack extends AbstractMove<InhaleAttack, StarPlatinumEntity> {
+public final class InhaleAttack<A extends StandEntity<? extends A, ?>> extends AbstractMove<InhaleAttack<A>, A> {
     private final RandomSource random = RandomSource.create();
     private final int inhaleDuration;
 
@@ -35,23 +36,28 @@ public final class InhaleAttack extends AbstractMove<InhaleAttack, StarPlatinumE
     }
 
     @Override
-    public @NonNull MoveType<InhaleAttack> getMoveType() {
-        return Type.INSTANCE;
+    public @NonNull MoveType<InhaleAttack<A>> getMoveType() {
+        return Type.INSTANCE.cast();
     }
 
     @Override
-    public void tick(final StarPlatinumEntity attacker) {
+    public void tick(final A attacker) {
         tickInhale(attacker);
     }
 
     @Override
-    public @NonNull Set<LivingEntity> perform(final StarPlatinumEntity attacker, final LivingEntity user) {
-        attacker.setInhaleTime(inhaleDuration);
+    public @NonNull Set<LivingEntity> perform(final A attacker, final LivingEntity user) {
+        if (attacker instanceof IInhaleCapable inh) {
+            inh.setInhaleTime(inhaleDuration);
+        }
         return Set.of();
     }
 
-    public void tickInhale(final StarPlatinumEntity attacker) {
-        int inhaleTime = attacker.getInhaleTime();
+    public void tickInhale(final A attacker) {
+        if (!(attacker instanceof IInhaleCapable inh)) {
+            return;
+        }
+        int inhaleTime = inh.getInhaleTime();
         if (inhaleTime <= 0 || !attacker.hasUser()) {
             return;
         }
@@ -89,7 +95,7 @@ public final class InhaleAttack extends AbstractMove<InhaleAttack, StarPlatinumE
                     particlePos.z,
                     -addVel.x / 10.0, -addVel.y / 10.0, -addVel.z / 10.0);
         } else {
-            attacker.setInhaleTime(--inhaleTime);
+            inh.setInhaleTime(--inhaleTime);
 
             if (inhaleTime > 0) {
                 attacker.setRotationOffset(90);
@@ -125,20 +131,20 @@ public final class InhaleAttack extends AbstractMove<InhaleAttack, StarPlatinumE
     }
 
     @Override
-    protected @NonNull InhaleAttack getThis() {
+    protected @NonNull InhaleAttack<A> getThis() {
         return this;
     }
 
     @Override
-    public @NonNull InhaleAttack copy() {
-        return copyExtras(new InhaleAttack(getCooldown(), getWindup(), getDuration(), getMoveDistance(), getInhaleDuration()));
+    public @NonNull InhaleAttack<A> copy() {
+        return copyExtras(new InhaleAttack<>(getCooldown(), getWindup(), getDuration(), getMoveDistance(), getInhaleDuration()));
     }
 
-    public static class Type extends AbstractMove.Type<InhaleAttack> {
+    public static class Type extends AbstractMove.Type<InhaleAttack<?>> {
         public static final Type INSTANCE = new Type();
 
         @Override
-        protected @NonNull App<RecordCodecBuilder.Mu<InhaleAttack>, InhaleAttack> buildCodec(RecordCodecBuilder.Instance<InhaleAttack> instance) {
+        protected @NonNull App<RecordCodecBuilder.Mu<InhaleAttack<?>>, InhaleAttack<?>> buildCodec(RecordCodecBuilder.Instance<InhaleAttack<?>> instance) {
             return baseDefault(instance).and(Codec.INT.fieldOf("inhale_duration").forGetter(InhaleAttack::getInhaleDuration))
                     .apply(instance, applyExtras(InhaleAttack::new));
         }

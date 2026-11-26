@@ -75,7 +75,7 @@ public final class JCraft263ValidationTest {
 
     static void verifyAllStandsSpecsEvolutionsAndMovesetsPresentAndValid() throws IOException {
         List<Path> stands = collectJsonFiles(RESOURCES_ROOT.resolve("data/jcraft/stands"));
-        checkEquals(37, stands.size(), "All 37 Stands must be present in data/jcraft/stands");
+        checkEquals(38, stands.size(), "All 38 Stands must be present in data/jcraft/stands");
         for (Path stand : stands) {
             parseJsonObject(stand);
         }
@@ -107,7 +107,7 @@ public final class JCraft263ValidationTest {
 
     static void verifyMc263AssetsWorldgenTradesAndTranslations() throws IOException {
         List<Path> items = collectJsonFiles(RESOURCES_ROOT.resolve("assets/jcraft/items"));
-        checkEquals(223, items.size(), "All 223 MC 26.3 item definitions must be present");
+        checkEquals(229, items.size(), "All 229 MC 26.3 item definitions must be present");
         for (Path item : items) {
             parseJsonObject(item);
         }
@@ -563,6 +563,10 @@ public final class JCraft263ValidationTest {
         System.out.println("[PASS] UI, HUD & UX Polish (Config Coverage & Tooltips, Dynamic Radial Wheel, Stand Encyclopedia, Variant/Active HUD & MainMenu Wrap) verified.");
         verifyEngineeringBuildAndArchitecture();
         System.out.println("[PASS] Engineering, Build & Architecture (Zero Dead Code, Vanilla MenuType, Reproducible JAR, CI Workflow & Docs) verified.");
+        verifyOriginStandAndArsenal();
+        System.out.println("[PASS] Origin Stand & Arsenal (Model, Anims, Textures, Glow Layer, Sounds, 9 Movesets, EN/PT-BR & Server Isolation) verified.");
+        verifyVisualPolishAndGameFeel();
+        System.out.println("[PASS] Category 3 Visual Polish & Game Feel (Afterimages, Impact Shake/Flash, Runic Circle & Iconic Emissive Layers) verified.");
         System.out.println("=== ALL " + passedAssertions + " ASSERTIONS PASSED SUCCESSFULLY ===");
     }
 
@@ -1599,5 +1603,241 @@ public final class JCraft263ValidationTest {
         String archText = Files.readString(archMd, StandardCharsets.UTF_8);
         check(archText.contains("verifyDedicatedServerIsolation") && archText.contains("GravityChangerConfig"),
                 "ARCHITECTURE.md must document Dedicated-Server Isolation and Config Unification");
+    }
+
+    static void verifyOriginStandAndArsenal() throws Exception {
+        ClassLoader cl = JCraft263ValidationTest.class.getClassLoader();
+
+        // 1. Stand JSON, Pose JSON, Geo & Animations
+        JsonObject standObj = parseJsonObject(RESOURCES_ROOT.resolve("data/jcraft/stands/origin.json"));
+        check(!standObj.get("evolution").getAsBoolean(), "Origin stand must not require evolution");
+        checkEquals("jcraft:origin_summon",
+                standObj.getAsJsonObject("summon_data").getAsJsonObject("sound").get("sound_id").getAsString(),
+                "Origin summon sound must match JSoundRegistry");
+
+        String poseRaw = Files.readString(RESOURCES_ROOT.resolve("assets/jcraft/poses/origin/humanoid.json"), StandardCharsets.UTF_8);
+        JsonObject poseObj = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/poses/origin/humanoid.json"));
+        checkEquals("group", poseObj.get("type").getAsString(), "Origin pose type must be group");
+        check(!poseRaw.contains("\"body\"") && !poseRaw.contains("\"head\""),
+                "Origin player pose must not twist player torso/body or head");
+
+        String geoRaw = Files.readString(RESOURCES_ROOT.resolve("assets/jcraft/geo/origin.geo.json"), StandardCharsets.UTF_8);
+        JsonObject geoObj = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/geo/origin.geo.json"));
+        JsonArray geoBones = geoObj.getAsJsonArray("minecraft:geometry").get(0).getAsJsonObject().getAsJsonArray("bones");
+        JsonArray basePivot = geoBones.get(0).getAsJsonObject().getAsJsonArray("pivot");
+        checkClose(19.25, basePivot.get(1).getAsDouble(), 0.001, "origin.geo.json base pivot Y must match 19.25");
+        for (String bone : List.of("base", "Stand", "torso", "body", "upperBody", "head",
+                "chest_core", "back_core", "cloak_back", "cloak_back_lower",
+                "crown_halo", "void_ring_outer", "void_ring_inner", "wing_left_upper", "wing_right_upper")) {
+            check(geoRaw.contains("\"" + bone + "\""), "origin.geo.json must contain bone: " + bone);
+        }
+
+        String animRaw = Files.readString(RESOURCES_ROOT.resolve("assets/jcraft/animations/origin.animation.json"), StandardCharsets.UTF_8);
+        check(animRaw.contains("\"vector\":"), "origin.animation.json must use AzureLib 1.8.0 vector objects");
+        JsonObject animObj = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/animations/origin.animation.json"));
+        JsonObject anims = animObj.getAsJsonObject("animations");
+        for (String anim : List.of("idle", "summon", "block", "light", "heavy", "barrage", "special1", "special2", "special3",
+                "uppercut", "counter", "counter_miss", "grab", "grab_hit", "ultimate", "utility", "time_stop", "overwrite")) {
+            check(anims.has(anim), "origin.animation.json must define animation: " + anim);
+            JsonObject bones = anims.getAsJsonObject(anim).getAsJsonObject("bones");
+            check(bones != null && bones.has("base"), "origin.animation.json '" + anim + "' must reset base bone rotation");
+        }
+
+        // 2. Textures (5 stand textures + 8 ability icons + 4 stand discs)
+        Path texRoot = RESOURCES_ROOT.resolve("assets/jcraft/textures/entity/stands/origin");
+        for (String tex : List.of("default.png", "skin1.png", "skin2.png", "skin3.png", "skin4.png", "skin5.png", "glow.png")) {
+            var img = javax.imageio.ImageIO.read(texRoot.resolve(tex).toFile());
+            check(img != null && img.getWidth() == 512 && img.getHeight() == 512,
+                    "Origin texture must be 512x512: " + tex);
+        }
+        Path iconRoot = RESOURCES_ROOT.resolve("assets/jcraft/textures/gui/ability_icons/origin");
+        for (String icon : List.of("light.png", "heavy.png", "barrage.png", "special1.png", "special2.png", "special3.png", "ult.png", "utility.png")) {
+            var img = javax.imageio.ImageIO.read(iconRoot.resolve(icon).toFile());
+            check(img != null && img.getWidth() == 32 && img.getHeight() == 32,
+                    "Origin ability icon must be 32x32: " + icon);
+        }
+        for (int s = 0; s < 6; s++) {
+            var discImg = javax.imageio.ImageIO.read(RESOURCES_ROOT.resolve("assets/jcraft/textures/item/stand_disc_origin_" + s + ".png").toFile());
+            check(discImg != null && discImg.getWidth() == 16 && discImg.getHeight() == 16,
+                    "Origin stand disc texture must be 16x16 for skin " + s);
+            parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/items/stand_disc_origin_" + s + ".json"));
+            parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/models/item/stand_disc_origin_" + s + ".json"));
+        }
+
+        // 3. Synthesized OGG Sounds + sounds.json + 9 Movesets + Translations
+        JsonObject soundsObj = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/sounds.json"));
+        for (String snd : List.of("origin_summon", "origin_barrage", "origin_heavy", "origin_ult", "origin_bind")) {
+            check(soundsObj.has(snd), "sounds.json must define " + snd);
+            Path ogg = RESOURCES_ROOT.resolve("assets/jcraft/sounds/origin/" + snd + ".ogg");
+            check(Files.isRegularFile(ogg) && Files.size(ogg) > 1024L, "OGG sound must exist and be non-empty: " + snd);
+        }
+        List<Path> originMovesets = collectJsonFiles(RESOURCES_ROOT.resolve("data/jcraft/movesets/stand/origin/default"));
+        checkEquals(9, originMovesets.size(), "All 9 default Origin moveset JSONs must exist");
+        for (Path ms : originMovesets) {
+            parseJsonObject(ms);
+        }
+
+        JsonObject enUs = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/en_us.json"));
+        JsonObject ptBr = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/pt_br.json"));
+        for (String key : List.of("entity.jcraft.origin", "key.jcraft.origin_arsenal",
+                "jcraft.config.origin_free_binds", "jcraft.origin.arsenal.title", "jcraft.origin.preset.supreme_time_lord",
+                "jcraft.origin.tab.studio", "jcraft.origin.tab.profiles", "jcraft.origin.chroma.title",
+                "jcraft.origin.profile.saved", "jcraft.origin.synergy.chrono_sovereign")) {
+            check(enUs.has(key), "en_us.json must define Origin key: " + key);
+            check(ptBr.has(key), "pt_br.json must define Origin key: " + key);
+        }
+
+        // 4. OriginProfile NBT & Wire round-trip + OriginSynergy engine verification
+        net.arna.jcraft.common.stand.OriginProfile prof = new net.arna.jcraft.common.stand.OriginProfile(
+                "Boss Killer",
+                java.util.Map.of(net.arna.jcraft.api.attack.enums.MoveClass.BARRAGE, "jcraft:star_platinum#barrage"),
+                4, 0x00FFAA);
+        net.arna.jcraft.common.stand.OriginProfile decodedNbt = net.arna.jcraft.common.stand.OriginProfile.fromNbt(prof.toNbt());
+        check(decodedNbt != null && "Boss Killer".equals(decodedNbt.name())
+                && decodedNbt.skin() == 4 && decodedNbt.customGlowRgb() == 0x00FFAA
+                && "jcraft:star_platinum#barrage".equals(decodedNbt.slots().get(net.arna.jcraft.api.attack.enums.MoveClass.BARRAGE)),
+                "OriginProfile NBT round-trip must preserve name, skin, glowRgb and slots");
+        net.minecraft.network.FriendlyByteBuf pBuf = new net.minecraft.network.FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
+        prof.writeBuf(pBuf);
+        net.arna.jcraft.common.stand.OriginProfile decodedBuf = net.arna.jcraft.common.stand.OriginProfile.readBuf(pBuf);
+        pBuf.release();
+        check("Boss Killer".equals(decodedBuf.name()) && decodedBuf.customGlowRgb() == 0x00FFAA,
+                "OriginProfile FriendlyByteBuf round-trip must preserve build data");
+
+        var chronoSyn = net.arna.jcraft.common.stand.OriginSynergy.evaluateCategories(List.of(
+                net.arna.jcraft.common.stand.OriginSkillCatalog.SkillCategory.TIME_SPACE,
+                net.arna.jcraft.common.stand.OriginSkillCatalog.SkillCategory.TIME_SPACE,
+                net.arna.jcraft.common.stand.OriginSkillCatalog.SkillCategory.TIME_SPACE));
+        check(chronoSyn.isActive(net.arna.jcraft.common.stand.OriginSynergy.SynergyType.CHRONO_SOVEREIGN),
+                "3x TIME_SPACE skills must activate CHRONO_SOVEREIGN synergy");
+        check(!chronoSyn.isActive(net.arna.jcraft.common.stand.OriginSynergy.SynergyType.OMNIPOTENT_HARMONY),
+                "Single-category build must not activate OMNIPOTENT_HARMONY");
+
+        var harmonySyn = net.arna.jcraft.common.stand.OriginSynergy.evaluateCategories(List.of(
+                net.arna.jcraft.common.stand.OriginSkillCatalog.SkillCategory.HEAVY,
+                net.arna.jcraft.common.stand.OriginSkillCatalog.SkillCategory.HEAVY,
+                net.arna.jcraft.common.stand.OriginSkillCatalog.SkillCategory.HEAVY,
+                net.arna.jcraft.common.stand.OriginSkillCatalog.SkillCategory.RANGED,
+                net.arna.jcraft.common.stand.OriginSkillCatalog.SkillCategory.RANGED,
+                net.arna.jcraft.common.stand.OriginSkillCatalog.SkillCategory.MOBILITY,
+                net.arna.jcraft.common.stand.OriginSkillCatalog.SkillCategory.BARRAGE));
+        check(harmonySyn.isActive(net.arna.jcraft.common.stand.OriginSynergy.SynergyType.OBSIDIAN_JUGGERNAUT)
+                && harmonySyn.isActive(net.arna.jcraft.common.stand.OriginSynergy.SynergyType.ASTRAL_ARTILLERY)
+                && harmonySyn.isActive(net.arna.jcraft.common.stand.OriginSynergy.SynergyType.PHANTOM_TEMPEST)
+                && harmonySyn.isActive(net.arna.jcraft.common.stand.OriginSynergy.SynergyType.OMNIPOTENT_HARMONY),
+                "Multi-category build must activate Heavy, Ranged, Tempest & Harmony synergies");
+
+        // 5. Dedicated-Server bytecode isolation for Origin common classes
+        for (String clsPath : List.of(
+                "net/arna/jcraft/common/stand/OriginSkillCatalog.class",
+                "net/arna/jcraft/common/stand/OriginProfile.class",
+                "net/arna/jcraft/common/stand/OriginSynergy.class",
+                "net/arna/jcraft/common/entity/stand/OriginEntity.class",
+                "net/arna/jcraft/common/network/c2s/OriginLoadoutPacket.class")) {
+            try (InputStream in = cl.getResourceAsStream(clsPath)) {
+                check(in != null, clsPath + " must exist");
+                String rawBytes = new String(in.readAllBytes(), StandardCharsets.ISO_8859_1);
+                check(!rawBytes.contains("net/arna/jcraft/client/") && !rawBytes.contains("net/minecraft/client/"),
+                        clsPath + " must not reference client classes");
+            }
+        }
+    }
+
+    static void verifyVisualPolishAndGameFeel() throws Exception {
+        ClassLoader cl = JCraft263ValidationTest.class.getClassLoader();
+
+        // 1. Runic Circle texture (256x256 with anti-aliased white strokes & alpha)
+        Path runicPath = RESOURCES_ROOT.resolve("assets/jcraft/textures/effect/stand_runic_circle.png");
+        var runicImg = javax.imageio.ImageIO.read(runicPath.toFile());
+        check(runicImg != null && runicImg.getWidth() == 256 && runicImg.getHeight() == 256,
+                "stand_runic_circle.png must be 256x256");
+
+        // 2. All 5 iconic Stand surgical glow.png maps (128x128, non-empty 0.1%..25% surgical pixels)
+        for (String standDir : List.of(
+                "star_platinum", "star_platinum_the_world", "the_world_over_heaven",
+                "king_crimson", "made_in_heaven")) {
+            Path glowPath = RESOURCES_ROOT.resolve("assets/jcraft/textures/entity/stands/" + standDir + "/glow.png");
+            check(Files.isRegularFile(glowPath), "Missing iconic emissive texture: " + standDir + "/glow.png");
+            var glowImg = javax.imageio.ImageIO.read(glowPath.toFile());
+            check(glowImg != null && glowImg.getWidth() == 128 && glowImg.getHeight() == 128,
+                    standDir + "/glow.png must be 128x128");
+            int nonEmpty = 0;
+            for (int y = 0; y < glowImg.getHeight(); y++) {
+                for (int x = 0; x < glowImg.getWidth(); x++) {
+                    if (((glowImg.getRGB(x, y) >>> 24) & 0xFF) > 0) {
+                        nonEmpty++;
+                    }
+                }
+            }
+            double pct = (nonEmpty * 100.0) / (glowImg.getWidth() * glowImg.getHeight());
+            check(pct > 0.1 && pct < 25.0,
+                    standDir + "/glow.png must be surgical (nonEmpty=" + String.format("%.2f%%", pct) + ")");
+        }
+
+        // 3. Bytecode wiring checks for IconicStandGlowLayer, TWOHEyesLayer overlay fix, and common isolation
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/client/renderer/entity/layer/TWOHEyesLayer.class")) {
+            check(in != null, "TWOHEyesLayer.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            boolean setsOverlay = cn.methods.stream().anyMatch(m -> {
+                for (var insn = m.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                    if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi && "setPackedOverlay".equals(mi.name)) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+            check(setsOverlay, "TWOHEyesLayer must call pc.setPackedOverlay");
+        }
+        for (String rendererCls : List.of(
+                "net/arna/jcraft/client/renderer/entity/stands/StarPlatinumRenderer.class",
+                "net/arna/jcraft/client/renderer/entity/stands/SPTWRenderer.class",
+                "net/arna/jcraft/client/renderer/entity/stands/TheWorldOverHeavenRenderer.class",
+                "net/arna/jcraft/client/renderer/entity/stands/KingCrimsonRenderer.class",
+                "net/arna/jcraft/client/renderer/entity/stands/MadeInHeavenRenderer.class")) {
+            try (InputStream in = cl.getResourceAsStream(rendererCls)) {
+                check(in != null, rendererCls + " must exist");
+                String rawBytes = new String(in.readAllBytes(), StandardCharsets.ISO_8859_1);
+                check(rawBytes.contains("IconicStandGlowLayer"), rendererCls + " must attach IconicStandGlowLayer");
+            }
+        }
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/common/util/JVisualFeedback.class")) {
+            check(in != null, "JVisualFeedback.class must exist");
+            String rawBytes = new String(in.readAllBytes(), StandardCharsets.ISO_8859_1);
+            check(!rawBytes.contains("net/arna/jcraft/client/") && !rawBytes.contains("net/minecraft/client/"),
+                    "JVisualFeedback must remain dedicated-server safe");
+        }
+
+        // 4. Client config clamping & damped shake curve bounds
+        var cfg = net.arna.jcraft.client.JClientConfig.getInstance();
+        float prevShake = cfg.getScreenShakeStrength();
+        try {
+            check(cfg.isAuraAfterimagesEnabled() && cfg.isImpactEffectsEnabled() && cfg.isRunicChargeCirclesEnabled(),
+                    "Visual polish client toggles must default to enabled");
+            cfg.setScreenShakeStrength(-2.0f);
+            checkClose(0.0, cfg.getClampedScreenShakeStrength(), 1.0E-5, "Screen shake lower clamp must be 0.0f");
+            cfg.setScreenShakeStrength(5.0f);
+            checkClose(2.0, cfg.getClampedScreenShakeStrength(), 1.0E-5, "Screen shake upper clamp must be 2.0f");
+        } finally {
+            cfg.setScreenShakeStrength(prevShake);
+        }
+        float[] disabledShake = net.arna.jcraft.client.rendering.CombatImpactEffects.computeShakeAnglesDeg(false, 1.0f, 5, 6, 1.0f, 0.0f, 0.5f);
+        check(disabledShake[0] == 0.0f && disabledShake[1] == 0.0f && disabledShake[2] == 0.0f,
+                "Disabled impact effects must yield zero camera shake");
+        float[] activeShake = net.arna.jcraft.client.rendering.CombatImpactEffects.computeShakeAnglesDeg(true, 1.0f, 5, 6, 1.0f, 0.4f, 0.5f);
+        check(Math.abs(activeShake[0]) <= 1.6f && Math.abs(activeShake[1]) <= 1.6f && Math.abs(activeShake[2]) <= 1.4f
+                && (Math.abs(activeShake[0]) > 0.0f || Math.abs(activeShake[1]) > 0.0f),
+                "Active impact shake must be bounded and non-zero");
+
+        // 5. EN/PT-BR config keys present
+        JsonObject enUs = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/en_us.json"));
+        JsonObject ptBr = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/pt_br.json"));
+        for (String key : List.of(
+                "jcraft.config.aura_afterimages", "jcraft.config.aura_afterimages.tooltip",
+                "jcraft.config.impact_effects", "jcraft.config.impact_effects.tooltip",
+                "jcraft.config.screen_shake_strength", "jcraft.config.screen_shake_strength.tooltip",
+                "jcraft.config.runic_charge_circles", "jcraft.config.runic_charge_circles.tooltip")) {
+            check(enUs.has(key) && ptBr.has(key), "EN/PT-BR must define visual config key: " + key);
+        }
     }
 }

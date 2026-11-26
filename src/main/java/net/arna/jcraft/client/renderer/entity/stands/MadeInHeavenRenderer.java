@@ -2,7 +2,9 @@ package net.arna.jcraft.client.renderer.entity.stands;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 
 import lombok.NonNull;
+import net.arna.jcraft.JCraft;
 import net.arna.jcraft.api.registry.JStandTypeRegistry;
+import net.arna.jcraft.client.renderer.entity.layer.IconicStandGlowLayer;
 import net.arna.jcraft.common.entity.stand.MadeInHeavenEntity;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -15,7 +17,10 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 public class MadeInHeavenRenderer extends StandEntityRenderer<MadeInHeavenEntity> {
 
     public MadeInHeavenRenderer(final @NonNull EntityRendererProvider.Context context) {
-        super(context, b -> b.addRenderLayer(new StandEntityRenderer.StandHandItemsRenderLayer<>()),
+        super(context, b -> b
+                        .addRenderLayer(new StandEntityRenderer.StandHandItemsRenderLayer<>())
+                        .addRenderLayer(new IconicStandGlowLayer<>(
+                                JCraft.id("textures/entity/stands/made_in_heaven/glow.png"), 0.92f, false)),
                 JStandTypeRegistry.MADE_IN_HEAVEN.get(), -0.1745329251f, -0.1745329251f);
     }
 

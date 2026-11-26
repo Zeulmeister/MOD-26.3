@@ -43,6 +43,7 @@ public interface JPacketRegistry {
     Identifier C2S_REMOTE_CONTROL_TOGGLE = JCraft.id("pilot_toggle");
     Identifier C2S_STAND_ROTATION = JCraft.id("stnd_rot");
     Identifier C2S_RADIAL_ACTION = JCraft.id("radial_act");
+    Identifier C2S_ORIGIN_LOADOUT = JCraft.id("origin_loadout");
 
     Identifier S2C_COLOR_SHIFT = JCraft.id("clr_shft");
     Identifier S2C_KINETIC_TS_COUNT = JCraft.id("ts_kin");

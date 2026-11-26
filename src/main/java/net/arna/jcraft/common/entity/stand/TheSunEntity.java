@@ -99,14 +99,14 @@ public final class TheSunEntity extends StandEntity<TheSunEntity, TheSunEntity.S
                     .build())
             .build();
 
-    private static final FireSunBeamAttack FIRE_SUNBEAM = new FireSunBeamAttack(100, 5, 10, 1, 0)
+    private static final FireSunBeamAttack<TheSunEntity> FIRE_SUNBEAM = new FireSunBeamAttack<TheSunEntity>(100, 5, 10, 1, 0)
             .withInfo(
                     Component.nullToEmpty("Fire Sunbeam"),
                     Component.nullToEmpty("""
                             Fires a sunbeam with perfect precision.""")
             );
 
-    private static final FireMeteorAttack FIRE_METEOR = new FireMeteorAttack(0, 20, 1, 1,
+    private static final FireMeteorAttack<TheSunEntity> FIRE_METEOR = new FireMeteorAttack<TheSunEntity>(0, 20, 1, 1,
             2.5f, 0f, 2.0F, IntSet.of(5))
             .withCrouchingVariant(FIRE_SUNBEAM)
             .withInfo(
@@ -116,7 +116,7 @@ public final class TheSunEntity extends StandEntity<TheSunEntity, TheSunEntity.S
                             Past 75% of max size, the meteor is explosive.""")
             );
 
-    private static final FireMeteorAttack STARBURST = new FireMeteorAttack(40, 24, 3, 1.75f,
+    private static final FireMeteorAttack<TheSunEntity> STARBURST = new FireMeteorAttack<TheSunEntity>(40, 24, 3, 1.75f,
             2.5f, 10f, 2.0F, IntSet.of(8, 16, 24))
             .withInfo(
                     Component.nullToEmpty("Starburst"),
@@ -135,7 +135,7 @@ public final class TheSunEntity extends StandEntity<TheSunEntity, TheSunEntity.S
                             Amount of meteors changes proportional to the size of The Sun.""")
             );
 
-    private static final FireSunBeamAttack INCINERATING_SUNSHINE = new FireSunBeamAttack(180, 8, 24, 3, 2.5f)
+    private static final FireSunBeamAttack<TheSunEntity> INCINERATING_SUNSHINE = new FireSunBeamAttack<TheSunEntity>(180, 8, 24, 3, 2.5f)
             .withInfo(
                     Component.nullToEmpty("Incinerating Sunshine"),
                     Component.nullToEmpty("Fires 3 sunbeams.")

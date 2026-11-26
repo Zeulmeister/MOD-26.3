@@ -45,7 +45,8 @@ import java.util.function.Supplier;
  * @see SingularityAttack
  * @see SmiteAttack
  */
-public class TheWorldOverHeavenEntity extends StandEntity<TheWorldOverHeavenEntity, TheWorldOverHeavenEntity.State> {
+public class TheWorldOverHeavenEntity extends StandEntity<TheWorldOverHeavenEntity, TheWorldOverHeavenEntity.State>
+        implements net.arna.jcraft.api.stand.IOverwriteCapable {
     public static final MoveSet<TheWorldOverHeavenEntity, State> MOVE_SET = MoveSetManager.create(JStandTypeRegistry.THE_WORLD_OVER_HEAVEN,
             TheWorldOverHeavenEntity::registerMoves, TheWorldOverHeavenEntity.class, State.class);
     public static final StandData DATA = StandData.builder()
@@ -180,7 +181,7 @@ public class TheWorldOverHeavenEntity extends StandEntity<TheWorldOverHeavenEnti
                     Component.literal("Evaporate"),
                     Component.literal("Summons a powerful lightning bolt that deals high damage and stun, and lifts up on hit.")
             );
-    public static final OverwriteAttack OVERWRITE = new OverwriteAttack(0, 7, 23, 1f,
+    public static final OverwriteAttack<TheWorldOverHeavenEntity> OVERWRITE = new OverwriteAttack<TheWorldOverHeavenEntity>(0, 7, 23, 1f,
             0f, 40, 2f, 1f, 0f)
             .withSound(JSoundRegistry.TWOH_OVERWRITE)
             .withImpactSound(JSoundRegistry.IMPACT_5)
@@ -192,7 +193,7 @@ public class TheWorldOverHeavenEntity extends StandEntity<TheWorldOverHeavenEnti
                     Component.literal("Overwrite (Hit)"),
                     Component.empty()
             );
-    public static final ChargeOverwriteMove CHARGE_OVERWRITE = new ChargeOverwriteMove( // Does absolutely nothing on its own.
+    public static final ChargeOverwriteMove<TheWorldOverHeavenEntity> CHARGE_OVERWRITE = new ChargeOverwriteMove<TheWorldOverHeavenEntity>( // Does absolutely nothing on its own.
             360, 71, 70, 1f, 20)
             .withFollowup(OVERWRITE)
             .withSound(JSoundRegistry.TWOH_CHARGE_OVERWRITE)

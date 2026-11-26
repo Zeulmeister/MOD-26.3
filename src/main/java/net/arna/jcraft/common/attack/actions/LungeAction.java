@@ -8,6 +8,7 @@ import net.arna.jcraft.api.attack.core.MoveAction;
 import net.arna.jcraft.api.attack.core.MoveActionType;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.util.JUtils;
+import net.arna.jcraft.common.util.JVisualFeedback;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.Set;
@@ -45,6 +46,9 @@ public class LungeAction extends MoveAction<LungeAction, IAttacker<?, ?>> {
         if (onGround && !user.onGround() || notFree && attacker instanceof StandEntity<?, ?> stand && stand.isFree()) return;
 
         JUtils.addVelocity(user, attacker.getBaseEntity().getLookAngle().scale(factor).add(0.0, verticalFactor, 0.0));
+        if (!user.level().isClientSide() && factor >= 0.45f) {
+            JVisualFeedback.sendAfterimageTrail(user, 8);
+        }
     }
 
     @Override

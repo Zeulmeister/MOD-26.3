@@ -2,6 +2,8 @@ package net.arna.jcraft.client.gui.hud;
 
 import net.arna.jcraft.api.attack.enums.MoveInputType;
 import net.arna.jcraft.api.component.living.CommonHamonComponent;
+import net.arna.jcraft.api.stand.ITimeAccelCapable;
+import net.arna.jcraft.api.stand.ITimeEraseCapable;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.client.JClientConfig;
 import net.arna.jcraft.client.combat.CombatInputBuffer;
@@ -9,8 +11,6 @@ import net.arna.jcraft.client.remote.StandRemoteControlHandler;
 import net.arna.jcraft.client.taunt.PlayerPoseTauntHandler;
 import net.arna.jcraft.client.util.JClientUtils;
 import net.arna.jcraft.client.zoom.StarPlatinumPrecisionHandler;
-import net.arna.jcraft.common.entity.stand.KingCrimsonEntity;
-import net.arna.jcraft.common.entity.stand.MadeInHeavenEntity;
 import net.arna.jcraft.common.util.DimensionData;
 import net.arna.jcraft.common.util.JUtils;
 import net.arna.jcraft.platform.JComponentPlatformUtils;
@@ -114,26 +114,26 @@ public final class JoJoAnimeHudRenderer {
             topPillY += boxH + 4;
         }
 
-        if (stand instanceof KingCrimsonEntity kc && kc.getTETime() > 0) {
+        if (stand instanceof ITimeEraseCapable te && te.getTETime() > 0) {
             int boxW = 152;
             int boxH = 14;
             int boxX = (sw - boxW) / 2;
             ctx.fill(boxX, topPillY, boxX + boxW, topPillY + boxH, 0x99220810);
             ctx.outline(boxX, topPillY, boxW, boxH, 0x99EF4444);
             Component teTxt = Component.translatable("jcraft.hud.time_erase",
-                    String.format(java.util.Locale.ROOT, "%.1f", kc.getTETime() / 20.0F));
+                    String.format(java.util.Locale.ROOT, "%.1f", te.getTETime() / 20.0F));
             ctx.centeredText(font, teTxt, sw / 2, topPillY + 3, 0xFFFECACA);
             topPillY += boxH + 4;
         }
 
-        if (stand instanceof MadeInHeavenEntity mih && mih.getAccelTime() > 0) {
+        if (stand instanceof ITimeAccelCapable ta && ta.getAccelTime() > 0) {
             int boxW = 164;
             int boxH = 14;
             int boxX = (sw - boxW) / 2;
             ctx.fill(boxX, topPillY, boxX + boxW, topPillY + boxH, 0x99081424);
             ctx.outline(boxX, topPillY, boxW, boxH, 0x9938BDF8);
             Component mihTxt = Component.translatable("jcraft.hud.time_accel",
-                    String.format(java.util.Locale.ROOT, "%.1f", mih.getAccelTime() / 20.0F));
+                    String.format(java.util.Locale.ROOT, "%.1f", ta.getAccelTime() / 20.0F));
             ctx.centeredText(font, mihTxt, sw / 2, topPillY + 3, 0xFFBAE6FD);
             topPillY += boxH + 4;
         }

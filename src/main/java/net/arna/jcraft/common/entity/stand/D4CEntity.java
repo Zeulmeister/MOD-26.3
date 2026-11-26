@@ -190,7 +190,7 @@ public class D4CEntity extends StandEntity<D4CEntity, D4CEntity.State> {
                     Component.literal("Grab"),
                     Component.literal("Unblockable, combo finisher.")
             );
-    public static final D4CCounterAttack COUNTER = new D4CCounterAttack(300, 5, 35, 0.75f)
+    public static final D4CCounterAttack<D4CEntity> COUNTER = new D4CCounterAttack<D4CEntity>(300, 5, 35, 0.75f)
             .withInfo(
                     Component.literal("Counter"),
                     Component.literal("0.25s startup, 1.5s duration, high damage, knocks back when hit.")

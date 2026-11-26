@@ -417,8 +417,8 @@ public class PlayerCloneEntity extends Monster implements RangedAttackMob, IOwna
                 return;
             }
 
-            if (stand instanceof KingCrimsonEntity kc) {
-                if (kc.getTETime() <= 0) {
+            if (stand instanceof net.arna.jcraft.api.stand.ITimeEraseCapable te) {
+                if (te.getTETime() <= 0) {
                     discard();
                 }
             } else {

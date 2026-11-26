@@ -6,6 +6,7 @@ import lombok.NonNull;
 import net.arna.jcraft.JCraft;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.moves.AbstractCounterAttack;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.attack.moves.shared.CounterMissMove;
 import net.arna.jcraft.common.entity.stand.KQBTDEntity;
 import net.arna.jcraft.common.util.JUtils;
@@ -16,26 +17,29 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import org.jetbrains.annotations.NotNull;
 
-public final class BubbleCounterAttack extends AbstractCounterAttack<BubbleCounterAttack, KQBTDEntity> {
-    private static final CounterMissMove<KQBTDEntity> missAttack = new CounterMissMove<>(15);
+public final class BubbleCounterAttack<A extends StandEntity<? extends A, ?>> extends AbstractCounterAttack<BubbleCounterAttack<A>, A> {
+    private final CounterMissMove<A> missAttack = new CounterMissMove<>(15);
 
     public BubbleCounterAttack(final int cooldown, final int windup, final int duration, final float moveDistance) {
         super(cooldown, windup, duration, moveDistance);
     }
 
     @Override
-    public @NotNull MoveType<BubbleCounterAttack> getMoveType() {
-        return Type.INSTANCE;
+    public @NotNull MoveType<BubbleCounterAttack<A>> getMoveType() {
+        return Type.INSTANCE.cast();
     }
 
     @Override
-    public void whiff(final @NonNull KQBTDEntity attacker, final @NonNull LivingEntity user) {
-        attacker.setMove(missAttack, KQBTDEntity.State.COUNTER_MISS);
+    public void whiff(final @NonNull A attacker, final @NonNull LivingEntity user) {
+        attacker.setMove(missAttack, null);
+        if (attacker instanceof KQBTDEntity btd) {
+            btd.setState(KQBTDEntity.State.COUNTER_MISS);
+        }
         JCraft.stun(user, missAttack.getDuration(), 0);
     }
 
     @Override
-    public void counter(final @NonNull KQBTDEntity attacker, final Entity countered, final DamageSource counteredDamageSource) {
+    public void counter(final @NonNull A attacker, final Entity countered, final DamageSource counteredDamageSource) {
         super.counter(attacker, countered, counteredDamageSource);
         if (countered == null || !attacker.hasUser() || counteredDamageSource.is(DamageTypes.MAGIC)) {
             return;
@@ -51,20 +55,20 @@ public final class BubbleCounterAttack extends AbstractCounterAttack<BubbleCount
     }
 
     @Override
-    protected @NonNull BubbleCounterAttack getThis() {
+    protected @NonNull BubbleCounterAttack<A> getThis() {
         return this;
     }
 
     @Override
-    public @NonNull BubbleCounterAttack copy() {
-        return copyExtras(new BubbleCounterAttack(getCooldown(), getWindup(), getDuration(), getMoveDistance()));
+    public @NonNull BubbleCounterAttack<A> copy() {
+        return copyExtras(new BubbleCounterAttack<>(getCooldown(), getWindup(), getDuration(), getMoveDistance()));
     }
 
-    public static class Type extends AbstractCounterAttack.Type<BubbleCounterAttack> {
+    public static class Type extends AbstractCounterAttack.Type<BubbleCounterAttack<?>> {
         public static final Type INSTANCE = new Type();
 
         @Override
-        protected @NonNull App<RecordCodecBuilder.Mu<BubbleCounterAttack>, BubbleCounterAttack> buildCodec(RecordCodecBuilder.Instance<BubbleCounterAttack> instance) {
+        protected @NotNull App<RecordCodecBuilder.Mu<BubbleCounterAttack<?>>, BubbleCounterAttack<?>> buildCodec(RecordCodecBuilder.Instance<BubbleCounterAttack<?>> instance) {
             return baseDefault(instance, BubbleCounterAttack::new);
         }
     }

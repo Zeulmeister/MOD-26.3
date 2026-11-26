@@ -1,8 +1,10 @@
 package net.arna.jcraft.client.renderer.entity.stands;
 
 import lombok.NonNull;
+import net.arna.jcraft.JCraft;
 import net.arna.jcraft.api.registry.JStandTypeRegistry;
 import net.arna.jcraft.client.model.entity.stand.KingCrimsonModel;
+import net.arna.jcraft.client.renderer.entity.layer.IconicStandGlowLayer;
 import net.arna.jcraft.common.entity.stand.KingCrimsonEntity;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -16,7 +18,10 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 public class KingCrimsonRenderer extends StandEntityRenderer<KingCrimsonEntity> {
 
     public KingCrimsonRenderer(final @NonNull EntityRendererProvider.Context context) {
-        super(context, b -> b.addRenderLayer(new StandEntityRenderer.StandHandItemsRenderLayer<>()),
+        super(context, b -> b
+                        .addRenderLayer(new StandEntityRenderer.StandHandItemsRenderLayer<>())
+                        .addRenderLayer(new IconicStandGlowLayer<>(
+                                JCraft.id("textures/entity/stands/king_crimson/glow.png"), 0.95f, false)),
                 JStandTypeRegistry.KING_CRIMSON.get(), 0f, 0f);
         //this.addLayer(new KCTELayer(this));
     }

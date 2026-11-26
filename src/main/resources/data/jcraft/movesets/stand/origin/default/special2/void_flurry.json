@@ -1,0 +1,44 @@
+{
+  "anim_state": "SPECIAL2",
+  "class": "SPECIAL2",
+  "cooldown_type": "STAND_SP2",
+  "move": {
+    "type": "jcraft:shared_simple_multi_hit_attack",
+    "attack_extras": {
+      "backstab": true,
+      "block_stun": 6,
+      "hit_animation": "MID",
+      "hit_spark": "HIT_SPARK_2",
+      "stun_type": "UNBURSTABLE"
+    },
+    "cooldown": 150,
+    "damage": 2.8,
+    "duration": 22,
+    "extras": {
+      "actions": [
+        {
+          "type": "jcraft:play_sound",
+          "bind": false,
+          "run": "on_hit",
+          "sound": "jcraft:impact3"
+        }
+      ],
+      "description": {
+        "translate": "move.jcraft.origin.default.special2.description"
+      },
+      "name": {
+        "translate": "move.jcraft.origin.default.special2.name"
+      }
+    },
+    "hit_moments": [
+      6,
+      12,
+      18
+    ],
+    "hitbox_size": 1.85,
+    "knockback": 0.3,
+    "move_distance": 1.5,
+    "offset": 0.1,
+    "stun": 14
+  }
+}

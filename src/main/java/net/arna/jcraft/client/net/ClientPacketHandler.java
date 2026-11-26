@@ -487,6 +487,30 @@ public class ClientPacketHandler {
 
                 client.execute(() -> client.level.addParticle(particleType.getParticleType(), false, true, x, y, z, velX, velY, velZ));
             }
+
+            // Aura-colored afterimage trail (mode 0) or Time Skip warp echo (mode 1)
+            case (JVisualFeedback.CONTROL_AURA_AFTERIMAGE) -> {
+                final byte mode = buf.readByte();
+                final int entityId = buf.readInt();
+                final int rgb = buf.readInt();
+                if (mode == 0) {
+                    final int duration = buf.readInt();
+                    client.execute(() -> net.arna.jcraft.client.rendering.AuraAfterimageManager.triggerTrail(entityId, rgb, duration));
+                } else {
+                    final Vec3 fromPos = new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble());
+                    final Vec3 toPos = new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble());
+                    client.execute(() -> net.arna.jcraft.client.rendering.AuraAfterimageManager.triggerWarp(entityId, rgb, fromPos, toPos));
+                }
+            }
+
+            // Heavy & Ultimate impact frame + micro camera shake
+            case (JVisualFeedback.CONTROL_IMPACT_EFFECT) -> {
+                final Vec3 impactPos = new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble());
+                final float intensity = buf.readFloat();
+                final int rgb = buf.readInt();
+                final boolean isUltimate = buf.readBoolean();
+                client.execute(() -> net.arna.jcraft.client.rendering.CombatImpactEffects.trigger(impactPos, intensity, rgb, isUltimate));
+            }
         }
     }
 

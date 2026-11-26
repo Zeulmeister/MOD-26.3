@@ -34,7 +34,9 @@ public class StandDiscItem extends Item {
             TextColor.fromLegacyFormat(ChatFormatting.GRAY),
             TextColor.fromLegacyFormat(ChatFormatting.RED),
             TextColor.fromLegacyFormat(ChatFormatting.BLUE),
-            TextColor.fromLegacyFormat(ChatFormatting.LIGHT_PURPLE)
+            TextColor.fromLegacyFormat(ChatFormatting.LIGHT_PURPLE),
+            TextColor.fromLegacyFormat(ChatFormatting.DARK_GRAY),
+            TextColor.fromLegacyFormat(ChatFormatting.GOLD)
     };
     private static final Component DEFAULT_SKIN = Component.literal("Default");
 
@@ -47,7 +49,8 @@ public class StandDiscItem extends Item {
         if (type == null || StandTypeUtil.isNone(type)) {
             stack.set(DataComponents.ITEM_MODEL, JCraft.id("stand_disc"));
         } else {
-            int skin = Math.max(0, Math.min(3, getSkin(stack)));
+            int maxSkin = Math.max(3, type.getData().getInfo().getSkinCount() - 1);
+            int skin = Math.max(0, Math.min(maxSkin, getSkin(stack)));
             stack.set(DataComponents.ITEM_MODEL, JCraft.id("stand_disc_" + type.getId().getPath() + "_" + skin));
         }
     }

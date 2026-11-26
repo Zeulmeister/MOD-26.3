@@ -104,6 +104,26 @@ public abstract class AbstractGrabAttack<T extends AbstractGrabAttack<T, A, S>, 
         hitState.configure(stateClass);
     }
 
+    /**
+     * Configures the grab hit-state container with a safe fallback when copied across stands
+     * (e.g., for Origin's cross-stand Arsenal binds).
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static void configureHitStateWithFallback(AbstractMove<?, ?> move, Class<?> stateClass, Enum<?> fallback) {
+        if (move instanceof AbstractGrabAttack<?, ?, ?> grab) {
+            ((StateContainer) grab.hitState).configureWithFallback(stateClass, fallback);
+        }
+        if (move.getFollowup() != null) {
+            configureHitStateWithFallback(move.getFollowup(), stateClass, fallback);
+        }
+        if (move.getCrouchingVariant() != null) {
+            configureHitStateWithFallback(move.getCrouchingVariant(), stateClass, fallback);
+        }
+        if (move.getAerialVariant() != null) {
+            configureHitStateWithFallback(move.getAerialVariant(), stateClass, fallback);
+        }
+    }
+
     protected abstract static class Type<M extends AbstractGrabAttack<? extends M, ?, ?>> extends AbstractSimpleAttack.Type<M> {
         @SuppressWarnings("unchecked")
         protected <A extends IAttacker<? extends A, ?>> RecordCodecBuilder<M, AbstractMove<?, ? super A>> hitMove() {

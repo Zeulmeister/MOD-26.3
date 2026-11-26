@@ -6,6 +6,7 @@ import lombok.NonNull;
 import net.arna.jcraft.JCraft;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.moves.AbstractCounterAttack;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.attack.moves.shared.CounterMissMove;
 import net.arna.jcraft.common.entity.stand.D4CEntity;
 import net.arna.jcraft.common.util.JUtils;
@@ -19,26 +20,29 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
-public class D4CCounterAttack extends AbstractCounterAttack<D4CCounterAttack, D4CEntity> {
-    private final CounterMissMove<D4CEntity> counterMiss = new CounterMissMove<>(10);
+public class D4CCounterAttack<A extends StandEntity<? extends A, ?>> extends AbstractCounterAttack<D4CCounterAttack<A>, A> {
+    private final CounterMissMove<A> counterMiss = new CounterMissMove<>(10);
 
     public D4CCounterAttack(final int cooldown, final int windup, final int duration, final float moveDistance) {
         super(cooldown, windup, duration, moveDistance);
     }
 
     @Override
-    public @NotNull MoveType<D4CCounterAttack> getMoveType() {
-        return Type.INSTANCE;
+    public @NotNull MoveType<D4CCounterAttack<A>> getMoveType() {
+        return Type.INSTANCE.cast();
     }
 
     @Override
-    public void whiff(final @NonNull D4CEntity attacker, final @NonNull LivingEntity user) {
-        attacker.setMove(counterMiss, D4CEntity.State.COUNTER_MISS);
+    public void whiff(final @NonNull A attacker, final @NonNull LivingEntity user) {
+        attacker.setMove(counterMiss, null);
+        if (attacker instanceof D4CEntity d4c) {
+            d4c.setState(D4CEntity.State.COUNTER_MISS);
+        }
         JCraft.stun(user, counterMiss.getDuration(), 0);
     }
 
     @Override
-    public void counter(final @NonNull D4CEntity attacker, final Entity countered, final DamageSource counteredDamageSource) {
+    public void counter(final @NonNull A attacker, final Entity countered, final DamageSource counteredDamageSource) {
         super.counter(attacker, countered, counteredDamageSource);
         final boolean bl = counteredDamageSource.is(DamageTypes.MOB_PROJECTILE);
         final boolean bl2 = counteredDamageSource.is(DamageTypes.MAGIC);
@@ -66,20 +70,20 @@ public class D4CCounterAttack extends AbstractCounterAttack<D4CCounterAttack, D4
     }
 
     @Override
-    protected @NonNull D4CCounterAttack getThis() {
+    protected @NonNull D4CCounterAttack<A> getThis() {
         return this;
     }
 
     @Override
-    public @NonNull D4CCounterAttack copy() {
-        return copyExtras(new D4CCounterAttack(getCooldown(), getWindup(), getDuration(), getMoveDistance()));
+    public @NonNull D4CCounterAttack<A> copy() {
+        return copyExtras(new D4CCounterAttack<>(getCooldown(), getWindup(), getDuration(), getMoveDistance()));
     }
 
-    public static class Type extends AbstractCounterAttack.Type<D4CCounterAttack> {
+    public static class Type extends AbstractCounterAttack.Type<D4CCounterAttack<?>> {
         public static final Type INSTANCE = new Type();
 
         @Override
-        protected @NotNull App<RecordCodecBuilder.Mu<D4CCounterAttack>, D4CCounterAttack> buildCodec(RecordCodecBuilder.Instance<D4CCounterAttack> instance) {
+        protected @NotNull App<RecordCodecBuilder.Mu<D4CCounterAttack<?>>, D4CCounterAttack<?>> buildCodec(RecordCodecBuilder.Instance<D4CCounterAttack<?>> instance) {
             return baseDefault(instance, D4CCounterAttack::new);
         }
     }

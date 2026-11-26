@@ -1,6 +1,7 @@
 package net.arna.jcraft.client.debug;
 
 import net.arna.jcraft.JCraft;
+import net.arna.jcraft.api.attack.enums.MoveClass;
 import net.arna.jcraft.api.component.living.CommonHamonComponent;
 import net.arna.jcraft.api.component.living.CommonMiscComponent;
 import net.arna.jcraft.api.component.living.CommonStandComponent;
@@ -14,6 +15,10 @@ import net.arna.jcraft.api.splatter.JSplatterManager;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.client.JClientConfig;
 import net.arna.jcraft.client.JCraftClient;
+import net.arna.jcraft.client.gui.screen.OriginArsenalScreen;
+import net.arna.jcraft.client.renderer.effects.StandRunicCircleRenderer;
+import net.arna.jcraft.client.rendering.AuraAfterimageManager;
+import net.arna.jcraft.client.rendering.CombatImpactEffects;
 import net.arna.jcraft.client.rendering.MihAfterimageTrail;
 import net.arna.jcraft.client.rendering.handler.ColorShiftShaderHandler;
 import net.arna.jcraft.client.rendering.handler.CrimsonShaderHandler;
@@ -23,9 +28,12 @@ import net.arna.jcraft.client.rendering.handler.ZaWarudoShaderHandler;
 import net.arna.jcraft.client.rendering.skybox.SkyBoxManager;
 import net.arna.jcraft.common.entity.spec.BrawlerSpecUser;
 import net.arna.jcraft.common.entity.stand.MadeInHeavenEntity;
+import net.arna.jcraft.common.entity.stand.OriginEntity;
 import net.arna.jcraft.common.entity.stand.TheSunEntity;
 import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
 import net.arna.jcraft.common.gravity.util.Gravity;
+import net.arna.jcraft.common.network.c2s.OriginLoadoutPacket;
+import net.arna.jcraft.common.stand.OriginProfile;
 import net.arna.jcraft.common.util.JUtils;
 import net.arna.jcraft.platform.JComponentPlatformUtils;
 import net.fabricmc.api.EnvType;
@@ -33,6 +41,8 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.LevelTargetBundle;
 import net.minecraft.client.server.IntegratedServer;
@@ -78,6 +88,7 @@ import java.util.UUID;
 public final class ClientVisualDiagnostic {
     public static final boolean ENABLED = Boolean.getBoolean("jcraft.selftest.client");
     private static final String OUT_DIR_PROP = System.getProperty("jcraft.selftest.client.outdir", "jcraft_visual_shots");
+    private static final boolean ORIGIN_GALLERY = Boolean.getBoolean("jcraft.selftest.origin_gallery") || OUT_DIR_PROP.contains("origin_gallery");
 
     private static int phase = 0;
     private static int waitTicks = 0;
@@ -96,7 +107,7 @@ public final class ClientVisualDiagnostic {
             return;
         }
         totalTicks++;
-        if (totalTicks > 900) {
+        if (totalTicks > 1900) {
             failures.add("FAIL: Watchdog timeout reached at phase " + phase);
             finish(client);
             return;
@@ -179,6 +190,38 @@ public final class ClientVisualDiagnostic {
                 }
                 if (client.gui.screen() != null) {
                     client.gui.setScreen(null);
+                }
+                if (ORIGIN_GALLERY) {
+                    JCraft.LOGGER.info("[CLIENT-VISUAL] === Origin Showcase Gallery Mode ===");
+                    final IntegratedServer srv = client.getSingleplayerServer();
+                    srv.execute(() -> {
+                        ServerLevel overworld = srv.getLevel(Level.OVERWORLD);
+                        ServerPlayer sp = getServerPlayer(srv);
+                        if (overworld == null || sp == null) return;
+                        JUtils.setDayTime(overworld, 6000L);
+                        for (int x = -6; x <= 6; x++) {
+                            for (int z = -6; z <= 6; z++) {
+                                overworld.setBlockAndUpdate(new BlockPos(x, 112, z),
+                                        ((x + z) & 1) == 0 ? Blocks.POLISHED_BLACKSTONE.defaultBlockState() : Blocks.DEEPSLATE_TILES.defaultBlockState());
+                                for (int y = 113; y <= 120; y++) {
+                                    overworld.setBlockAndUpdate(new BlockPos(x, y, z), Blocks.AIR.defaultBlockState());
+                                }
+                            }
+                        }
+                        if (JUtils.getStand(sp) != null) {
+                            JUtils.getStand(sp).desummon();
+                        }
+                        sp.setInvisible(true);
+                        sp.teleportTo(overworld, 0.5, 113.0, 0.0, java.util.Set.of(), 0.0f, 5.0f, false);
+                        CommonStandComponent sc = JComponentPlatformUtils.getStandComponent(sp);
+                        sc.setType(JStandTypeRegistry.ORIGIN.get());
+                        sc.setSkin(0);
+                        JCraft.summon(overworld, sp);
+                    });
+                    client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+                    phase = 100;
+                    waitTicks = 30;
+                    return;
                 }
                 JCraft.LOGGER.info("[CLIENT-VISUAL] === Phase 1: Building Lit Test Chamber, Combat Layers & Effects ===");
                 final IntegratedServer srv = client.getSingleplayerServer();
@@ -542,15 +585,493 @@ public final class ClientVisualDiagnostic {
                 capture(client, "09_skybox_mih_and_spec_armor.png");
                 SkyBoxManager.getInstance().setForceTimeAccel(false);
                 phase = 23;
-                waitTicks = 8;
+                waitTicks = 6;
             }
             case 23 -> {
+                JCraft.LOGGER.info("[CLIENT-VISUAL] === Phase 7: Origin Stand Renderer, Attack Pose & Origin Arsenal UI ===");
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerLevel overworld = srv.getLevel(Level.OVERWORLD);
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (overworld == null || sp == null) return;
+                    if (JUtils.getStand(sp) != null) {
+                        JUtils.getStand(sp).desummon();
+                    }
+                    sp.teleportTo(overworld, 0.5, 113.0, 0.0, java.util.Set.of(), 0.0f, 5.0f, false);
+                    CommonStandComponent sc = JComponentPlatformUtils.getStandComponent(sp);
+                    sc.setType(JStandTypeRegistry.ORIGIN.get());
+                    sc.setSkin(0);
+                    JCraft.summon(overworld, sp);
+                });
+                client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+                phase = 24;
+                waitTicks = 28;
+            }
+            case 24 -> {
+                assertTrue(JUtils.getStand(client.player) instanceof OriginEntity,
+                        "OriginEntity summoned and rendered in third-person client view");
+                capture(client, "10_origin_stand.png");
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (sp != null && JUtils.getStand(sp) instanceof OriginEntity origin) {
+                        origin.initMove(MoveClass.HEAVY);
+                    }
+                });
+                phase = 25;
+                waitTicks = 14;
+            }
+            case 25 -> {
+                boolean attackingOnClient = JUtils.getStand(client.player) instanceof OriginEntity origin
+                        && origin.getMoveStun() > 0 && origin.getState() == OriginEntity.State.HEAVY;
+                assertTrue(attackingOnClient, "OriginEntity active Heavy attack pose & particles visible on client");
+                capture(client, "12_origin_attack_pose.png");
+                phase = 26;
+                waitTicks = 24;
+            }
+            case 26 -> {
+                client.gui.setScreen(new OriginArsenalScreen(null));
+                phase = 27;
+                waitTicks = 4;
+            }
+            case 27 -> {
+                assertTrue(client.gui.screen() instanceof OriginArsenalScreen,
+                        "OriginArsenalScreen opened cleanly on client");
+                if (client.gui.screen() instanceof OriginArsenalScreen arsenal) {
+                    assertTrue(!arsenal.isPauseScreen(),
+                            "OriginArsenalScreen must not pause integrated server so C2S skill packets apply live");
+                    boolean slotClicked = arsenal.mouseClicked(new MouseButtonEvent(
+                            arsenal.getLeftSlotCenterX(),
+                            arsenal.getLeftSlotCenterY(MoveClass.BARRAGE),
+                            new MouseButtonInfo(0, 0)), false);
+                    assertTrue(slotClicked && arsenal.getSelectedSlot() == MoveClass.BARRAGE,
+                            "OriginArsenalScreen selects BARRAGE bind slot on left-click");
+
+                    int spIdx = arsenal.findFirstSkillIndexFromStand("jcraft:star_platinum#");
+                    assertTrue(spIdx >= 0, "OriginArsenalScreen catalog exposes Star Platinum skills");
+                    if (spIdx >= 0) {
+                        int rowPitch = arsenal.getRowPitch();
+                        int guard = 0;
+                        while ((spIdx * rowPitch - arsenal.getScrollPixels()) > 48 && guard++ < 450) {
+                            arsenal.mouseScrolled(arsenal.getFirstNonOriginSkillCenterX(), arsenal.getSkillRowCenterY(0), 0.0, -1.0);
+                        }
+                        double skillClickY = arsenal.getSkillRowCenterY(0) + (spIdx * rowPitch - arsenal.getScrollPixels());
+                        boolean skillClicked = arsenal.mouseClicked(new MouseButtonEvent(
+                                arsenal.getFirstNonOriginSkillCenterX(),
+                                skillClickY,
+                                new MouseButtonInfo(0, 0)), false);
+                        assertTrue(skillClicked, "OriginArsenalScreen accepts click on catalog skill row");
+                    }
+                }
+                phase = 28;
+                waitTicks = 6;
+            }
+            case 28 -> {
+                String clientSlot = client.player != null
+                        ? JComponentPlatformUtils.getStandComponent(client.player).getOriginSlot(MoveClass.BARRAGE)
+                        : null;
+                assertTrue(clientSlot != null && clientSlot.startsWith("jcraft:star_platinum#"),
+                        "Client CommonStandComponent synced BARRAGE -> " + clientSlot);
+
+                final IntegratedServer srv = client.getSingleplayerServer();
+                final String[] serverSlot = new String[1];
+                final String[] liveEntitySlot = new String[1];
+                try {
+                    srv.submit(() -> {
+                        ServerPlayer sp = getServerPlayer(srv);
+                        if (sp != null) {
+                            serverSlot[0] = JComponentPlatformUtils.getStandComponent(sp).getOriginSlot(MoveClass.BARRAGE);
+                            if (JUtils.getStand(sp) instanceof OriginEntity origin) {
+                                var equipped = origin.getEquippedSkill(MoveClass.BARRAGE);
+                                liveEntitySlot[0] = equipped != null ? equipped.id() : null;
+                            }
+                        }
+                    }).get();
+                } catch (Exception e) {
+                    failures.add("Failed reading server Origin loadout: " + e.getMessage());
+                }
+                assertTrue(serverSlot[0] != null && serverSlot[0].startsWith("jcraft:star_platinum#"),
+                        "IntegratedServer persisted Origin BARRAGE -> " + serverSlot[0]);
+                assertTrue(liveEntitySlot[0] != null && liveEntitySlot[0].startsWith("jcraft:star_platinum#"),
+                        "Live OriginEntity applied new BARRAGE skill -> " + liveEntitySlot[0]);
+
+                capture(client, "11_origin_arsenal_ui.png");
+                if (client.gui.screen() instanceof OriginArsenalScreen arsenal) {
+                    arsenal.selectTab(OriginArsenalScreen.TAB_STUDIO);
+                    arsenal.applyChromaForTest(0x00FFAA);
+                }
+                phase = 29;
+                waitTicks = 6;
+            }
+            case 29 -> {
+                assertTrue(client.gui.screen() instanceof OriginArsenalScreen arsenal && arsenal.hasRendered3DPreview(),
+                        "OriginArsenalScreen Tab 1 rendered live 3D rotating OriginEntity preview");
+                int clientRgb = client.player != null
+                        ? JComponentPlatformUtils.getStandComponent(client.player).getOriginGlowRgb()
+                        : -1;
+                assertTrue(clientRgb == 0x00FFAA,
+                        "Client synced custom Chroma RGB -> #00FFAA (actual=" + String.format("0x%06X", clientRgb) + ")");
+
+                final IntegratedServer srv = client.getSingleplayerServer();
+                final int[] serverGlow = {-1};
+                final int[] entityGlow = {-1};
+                try {
+                    srv.submit(() -> {
+                        ServerPlayer sp = getServerPlayer(srv);
+                        if (sp != null) {
+                            serverGlow[0] = JComponentPlatformUtils.getStandComponent(sp).getOriginGlowRgb();
+                            if (JUtils.getStand(sp) instanceof OriginEntity origin) {
+                                entityGlow[0] = origin.getCustomGlowRgb();
+                            }
+                        }
+                    }).get();
+                } catch (Exception e) {
+                    failures.add("Failed reading server Chroma state: " + e.getMessage());
+                }
+                assertTrue(serverGlow[0] == 0x00FFAA && entityGlow[0] == 0x00FFAA,
+                        "IntegratedServer & live OriginEntity applied Chroma RGB -> #00FFAA");
+
+                capture(client, "13_origin_studio_3d_chroma.png");
+                if (client.gui.screen() instanceof OriginArsenalScreen arsenal) {
+                    arsenal.selectTab(OriginArsenalScreen.TAB_PROFILES);
+                    arsenal.saveProfileForTest(0, "Boss Killer");
+                }
+                phase = 30;
+                waitTicks = 5;
+            }
+            case 30 -> {
+                OriginProfile clientProf = client.player != null
+                        ? JComponentPlatformUtils.getStandComponent(client.player).getOriginProfile(0)
+                        : null;
+                assertTrue(clientProf != null && clientProf.customGlowRgb() == 0x00FFAA
+                                && "Boss Killer".equals(clientProf.name()),
+                        "Client saved Origin Profile 0 (Boss Killer + Chroma #00FFAA)");
+
+                final IntegratedServer srv = client.getSingleplayerServer();
+                final OriginProfile[] serverProf = new OriginProfile[1];
+                try {
+                    srv.submit(() -> {
+                        ServerPlayer sp = getServerPlayer(srv);
+                        if (sp != null) {
+                            serverProf[0] = JComponentPlatformUtils.getStandComponent(sp).getOriginProfile(0);
+                        }
+                    }).get();
+                } catch (Exception e) {
+                    failures.add("Failed reading server Origin Profile 0: " + e.getMessage());
+                }
+                assertTrue(serverProf[0] != null && serverProf[0].customGlowRgb() == 0x00FFAA,
+                        "IntegratedServer persisted Origin Profile 0 cleanly");
+
+                capture(client, "14_origin_profiles_synergies.png");
+                if (client.player != null) {
+                    CommonStandComponent cc = JComponentPlatformUtils.getStandComponent(client.player);
+                    cc.clearOriginLoadout();
+                    cc.setOriginGlowRgb(-1);
+                }
+                OriginLoadoutPacket.sendResetDefault();
+                OriginLoadoutPacket.sendSetChroma(-1);
+                phase = 31;
+                waitTicks = 6;
+            }
+            case 31 -> {
+                if (client.gui.screen() instanceof OriginArsenalScreen arsenal) {
+                    arsenal.loadProfileForTest(0);
+                }
+                phase = 32;
+                waitTicks = 6;
+            }
+            case 32 -> {
+                String restoredSlot = client.player != null
+                        ? JComponentPlatformUtils.getStandComponent(client.player).getOriginSlot(MoveClass.BARRAGE)
+                        : null;
+                int restoredGlow = client.player != null
+                        ? JComponentPlatformUtils.getStandComponent(client.player).getOriginGlowRgb()
+                        : -1;
+                assertTrue(restoredSlot != null && restoredSlot.startsWith("jcraft:star_platinum#") && restoredGlow == 0x00FFAA,
+                        "1-click Profile Load restored BARRAGE (" + restoredSlot + ") and Chroma RGB (#"
+                                + String.format("%06X", restoredGlow) + ")");
+
+                client.gui.setScreen(null);
+                client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerLevel overworld = srv.getLevel(Level.OVERWORLD);
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (overworld == null || sp == null) return;
+                    if (JUtils.getStand(sp) != null) {
+                        JUtils.getStand(sp).desummon();
+                    }
+                    CommonStandComponent sc = JComponentPlatformUtils.getStandComponent(sp);
+                    sc.setOriginGlowRgb(-1);
+                    sc.setSkin(5);
+                    JCraft.summon(overworld, sp);
+                });
+                phase = 33;
+                waitTicks = 8;
+            }
+            case 33 -> {
+                assertTrue(JUtils.getStand(client.player) instanceof OriginEntity origin && origin.getSkin() == 5,
+                        "OriginEntity summoned Skin 5 (Celestial Divinity) with custom pillar VFX");
+                capture(client, "15_origin_summon_celestial.png");
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerLevel overworld = srv.getLevel(Level.OVERWORLD);
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (overworld == null || sp == null) return;
+                    if (JUtils.getStand(sp) != null) {
+                        JUtils.getStand(sp).desummon();
+                    }
+                    CommonStandComponent sc = JComponentPlatformUtils.getStandComponent(sp);
+                    sc.setSkin(4);
+                    JCraft.summon(overworld, sp);
+                });
+                phase = 34;
+                waitTicks = 8;
+            }
+            case 34 -> {
+                assertTrue(JUtils.getStand(client.player) instanceof OriginEntity origin && origin.getSkin() == 4,
+                        "OriginEntity summoned Skin 4 (Absolute Abyss) with custom dark smoke wave VFX");
+                capture(client, "16_origin_summon_abyss.png");
+                StandRunicCircleRenderer.renderedCirclesThisSession = 0;
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerLevel overworld = srv.getLevel(Level.OVERWORLD);
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (overworld == null || sp == null) return;
+                    if (JUtils.getStand(sp) != null) {
+                        JUtils.getStand(sp).desummon();
+                    }
+                    CommonStandComponent sc = JComponentPlatformUtils.getStandComponent(sp);
+                    sc.clearOriginLoadout();
+                    sc.setOriginGlowRgb(-1);
+                    sc.setSkin(5);
+                    StandEntity<?, ?> summoned = JCraft.summon(overworld, sp);
+                    if (summoned instanceof OriginEntity origin) {
+                        origin.rebuildLoadoutFromUser(sc);
+                        origin.setMoveStun(0);
+                        origin.initMove(MoveClass.ULTIMATE);
+                    }
+                });
+                phase = 35;
+                waitTicks = 3;
+            }
+            case 35 -> {
+                assertTrue(StandRunicCircleRenderer.renderedCirclesThisSession > 0,
+                        "Runic charge circle rendered under Stand during Ultimate windup (draws="
+                                + StandRunicCircleRenderer.renderedCirclesThisSession + ")");
+                assertTrue(CombatImpactEffects.isActive(),
+                        "CombatImpactEffects micro-shake & edge flash triggered on Ultimate activation");
+                capture(client, "17_runic_circle_and_impact.png");
+
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (sp != null && JUtils.getStand(sp) instanceof OriginEntity origin) {
+                        origin.setMoveStun(0);
+                        JComponentPlatformUtils.getCooldowns(sp).clear();
+                        origin.initMove(MoveClass.UTILITY);
+                    }
+                });
+                phase = 36;
+                waitTicks = 3;
+            }
+            case 36 -> {
+                assertTrue(AuraAfterimageManager.getActiveGhostCount() > 0,
+                        "AuraAfterimageManager spawned aura-colored warp echoes on Time Skip (ghosts="
+                                + AuraAfterimageManager.getActiveGhostCount() + ")");
+                capture(client, "18_aura_afterimage_trail.png");
+
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerLevel overworld = srv.getLevel(Level.OVERWORLD);
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (overworld == null || sp == null) return;
+                    JUtils.setDayTime(overworld, 18000L);
+                    sp.setInvisible(true);
+                    sp.teleportTo(overworld, 0.5, 113.0, 0.0, java.util.Set.of(), -28.0f, 5.0f, false);
+                    if (JUtils.getStand(sp) != null) {
+                        JUtils.getStand(sp).desummon();
+                    }
+                    CommonStandComponent sc = JComponentPlatformUtils.getStandComponent(sp);
+                    sc.setType(JStandTypeRegistry.KING_CRIMSON.get());
+                    sc.setSkin(0);
+                    JCraft.summon(overworld, sp);
+                });
+                if (client.player != null) {
+                    client.player.setInvisible(true);
+                }
+                client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+                phase = 37;
+                waitTicks = 22;
+            }
+            case 37 -> {
+                capture(client, "19_iconic_glow_king_crimson.png");
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerLevel overworld = srv.getLevel(Level.OVERWORLD);
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (overworld == null || sp == null) return;
+                    sp.setInvisible(true);
+                    if (JUtils.getStand(sp) != null) {
+                        JUtils.getStand(sp).desummon();
+                    }
+                    CommonStandComponent sc = JComponentPlatformUtils.getStandComponent(sp);
+                    sc.setType(JStandTypeRegistry.MADE_IN_HEAVEN.get());
+                    sc.setSkin(0);
+                    JCraft.summon(overworld, sp);
+                });
+                phase = 38;
+                waitTicks = 22;
+            }
+            case 38 -> {
+                capture(client, "20_iconic_glow_made_in_heaven.png");
+                phase = 39;
+                waitTicks = 4;
+            }
+            case 39 -> {
                 File shotDir = new File(getOutDir(), "screenshots");
                 for (String name : expectedScreenshots) {
                     File f = new File(shotDir, name);
                     assertTrue(f.exists() && f.length() > 1024L, "Screenshot saved cleanly: " + name + " (" + f.length() + " bytes)");
                 }
                 finish(client);
+            }
+            case 100 -> {
+                if (client.player != null) client.player.setInvisible(true);
+                capture(client, "origin_0_default_front.png");
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (sp != null) {
+                        sp.setYRot(-55.0f);
+                        sp.setYHeadRot(-55.0f);
+                    }
+                });
+                if (client.player != null) {
+                    client.player.setYRot(-55.0f);
+                    client.player.setYHeadRot(-55.0f);
+                }
+                phase = 101;
+                waitTicks = 6;
+            }
+            case 101 -> {
+                capture(client, "origin_0_default_diagonal.png");
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (sp != null) {
+                        sp.setYRot(0.0f);
+                        sp.setYHeadRot(0.0f);
+                    }
+                });
+                if (client.player != null) {
+                    client.player.setYRot(0.0f);
+                    client.player.setYHeadRot(0.0f);
+                }
+                client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+                phase = 102;
+                waitTicks = 6;
+            }
+            case 102 -> {
+                capture(client, "origin_0_default_back.png");
+                client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (sp != null) {
+                        JComponentPlatformUtils.getStandComponent(sp).setSkin(1);
+                        if (JUtils.getStand(sp) instanceof OriginEntity origin) origin.setSkin(1);
+                    }
+                });
+                phase = 103;
+                waitTicks = 8;
+            }
+            case 103 -> {
+                capture(client, "origin_1_skin1_crimson.png");
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (sp != null) {
+                        JComponentPlatformUtils.getStandComponent(sp).setSkin(2);
+                        if (JUtils.getStand(sp) instanceof OriginEntity origin) origin.setSkin(2);
+                    }
+                });
+                phase = 104;
+                waitTicks = 8;
+            }
+            case 104 -> {
+                capture(client, "origin_2_skin2_cyan.png");
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (sp != null) {
+                        JComponentPlatformUtils.getStandComponent(sp).setSkin(3);
+                        if (JUtils.getStand(sp) instanceof OriginEntity origin) origin.setSkin(3);
+                    }
+                });
+                phase = 105;
+                waitTicks = 8;
+            }
+            case 105 -> {
+                capture(client, "origin_3_skin3_gold.png");
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (sp != null) {
+                        JComponentPlatformUtils.getStandComponent(sp).setSkin(4);
+                        if (JUtils.getStand(sp) instanceof OriginEntity origin) origin.setSkin(4);
+                    }
+                });
+                phase = 106;
+                waitTicks = 10;
+            }
+            case 106 -> {
+                capture(client, "origin_4_skin4_abyss_front.png");
+                client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+                phase = 107;
+                waitTicks = 6;
+            }
+            case 107 -> {
+                capture(client, "origin_4_skin4_abyss_back.png");
+                client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (sp != null) {
+                        JComponentPlatformUtils.getStandComponent(sp).setSkin(5);
+                        if (JUtils.getStand(sp) instanceof OriginEntity origin) origin.setSkin(5);
+                    }
+                });
+                phase = 108;
+                waitTicks = 12;
+            }
+            case 108 -> {
+                capture(client, "origin_5_skin5_celestial_front.png");
+                client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+                phase = 109;
+                waitTicks = 6;
+            }
+            case 109 -> {
+                capture(client, "origin_5_skin5_celestial_back.png");
+                client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (sp != null) {
+                        JComponentPlatformUtils.getStandComponent(sp).setSkin(0);
+                        if (JUtils.getStand(sp) instanceof OriginEntity origin) {
+                            origin.setSkin(0);
+                            origin.initMove(MoveClass.BARRAGE);
+                        }
+                    }
+                });
+                phase = 110;
+                waitTicks = 12;
+            }
+            case 110 -> {
+                capture(client, "origin_0_default_barrage.png");
+                phase = 39;
+                waitTicks = 4;
             }
         }
     }

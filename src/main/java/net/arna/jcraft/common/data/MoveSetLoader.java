@@ -111,6 +111,7 @@ public class MoveSetLoader {
      */
     private static void loadMoveSets(final Map<Identifier, Multimap<String, Pair<Identifier, JsonObject>>> moveSets, final Executor gameExecutor) {
         PENDING_MOVE_SET_DATA.clear();
+        net.arna.jcraft.common.stand.OriginSkillCatalog.invalidateCache();
 
         for (final Map.Entry<Identifier, Multimap<String, Pair<Identifier, JsonObject>>> typeEntry : moveSets.entrySet()) {
             final Identifier typeLoc = typeEntry.getKey();

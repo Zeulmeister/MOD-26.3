@@ -83,6 +83,8 @@ public class JClientEvents {
         JClientUtils.clearTimestops();
         net.arna.jcraft.client.rendering.handler.ZaWarudoShaderHandler.INSTANCE.reset();
         net.arna.jcraft.client.gui.hud.JoJoAnimeHudRenderer.setClientSuspendedProjectiles(0);
+        net.arna.jcraft.client.rendering.AuraAfterimageManager.clear();
+        net.arna.jcraft.client.rendering.CombatImpactEffects.clear();
 
         // Sync initial prediction option
         // net.arna.jcraft.common.network.JNetwork.sendToServer(JPacketRegistry.C2S_PREDICTION_TRIGGER, PredictionTriggerPacket.write(JClientConfig.getInstance().isClientsidePrediction()));
@@ -213,6 +215,7 @@ public class JClientEvents {
             );
         }
 
+        net.arna.jcraft.client.rendering.CombatImpactEffects.renderHudOverlay(ctx, tickDelta);
         net.arna.jcraft.client.rendering.JoJoOnomatopoeiaRenderer.render(ctx, tickDelta);
         net.arna.jcraft.client.gui.hud.JoJoAnimeHudRenderer.render(ctx, tickDelta);
     }
@@ -232,6 +235,16 @@ public class JClientEvents {
         // Quick 8-Slice JoJo Radial Wheel (default key: Y)
         if (client.gui.screen() == null && RADIAL_MENU_KEY != null && RADIAL_MENU_KEY.isPressedThisTick()) {
             client.gui.setScreen(new net.arna.jcraft.client.gui.screen.JoJoRadialWheelScreen());
+        }
+
+        // Origin Arsenal Bind Matrix (default key: K)
+        if (client.gui.screen() == null && ORIGIN_ARSENAL_KEY != null && ORIGIN_ARSENAL_KEY.isPressedThisTick()) {
+            if (JComponentPlatformUtils.getStandComponent(player).getType()
+                    == net.arna.jcraft.api.registry.JStandTypeRegistry.ORIGIN.get()) {
+                client.gui.setScreen(new net.arna.jcraft.client.gui.screen.OriginArsenalScreen(null));
+            } else {
+                player.sendOverlayMessage(net.minecraft.network.chat.Component.translatable("jcraft.origin.requires_origin"));
+            }
         }
 
         final StandEntity<?, ?> stand = JUtils.getStand(player);
@@ -289,6 +302,8 @@ public class JClientEvents {
         net.arna.jcraft.client.taunt.PlayerPoseTauntHandler.tick(client);
         net.arna.jcraft.client.remote.StandRemoteControlHandler.tick(client);
         net.arna.jcraft.client.rendering.JoJoOnomatopoeiaRenderer.tick(client);
+        net.arna.jcraft.client.rendering.AuraAfterimageManager.tick(client);
+        net.arna.jcraft.client.rendering.CombatImpactEffects.tick(client);
 
         if (client.isPaused() && client.isLocalServer()) {
             return;

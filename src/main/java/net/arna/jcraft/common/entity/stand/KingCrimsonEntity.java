@@ -59,7 +59,8 @@ import java.util.function.Supplier;
  * @see PredictionMove
  * @see TimeEraseMove
  */
-public class KingCrimsonEntity extends StandEntity<KingCrimsonEntity, KingCrimsonEntity.State> {
+public class KingCrimsonEntity extends StandEntity<KingCrimsonEntity, KingCrimsonEntity.State>
+        implements net.arna.jcraft.api.stand.ITimeEraseCapable {
     public static final MoveSet<KingCrimsonEntity, State> MOVE_SET = MoveSetManager.create(JStandTypeRegistry.KING_CRIMSON,
             KingCrimsonEntity::registerMoves, KingCrimsonEntity.class, State.class);
     public static final StandData DATA = StandData.builder()
@@ -178,7 +179,7 @@ public class KingCrimsonEntity extends StandEntity<KingCrimsonEntity, KingCrimso
                     Component.literal("Donut"),
                     Component.literal("slow, uninterruptable, extremely damaging launcher")
             );
-    public static final EpitaphAttack EPITAPH = new EpitaphAttack(480, 4, 34, -1f)
+    public static final EpitaphAttack<KingCrimsonEntity> EPITAPH = new EpitaphAttack<KingCrimsonEntity>(480, 4, 34, -1f)
             .withInfo(
                     Component.literal("Epitaph"),
                     Component.literal("0.2s windup, 1.5s counter, combo starter. Cannot be buffered.")
@@ -194,7 +195,7 @@ public class KingCrimsonEntity extends StandEntity<KingCrimsonEntity, KingCrimso
                             While predicting, you are slowed down.
                             Move Cancel - Using Special 3 during any move cancels it and puts Time Erase on a 7s cooldown. (But does not require TE to be usable)""")
             );
-    public static final TimeEraseMove TIME_ERASE = new TimeEraseMove(1000, 5, 15, 1f, 120)
+    public static final TimeEraseMove<KingCrimsonEntity> TIME_ERASE = new TimeEraseMove<KingCrimsonEntity>(1000, 5, 15, 1f, 120)
             .withInfo(
                     Component.literal("Time Erase"),
                     Component.literal("6 seconds duration, cancellable by doing anything with King Crimson")
@@ -364,7 +365,7 @@ public class KingCrimsonEntity extends StandEntity<KingCrimsonEntity, KingCrimso
         return super.makeBoundingBox(_bbPos);
     }
 
-    public TimeEraseMove getTimeEraseMove() {
+    public TimeEraseMove<?> getTimeEraseMove() {
         return getMove(TimeEraseMove.class);
     }
 

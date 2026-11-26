@@ -10,6 +10,7 @@ import net.arna.jcraft.api.attack.moves.AbstractCounterAttack;
 import net.arna.jcraft.api.component.living.CommonHitPropertyComponent;
 import net.arna.jcraft.api.registry.JSoundRegistry;
 import net.arna.jcraft.api.registry.JStatusRegistry;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.attack.moves.shared.CounterMissMove;
 import net.arna.jcraft.common.entity.stand.ChariotRequiemEntity;
 import net.arna.jcraft.common.util.JParticleType;
@@ -30,26 +31,29 @@ import org.jetbrains.annotations.NotNull;
  * punishes anyone who strikes SCR by turning their own Stand power against them,
  * cancelling active moves and inflicting Standless, Darkness, stun, and psychic backlash.
  */
-public final class RequiemCounterAttack extends AbstractCounterAttack<RequiemCounterAttack, ChariotRequiemEntity> {
-    private final CounterMissMove<ChariotRequiemEntity> counterMiss = new CounterMissMove<>(18);
+public final class RequiemCounterAttack<A extends StandEntity<? extends A, ?>> extends AbstractCounterAttack<RequiemCounterAttack<A>, A> {
+    private final CounterMissMove<A> counterMiss = new CounterMissMove<>(18);
 
     public RequiemCounterAttack(final int cooldown, final int windup, final int duration, final float moveDistance) {
         super(cooldown, windup, duration, moveDistance);
     }
 
     @Override
-    public @NotNull MoveType<RequiemCounterAttack> getMoveType() {
-        return Type.INSTANCE;
+    public @NotNull MoveType<RequiemCounterAttack<A>> getMoveType() {
+        return Type.INSTANCE.cast();
     }
 
     @Override
-    public void whiff(final @NonNull ChariotRequiemEntity attacker, final @NonNull LivingEntity user) {
-        attacker.setMove(counterMiss, ChariotRequiemEntity.State.COUNTER_MISS);
+    public void whiff(final @NonNull A attacker, final @NonNull LivingEntity user) {
+        attacker.setMove(counterMiss, null);
+        if (attacker instanceof ChariotRequiemEntity cr) {
+            cr.setState(ChariotRequiemEntity.State.COUNTER_MISS);
+        }
         JCraft.stun(attacker.getUser(), counterMiss.getDuration(), 0);
     }
 
     @Override
-    public void counter(final @NonNull ChariotRequiemEntity attacker, final Entity countered, final DamageSource counteredDamageSource) {
+    public void counter(final @NonNull A attacker, final Entity countered, final DamageSource counteredDamageSource) {
         super.counter(attacker, countered, counteredDamageSource);
 
         if (countered == null || !attacker.hasUser() || !(attacker.level() instanceof ServerLevel serverLevel)) {
@@ -82,21 +86,21 @@ public final class RequiemCounterAttack extends AbstractCounterAttack<RequiemCou
     }
 
     @Override
-    protected @NonNull RequiemCounterAttack getThis() {
+    protected @NonNull RequiemCounterAttack<A> getThis() {
         return this;
     }
 
     @Override
-    public @NonNull RequiemCounterAttack copy() {
-        return copyExtras(new RequiemCounterAttack(getCooldown(), getWindup(), getDuration(), getMoveDistance()));
+    public @NonNull RequiemCounterAttack<A> copy() {
+        return copyExtras(new RequiemCounterAttack<>(getCooldown(), getWindup(), getDuration(), getMoveDistance()));
     }
 
-    public static class Type extends AbstractCounterAttack.Type<RequiemCounterAttack> {
+    public static class Type extends AbstractCounterAttack.Type<RequiemCounterAttack<?>> {
         public static final Type INSTANCE = new Type();
 
         @Override
-        protected @NotNull App<RecordCodecBuilder.Mu<RequiemCounterAttack>, RequiemCounterAttack> buildCodec(
-                final RecordCodecBuilder.Instance<RequiemCounterAttack> instance) {
+        protected @NotNull App<RecordCodecBuilder.Mu<RequiemCounterAttack<?>>, RequiemCounterAttack<?>> buildCodec(
+                final RecordCodecBuilder.Instance<RequiemCounterAttack<?>> instance) {
             return baseDefault(instance, RequiemCounterAttack::new);
         }
     }

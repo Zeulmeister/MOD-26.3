@@ -717,6 +717,12 @@ public interface JEntityTypeRegistry {
                     MobCategory.CREATURE
             ).sized(0.3f, 0.9f).build(ResourceKey.create(Registries.ENTITY_TYPE, JCraft.id("mandom")))
     );
+    RegistrySupplier<EntityType<OriginEntity>> ORIGIN = ENTITY_TYPE_REGISTRY.register(JCraft.id("origin"),
+            () -> EntityType.Builder.of(
+                    WorldOnlyEntityFactory.from(OriginEntity::new),
+                    MobCategory.CREATURE
+            ).sized(0.65f, 1.95f).build(ResourceKey.create(Registries.ENTITY_TYPE, JCraft.id("origin")))
+    );
     RegistrySupplier<EntityType<CarbonDioxideRadarEntity>> CO2_RADAR = ENTITY_TYPE_REGISTRY.register(JCraft.id("co2_radar"),
             () -> EntityType.Builder.of(
                     WorldOnlyEntityFactory.from(CarbonDioxideRadarEntity::new),
@@ -809,6 +815,7 @@ public interface JEntityTypeRegistry {
         EntityAttributeRegistry.register(ATUM, AtumEntity::createMobAttributes);
         EntityAttributeRegistry.register(DIVER_DOWN, DiverDownEntity::createMobAttributes);
         EntityAttributeRegistry.register(CHARIOT_REQUIEM, ChariotRequiemEntity::createMobAttributes);
+        EntityAttributeRegistry.register(ORIGIN, OriginEntity::createMobAttributes);
         EntityAttributeRegistry.register(DRAGONS_DREAM, DragonsDreamEntity::createMobAttributes);
         EntityAttributeRegistry.register(FOO_FIGHTERS, FooFightersEntity::createMobAttributes);
         EntityAttributeRegistry.register(GOO_GOO_DOLLS, GooGooDollsEntity::createMobAttributes);

@@ -1453,5 +1453,35 @@
     "sounds": [
       "jcraft:gun/cycle"
     ]
+  },
+  "origin_summon": {
+    "subtitle": "subtitles.jcraft.origin_summon",
+    "sounds": [
+      "jcraft:origin/origin_summon"
+    ]
+  },
+  "origin_barrage": {
+    "subtitle": "subtitles.jcraft.origin_barrage",
+    "sounds": [
+      "jcraft:origin/origin_barrage"
+    ]
+  },
+  "origin_heavy": {
+    "subtitle": "subtitles.jcraft.origin_heavy",
+    "sounds": [
+      "jcraft:origin/origin_heavy"
+    ]
+  },
+  "origin_ult": {
+    "subtitle": "subtitles.jcraft.origin_ult",
+    "sounds": [
+      "jcraft:origin/origin_ult"
+    ]
+  },
+  "origin_bind": {
+    "subtitle": "subtitles.jcraft.origin_bind",
+    "sounds": [
+      "jcraft:origin/origin_bind"
+    ]
   }
 }

@@ -38,6 +38,12 @@ public class MainMenuScreen extends AbstractContainerScreen<MainMenu> {
                         b -> Minecraft.getInstance().gui.setScreen(new StandGuideScreen(this)))
                 .bounds(this.leftPos + this.imageWidth - btnW - 6, this.topPos + this.imageHeight - 22, btnW, 16)
                 .build());
+        if (stand instanceof net.arna.jcraft.common.entity.stand.OriginEntity) {
+            this.addRenderableWidget(Button.builder(Component.translatable("jcraft.guide.open_arsenal"),
+                            b -> Minecraft.getInstance().gui.setScreen(new OriginArsenalScreen(this)))
+                    .bounds(this.leftPos + 6, this.topPos + this.imageHeight - 22, btnW + 6, 16)
+                    .build());
+        }
     }
 
     @Override

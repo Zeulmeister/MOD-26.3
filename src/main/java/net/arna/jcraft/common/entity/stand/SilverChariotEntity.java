@@ -213,7 +213,7 @@ public class SilverChariotEntity extends StandEntity<SilverChariotEntity, Silver
                     Component.literal("Shooting Star"),
                     Component.literal("Silver Chariot detaches from the user and charges in the looked direction, combo starter/extender.")
             );
-    public static final SCCounterAttack COUNTER = new SCCounterAttack(480, 4, 34, 0.5f)
+    public static final SCCounterAttack<SilverChariotEntity> COUNTER = new SCCounterAttack<SilverChariotEntity>(480, 4, 34, 0.5f)
             .withInfo(
                     Component.literal("Counter"),
                     Component.literal("0.2s windup, 1.5s duration, stuns when hit.")

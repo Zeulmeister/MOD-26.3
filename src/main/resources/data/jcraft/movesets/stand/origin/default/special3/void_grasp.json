@@ -1,0 +1,70 @@
+{
+  "anim_state": "SPECIAL3",
+  "class": "SPECIAL3",
+  "cooldown_type": "STAND_SP3",
+  "move": {
+    "type": "jcraft:shared_grab_attack",
+    "attack_extras": {
+      "backstab": true,
+      "block_stun": 4,
+      "blockable_type": "NON_BLOCKABLE",
+      "hit_spark": "HIT_SPARK_2",
+      "override_stun": true,
+      "stun_type": "UNBURSTABLE"
+    },
+    "cooldown": 200,
+    "damage": 2.5,
+    "duration": 20,
+    "extras": {
+      "description": {
+        "translate": "move.jcraft.origin.default.special3.description"
+      },
+      "name": {
+        "translate": "move.jcraft.origin.default.special3.name"
+      }
+    },
+    "grab_duration": 20,
+    "hit_move": {
+      "type": "jcraft:shared_simple_attack",
+      "attack_extras": {
+        "backstab": true,
+        "block_stun": 8,
+        "hit_animation": "LAUNCH",
+        "hit_spark": "HIT_SPARK_3",
+        "shockwaves": true
+      },
+      "cooldown": 0,
+      "damage": 7.5,
+      "duration": 20,
+      "extras": {
+        "actions": [
+          {
+            "type": "jcraft:play_sound",
+            "bind": false,
+            "run": "on_hit",
+            "sound": "jcraft:impact10"
+          }
+        ],
+        "description": {
+          "translate": "move.jcraft.origin.default.grab_hit.description"
+        },
+        "name": {
+          "translate": "move.jcraft.origin.default.grab_hit.name"
+        }
+      },
+      "hitbox_size": 1.75,
+      "knockback": 1.1,
+      "move_distance": 1.45,
+      "offset": 0.0,
+      "stun": 22,
+      "windup": 12
+    },
+    "hit_state": "GRAB_HIT",
+    "hitbox_size": 1.6,
+    "knockback": 0.0,
+    "move_distance": 1.45,
+    "offset": 0.1,
+    "stun": 20,
+    "windup": 10
+  }
+}

@@ -7,7 +7,8 @@ import lombok.NonNull;
 import net.arna.jcraft.api.attack.enums.MobilityType;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
-import net.arna.jcraft.common.entity.stand.GEREntity;
+import net.arna.jcraft.api.stand.IFlightCapable;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.CombatEntry;
@@ -22,7 +23,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Set;
 
 @Getter
-public final class FlightMove extends AbstractMove<FlightMove, GEREntity> {
+public final class FlightMove<A extends StandEntity<? extends A, ?>> extends AbstractMove<FlightMove<A>, A> {
     private final int flightTime;
 
     public FlightMove(final int cooldown, final int windup, final int duration, final float moveDistance, final int flightTime) {
@@ -32,30 +33,32 @@ public final class FlightMove extends AbstractMove<FlightMove, GEREntity> {
     }
 
     @Override
-    public @NotNull MoveType<FlightMove> getMoveType() {
-        return Type.INSTANCE;
+    public @NotNull MoveType<FlightMove<A>> getMoveType() {
+        return Type.INSTANCE.cast();
     }
 
     @Override
-    public void tick(final GEREntity attacker) {
+    public void tick(final A attacker) {
         tickFlight(attacker);
     }
 
     @Override
-    public @NonNull Set<LivingEntity> perform(final GEREntity attacker, final LivingEntity user) {
-        attacker.setFlightTime(flightTime);
+    public @NonNull Set<LivingEntity> perform(final A attacker, final LivingEntity user) {
+        if (attacker instanceof IFlightCapable fc) {
+            fc.setFlightTime(flightTime);
+        }
         return Set.of();
     }
 
-    public void tickFlight(final GEREntity attacker) {
-        if (!attacker.hasUser()) {
+    public void tickFlight(final A attacker) {
+        if (!attacker.hasUser() || !(attacker instanceof IFlightCapable fc)) {
             return;
         }
         final LivingEntity user = attacker.getUserOrThrow();
         // Must be run on client and server because of fun mod compatibility
-        int flightTime = attacker.getFlightTime();
+        int flightTime = fc.getFlightTime();
         flightTime -= 1;
-        attacker.setFlightTime(flightTime);
+        fc.setFlightTime(flightTime);
         if (!(user instanceof Player) && flightTime > 1) {
             double y = user.getY();
             Vec3 vel = new Vec3(user.getDeltaMovement().x, 0.0, user.getDeltaMovement().z);
@@ -88,20 +91,20 @@ public final class FlightMove extends AbstractMove<FlightMove, GEREntity> {
     }
 
     @Override
-    protected @NonNull FlightMove getThis() {
+    protected @NonNull FlightMove<A> getThis() {
         return this;
     }
 
     @Override
-    public @NonNull FlightMove copy() {
-        return copyExtras(new FlightMove(getCooldown(), getWindup(), getDuration(), getMoveDistance(), getFlightTime()));
+    public @NonNull FlightMove<A> copy() {
+        return copyExtras(new FlightMove<>(getCooldown(), getWindup(), getDuration(), getMoveDistance(), getFlightTime()));
     }
 
-    public static class Type extends AbstractMove.Type<FlightMove> {
+    public static class Type extends AbstractMove.Type<FlightMove<?>> {
         public static final Type INSTANCE = new Type();
 
         @Override
-        protected @NotNull App<RecordCodecBuilder.Mu<FlightMove>, FlightMove> buildCodec(RecordCodecBuilder.Instance<FlightMove> instance) {
+        protected @NotNull App<RecordCodecBuilder.Mu<FlightMove<?>>, FlightMove<?>> buildCodec(RecordCodecBuilder.Instance<FlightMove<?>> instance) {
             return baseDefault(instance).and(ExtraCodecs.NON_NEGATIVE_INT.fieldOf("flight_time").forGetter(FlightMove::getFlightTime))
                     .apply(instance, applyExtras(FlightMove::new));
         }

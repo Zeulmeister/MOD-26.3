@@ -132,6 +132,15 @@ public final class JoJoRadialWheelScreen extends Screen {
         graphics.outline(cx - headerW / 2, headerY, headerW, 15, hasStand ? 0xFFD4AF37 : 0x669CA3AF);
         graphics.centeredText(this.font, standHeader, cx, headerY + 4, hasStand ? 0xFFFDE68A : 0xFF9CA3AF);
 
+        if (standType == net.arna.jcraft.api.registry.JStandTypeRegistry.ORIGIN.get()) {
+            Component arsenalPill = Component.translatable("jcraft.radial.origin_arsenal");
+            int aw = Math.max(66, this.font.width(arsenalPill) + 12);
+            int ay = cy + 18;
+            graphics.fill(cx - aw / 2, ay, cx + aw / 2, ay + 13, 0xCC240F42);
+            graphics.outline(cx - aw / 2, ay, aw, 13, 0xFFC084FC);
+            graphics.centeredText(this.font, arsenalPill, cx, ay + 3, 0xFFE9D5FF);
+        }
+
         final float openScale = computeOpenScale(System.currentTimeMillis() - openTimeMs);
 
         // Interactive center medallion -> Opens Stand & Gameplay Guide on click (or G)
@@ -275,6 +284,14 @@ public final class JoJoRadialWheelScreen extends Screen {
         if (key == InputConstants.KEY_G) {
             Minecraft.getInstance().gui.setScreen(new StandGuideScreen(null));
             return true;
+        }
+        if (key == InputConstants.KEY_A) {
+            LocalPlayer player = Minecraft.getInstance().player;
+            if (player != null && JComponentPlatformUtils.getStandComponent(player).getType()
+                    == net.arna.jcraft.api.registry.JStandTypeRegistry.ORIGIN.get()) {
+                Minecraft.getInstance().gui.setScreen(new OriginArsenalScreen(null));
+                return true;
+            }
         }
         return super.keyPressed(event);
     }

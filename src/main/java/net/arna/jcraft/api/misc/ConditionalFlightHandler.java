@@ -1,8 +1,8 @@
 package net.arna.jcraft.api.misc;
 
 import dev.architectury.event.events.common.TickEvent;
+import net.arna.jcraft.api.stand.IFlightCapable;
 import net.arna.jcraft.common.entity.stand.CreamEntity;
-import net.arna.jcraft.common.entity.stand.GEREntity;
 import net.arna.jcraft.common.util.JUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -42,8 +42,8 @@ public class ConditionalFlightHandler {
 
     private static void registerJCraftConditions() {
         addCondition(
-                p -> JUtils.getStand(p) instanceof GEREntity,
-                p -> JUtils.getStand(p) instanceof GEREntity ger && ger.getFlightTime() > 0
+                p -> JUtils.getStand(p) instanceof IFlightCapable,
+                p -> JUtils.getStand(p) instanceof IFlightCapable flightCapable && flightCapable.getFlightTime() > 0
         );
         addCondition(
                 ConditionalFlightHandler::isActiveTimestopUser,
@@ -59,7 +59,7 @@ public class ConditionalFlightHandler {
 
     public static boolean isAllowedJCraftFlight(Player player) {
         return isActiveTimestopUser(player)
-                || (JUtils.getStand(player) instanceof GEREntity ger && ger.getFlightTime() > 0)
+                || (JUtils.getStand(player) instanceof IFlightCapable flightCapable && flightCapable.getFlightTime() > 0)
                 || CreamEntity.isCreaming(player);
     }
 
@@ -100,7 +100,7 @@ public class ConditionalFlightHandler {
             boolean foundPositiveTracker = false;
             boolean anyChangedToInactive = false;
             boolean forceHoverNow = isActiveTimestopUser(player)
-                    || (JUtils.getStand(player) instanceof GEREntity ger && ger.getFlightTime() > 0);
+                    || (JUtils.getStand(player) instanceof IFlightCapable flightCapable && flightCapable.getFlightTime() > 0);
 
             for (FlightTracker tracker : TRACKERS) {
                 Boolean flightState = tracker.determineFlightState(player);

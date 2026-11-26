@@ -114,6 +114,8 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
     private static final EntityDataAccessor<Boolean> REMOTE;
 
     private static final EntityDataAccessor<String> USER_POSE;
+    private static final EntityDataAccessor<Integer> CHARGE_RING_TICKS;
+    private static final EntityDataAccessor<Integer> CHARGE_RING_MAX;
 
     @Getter
     @Setter
@@ -157,7 +159,7 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
     @Setter
     private boolean remoteJumpInput = false, remoteSneakInput = false;
 
-    @Getter
+    @Getter @Setter
     private boolean playSummonAnim = true;
     @Setter
     private boolean playSummonSound = true, playDesummonSound = true;
@@ -212,6 +214,8 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
         FREEZ = SynchedEntityData.defineId(StandEntity.class, EntityDataSerializers.FLOAT);
 
         USER_POSE = SynchedEntityData.defineId(StandEntity.class, EntityDataSerializers.STRING);
+        CHARGE_RING_TICKS = SynchedEntityData.defineId(StandEntity.class, EntityDataSerializers.INT);
+        CHARGE_RING_MAX = SynchedEntityData.defineId(StandEntity.class, EntityDataSerializers.INT);
     }
 
     /**
@@ -801,6 +805,16 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
         builder.define(FREEZ, 0f);
 
         builder.define(USER_POSE, "");
+        builder.define(CHARGE_RING_TICKS, 0);
+        builder.define(CHARGE_RING_MAX, 0);
+    }
+
+    public int getChargeRingTicks() {
+        return entityData.get(CHARGE_RING_TICKS);
+    }
+
+    public int getChargeRingMax() {
+        return entityData.get(CHARGE_RING_MAX);
     }
 
     @Override
@@ -908,6 +922,24 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
             setState(animState);
         }
         armorPoints = move.getArmor();
+
+        if (!level().isClientSide() && level() instanceof ServerLevel serverLevel) {
+            boolean isUlt = move.getMoveClass() == MoveClass.ULTIMATE
+                    || move instanceof net.arna.jcraft.api.attack.moves.AbstractTimeStopMove<?, ?>;
+            if (move.getWindup() >= 6 && (move.getWindup() >= 10 || move.getMoveClass() == MoveClass.HEAVY || isUlt)) {
+                entityData.set(CHARGE_RING_MAX, move.getWindup());
+                entityData.set(CHARGE_RING_TICKS, move.getWindup());
+            } else {
+                entityData.set(CHARGE_RING_MAX, 0);
+                entityData.set(CHARGE_RING_TICKS, 0);
+            }
+            if (isUlt) {
+                JVisualFeedback.sendImpactEffect(serverLevel, position(), 0.72f, JVisualFeedback.resolveAuraRgb(user, this), true);
+            }
+            if ((move.getMoveClass() == MoveClass.HEAVY || isUlt) && move.getMoveDistance() >= 1.4f && user != null) {
+                JVisualFeedback.sendAfterimageTrail(user, 7);
+            }
+        }
     }
 
     public final void onUserMoveInput(MoveInputType type, boolean pressed, boolean moveInitiated) {
@@ -1120,6 +1152,17 @@ public abstract class StandEntity<E extends StandEntity<E, S>, S extends Enum<S>
         int moveStun = getMoveStun();
         if (moveStun > 0 && !(blocking && wantToBlock && moveStun == 1)) {
             setMoveStun(--moveStun); // Counting down animation time or similar
+        }
+        if (!client) {
+            int chargeRem = getChargeRingTicks();
+            if (chargeRem > 0) {
+                if (blocking || moveStun <= 0 || isDeadOrDying()) {
+                    entityData.set(CHARGE_RING_TICKS, 0);
+                    entityData.set(CHARGE_RING_MAX, 0);
+                } else {
+                    entityData.set(CHARGE_RING_TICKS, chargeRem - 1);
+                }
+            }
         }
         if (playSummonAnim && (moveStun > 0 || tickCount > getStandData().getSummonData().getAnimDuration() || getState() == getBlockState())) {
             playSummonAnim = false;

@@ -50,7 +50,8 @@ import static net.arna.jcraft.api.component.living.CommonHitPropertyComponent.Hi
  * @see OverheadKickAttack
  * @see ReturnToZeroMove
  */
-public class GEREntity extends StandEntity<GEREntity, GEREntity.State> {
+public class GEREntity extends StandEntity<GEREntity, GEREntity.State>
+        implements net.arna.jcraft.api.stand.IFlightCapable {
     public static final MoveSet<GEREntity, State> MOVE_SET = MoveSetManager.create(JStandTypeRegistry.GOLD_EXPERIENCE_REQUIEM,
             GEREntity::registerMoves, GEREntity.class, State.class);
     public static final StandData DATA = StandData.builder()
@@ -187,7 +188,7 @@ public class GEREntity extends StandEntity<GEREntity, GEREntity.State> {
                             Summons a fast rock projectile that turns into a homing scorpion a small time after landing.
                             If charged for a minimum of 0.9 seconds, the scorpion inflicts poison and deals more stun.""")
             );
-    public static final NullificationAttack NULLIFICATION = new NullificationAttack(480, 5, 35, 1f)
+    public static final NullificationAttack<GEREntity> NULLIFICATION = new NullificationAttack<GEREntity>(480, 5, 35, 1f)
             .withSound(JSoundRegistry.GE_HEAL)
             .withInfo(
                     Component.literal("Nullification"),
@@ -202,7 +203,7 @@ public class GEREntity extends StandEntity<GEREntity, GEREntity.State> {
                     Component.literal("initial press: saves the state of " +
                             "every entity in a 4 chunk radius, second press: reverts all states except users\nDoesn't affect player inventories")
             );
-    public static final FlightMove FLIGHT = new FlightMove(320, 1, 0, 0f, 20)
+    public static final FlightMove<GEREntity> FLIGHT = new FlightMove<GEREntity>(320, 1, 0, 0f, 20)
             .withSound(JSoundRegistry.GER_FLY)
             .withInfo(
                     Component.literal("Flight"),

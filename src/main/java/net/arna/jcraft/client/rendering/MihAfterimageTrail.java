@@ -1,8 +1,8 @@
 package net.arna.jcraft.client.rendering;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.arna.jcraft.api.stand.ITimeAccelCapable;
 import net.arna.jcraft.client.JClientConfig;
-import net.arna.jcraft.common.entity.stand.MadeInHeavenEntity;
 import net.arna.jcraft.common.util.JUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -70,8 +70,8 @@ public class MihAfterimageTrail {
             if (player == null || !player.isAlive() || player.isSpectator()) {
                 continue;
             }
-            if (!(JUtils.getStand(player) instanceof MadeInHeavenEntity mih)
-                    || mih.getAccelTime() <= 0 || mih.getSpeedometer() < 2) {
+            if (!(JUtils.getStand(player) instanceof ITimeAccelCapable ta)
+                    || ta.getAccelTime() <= 0 || ta.getSpeedometer() < 2) {
                 continue;
             }
             final MihAfterimageTrail trail = get(player, 10);

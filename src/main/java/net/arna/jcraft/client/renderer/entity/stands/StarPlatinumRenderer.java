@@ -1,7 +1,9 @@
 package net.arna.jcraft.client.renderer.entity.stands;
 
 import lombok.NonNull;
+import net.arna.jcraft.JCraft;
 import net.arna.jcraft.api.registry.JStandTypeRegistry;
+import net.arna.jcraft.client.renderer.entity.layer.IconicStandGlowLayer;
 import net.arna.jcraft.client.renderer.entity.layer.SPHairLayer;
 import net.arna.jcraft.common.entity.stand.AbstractStarPlatinumEntity;
 import net.fabricmc.api.EnvType;
@@ -17,7 +19,9 @@ public class StarPlatinumRenderer extends StandEntityRenderer<AbstractStarPlatin
     public StarPlatinumRenderer(final @NonNull EntityRendererProvider.Context context) {
         super(context, b -> b
                 .addRenderLayer(new StandEntityRenderer.StandHandItemsRenderLayer<>())
-                .addRenderLayer(new SPHairLayer()),
+                .addRenderLayer(new SPHairLayer())
+                .addRenderLayer(new IconicStandGlowLayer<>(
+                        JCraft.id("textures/entity/stands/star_platinum/glow.png"), 0.85f, false)),
                 JStandTypeRegistry.STAR_PLATINUM.get(), 0f, 0f);
     }
 

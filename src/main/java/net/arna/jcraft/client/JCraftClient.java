@@ -102,6 +102,8 @@ public class JCraftClient {
             InputConstants.Type.KEYBOARD, InputConstants.KEY_O, JCRAFT_KEY_CAT);
     public static final TrackedKeyBinding RADIAL_MENU_KEY = TrackedKeyBinding.create("key.jcraft.radial_menu",
             InputConstants.Type.KEYBOARD, InputConstants.KEY_Y, JCRAFT_KEY_CAT);
+    public static final TrackedKeyBinding ORIGIN_ARSENAL_KEY = TrackedKeyBinding.create("key.jcraft.origin_arsenal",
+            InputConstants.Type.KEYBOARD, InputConstants.KEY_K, JCRAFT_KEY_CAT);
     public static final IJKeyBinding AERIAL_VARIANT_KEY = AerialKeyBinding.INSTANCE;
     public static final IJKeyBinding CROUCH_VARIANT_KEY = CrouchKeyBinding.INSTANCE;
 
@@ -204,7 +206,7 @@ public class JCraftClient {
                 SPECIAL1_KEY, SPECIAL2_KEY, SPECIAL3_KEY,
                 ULT_KEY, UTILITY_KEY, DASH_KEY,
                 COOLDOWN_CANCEL_KEY, PRECISION_VISION_KEY,
-                PILOT_MODE_KEY, POSE_TAUNT_KEY, RADIAL_MENU_KEY
+                PILOT_MODE_KEY, POSE_TAUNT_KEY, RADIAL_MENU_KEY, ORIGIN_ARSENAL_KEY
         );
     }
 
