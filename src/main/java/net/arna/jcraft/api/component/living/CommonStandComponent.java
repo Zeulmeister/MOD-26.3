@@ -5,6 +5,7 @@ import net.arna.jcraft.api.component.JComponent;
 import net.arna.jcraft.api.stand.StandType;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.stand.OriginProfile;
+import net.minecraft.world.entity.Entity;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
@@ -59,4 +60,6 @@ public interface CommonStandComponent extends JComponent {
     boolean loadOriginProfile(final int index);
 
     void clearOriginProfile(final int index);
+
+    void sync(final Entity entity);
 }

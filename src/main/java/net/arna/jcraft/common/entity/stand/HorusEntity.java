@@ -15,6 +15,7 @@ import net.arna.jcraft.api.attack.moves.AbstractMove;
 import net.arna.jcraft.api.component.living.CommonHitPropertyComponent;
 import net.arna.jcraft.api.registry.JSoundRegistry;
 import net.arna.jcraft.api.registry.JStandTypeRegistry;
+import net.arna.jcraft.api.stand.IIceLanceCapable;
 import net.arna.jcraft.api.stand.StandData;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.api.stand.StandInfo;
@@ -46,7 +47,7 @@ import java.util.Objects;
  * @see HorusBarrageAttack
  * @see HorusDivekickAttack
  */
-public class HorusEntity extends StandEntity<HorusEntity, HorusEntity.State> {
+public class HorusEntity extends StandEntity<HorusEntity, HorusEntity.State> implements IIceLanceCapable {
     public static final MoveSet<HorusEntity, State> MOVE_SET = MoveSetManager.create(JStandTypeRegistry.HORUS,
             HorusEntity::registerMoves, HorusEntity.class, State.class);
     public static final StandData DATA = StandData.builder()
@@ -124,13 +125,13 @@ public class HorusEntity extends StandEntity<HorusEntity, HorusEntity.State> {
                     Component.literal("4s max duration, can be held")
             )
             .withAction(PlaySoundAction.playSound(JSoundRegistry.HORUS_BARRAGE_FIRE));
-    public static final HorusDetonateAttack DETONATE = new HorusDetonateAttack(0, 10, 12, 0.75f)
+    public static final HorusDetonateAttack<HorusEntity> DETONATE = new HorusDetonateAttack<HorusEntity>(0, 10, 12, 0.75f)
             .withAnim(State.DETONATE)
             .withInfo(
                     Component.literal("Detonate"),
                     Component.empty()
             );
-    public static final StompAttack STOMP = new StompAttack(22, 11, 22, 0.75f,
+    public static final StompAttack<HorusEntity> STOMP = new StompAttack<HorusEntity>(22, 11, 22, 0.75f,
             9f, 12, 1.3f, 0.6f, 0.4f)
             .withFollowup(DETONATE)
             .withSound(JSoundRegistry.HORUS_STOMP)
@@ -155,7 +156,7 @@ public class HorusEntity extends StandEntity<HorusEntity, HorusEntity.State> {
                             Removes fall damage.""")
             );
     // Special 1
-    public static final IceLanceAttack LANCE = new IceLanceAttack(80, 18, 24, 0.75f)
+    public static final IceLanceAttack<HorusEntity> LANCE = new IceLanceAttack<HorusEntity>(80, 18, 24, 0.75f)
             .withAnim(State.LANCE)
             .withInfo(
                     Component.literal("Ice Lance"),

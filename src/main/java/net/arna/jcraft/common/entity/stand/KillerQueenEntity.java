@@ -83,7 +83,7 @@ public final class KillerQueenEntity extends AbstractKillerQueenEntity<KillerQue
                     Component.literal("Grab (hit)"),
                     Component.empty()
             );
-    public static final KQGrabAttack GRAB = new KQGrabAttack(300, 12, 20, 0.75f,
+    public static final KQGrabAttack<KillerQueenEntity, State> GRAB = new KQGrabAttack<>(300, 12, 20, 0.75f,
             0f, 20, 1.75f, 0.1f, 0f, GRAB_HIT)
             .withInfo(
                     Component.literal("Grab"),

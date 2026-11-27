@@ -373,10 +373,17 @@ public interface JSoundRegistry {
 
     // ORIGIN
     RegistrySupplier<SoundEvent> ORIGIN_SUMMON = register("origin_summon");
+    RegistrySupplier<SoundEvent> ORIGIN_DESUMMON = register("origin_desummon");
     RegistrySupplier<SoundEvent> ORIGIN_BARRAGE = register("origin_barrage");
     RegistrySupplier<SoundEvent> ORIGIN_HEAVY = register("origin_heavy");
     RegistrySupplier<SoundEvent> ORIGIN_ULT = register("origin_ult");
     RegistrySupplier<SoundEvent> ORIGIN_BIND = register("origin_bind");
+    RegistrySupplier<SoundEvent> ORIGIN_LIGHT = register("origin_light");
+    RegistrySupplier<SoundEvent> ORIGIN_SPECIAL1 = register("origin_special1");
+    RegistrySupplier<SoundEvent> ORIGIN_SPECIAL2 = register("origin_special2");
+    RegistrySupplier<SoundEvent> ORIGIN_GRAB = register("origin_grab");
+    RegistrySupplier<SoundEvent> ORIGIN_GRAB_HIT = register("origin_grab_hit");
+    RegistrySupplier<SoundEvent> ORIGIN_COUNTER = register("origin_counter");
 
     static void init() {
         // intentionally left empty

@@ -209,7 +209,7 @@ public class TheHandEntity extends StandEntity<TheHandEntity, TheHandEntity.Stat
                             Brings any looked at entity.
                             If not looking at anything, will bring you forward.""")
             );
-    public static final RageAttack RAGE = new RageAttack(30 * 20,
+    public static final RageAttack<TheHandEntity> RAGE = new RageAttack<TheHandEntity>(30 * 20,
             57, 0.75f, 6.0f, 20, 2.0f, 0.2f, 0.0f, IntSet.of(26, 40))
             .withSound(JSoundRegistry.THE_HAND_RAGE)
             .withImpactSound(JSoundRegistry.IMPACT_12)

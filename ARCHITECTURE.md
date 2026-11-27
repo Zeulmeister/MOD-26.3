@@ -30,10 +30,14 @@ All client-only visual callbacks cross the boundary via `JCraft.getClientEntityH
 
 | Resource Path | Count / Purpose |
 | :--- | :--- |
-| `data/jcraft/stands/*.json` | 37 Stand definitions (29 playable/obtainable including Crazy Diamond & Chariot Requiem). |
+| `data/jcraft/stands/*.json` | 38 Stand definitions (30 playable/obtainable including **Origin**, Crazy Diamond & Chariot Requiem). |
 | `data/jcraft/specs/*.json` | 5 Spec definitions (`brawler`, `anubis`, `vampire`, `hamon`, `ranger`). |
 | `data/jcraft/evolutions/*.json` | 8 Stand evolution recipes loaded by `EvolutionItemHandler` (with client-side bootstrap for the Stand Guide). |
-| `data/jcraft/movesets/**` | 298+ JSON move entries validated against registered `JMoveTypeRegistry` and `JMoveActionTypeRegistry` codecs. |
+| `data/jcraft/movesets/**` | 307+ JSON move entries validated against registered `JMoveTypeRegistry` and `JMoveActionTypeRegistry` codecs. |
+
+### Origin Stand & Capability Interface Architecture
+- **Capability Interfaces (`api.stand.*`)**: Iconic Stand mechanics decouple cleanly from concrete entity classes via `ITimeEraseCapable`, `ITimeAccelCapable`, `IOverwriteCapable`, `IFlightCapable`, `IInhaleCapable`, `IIronCapable` (Metallica Iron/Bisect/Cloak), `IPoisonCapsuleCapable` (Purple Haze), `IIceLanceCapable` (Horus), and `IRevolverCapable` (D4C), implemented on both native Stands and `OriginEntity`.
+- **Arsenal, Synergies & Anti-Exploit Pipeline**: `OriginSkillCatalog` builds and sanitizes 9-slot cross-stand loadouts (preventing duplicates and enforcing `ORIGIN_MAX_ULTIMATES` + shared `CooldownType.STAND_ULTIMATE`); `OriginLoadoutPacket` blocks combat/busy/cooldown bind swaps outside Creative mode and imports shareable `ORIGIN1:` build codes (`OriginProfile`); `OriginSynergy` scales copied move trees (including `AbstractGrabAttack.hitMove` and `finisher`) plus real projectiles in `Attacks.damage(...)`.
 | `assets/jcraft/post_effect/*.json` + `shaders/post/*.fsh` | 4 native MC 26.3 RenderPearl post-processing shaders (`#version 330`, `layout(std140)` UBOs). |
 | `assets/jcraft/lang/{en_us,pt_br}.json` | Complete bilingual localization enforced at exact 1:1 key parity by `:verifyMod`. |
 
@@ -55,5 +59,5 @@ All client-only visual callbacks cross the boundary via `JCraft.getClientEntityH
   - `./gradlew deployMod -Pjcraft.deploy.targets="path1;path2"` — builds, deploys to the repository root and custom targets, and verifies identical SHA-256 checksums.
 - **Verification Layers:**
   1. **Offline Gate (`:verifyMod` / CI):** 3,700+ assertions covering JSON assets, Mixins, ASM Dedicated-Server isolation, physics/combat math, content/balance, UI/UX, and build hygiene.
-  2. **Dedicated Server Live Suites (`-Djcraft.selftest.{allstands,sptw,nonstand}=true`):** Boots a real Minecraft 26.3 Fabric Dedicated Server to summon all 29 playable Stands, run live physics/gravity/clock/combat/config assertions, and halt cleanly.
+  2. **Dedicated Server Live Suites (`-Djcraft.selftest.{allstands,sptw,nonstand}=true`):** Boots a real Minecraft 26.3 Fabric Dedicated Server to summon all 30 playable Stands, run live physics/gravity/clock/combat/config assertions, and halt cleanly.
   3. **Real GPU Client Visual Suite (`-Djcraft.selftest.client=true`):** Boots the real graphical MC 26.3 client, renders all 4 RenderPearl shaders, Time Erase/MIH SkyBoxes, C-Moon directional camera/gravity, armor/mask layers, and verifies 9 captured screenshots.

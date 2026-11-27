@@ -1,15 +1,15 @@
-    package net.arna.jcraft.common.attack.moves.metallica;
+package net.arna.jcraft.common.attack.moves.metallica;
 
 import com.mojang.datafixers.kinds.App;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.NonNull;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
+import net.arna.jcraft.api.registry.JSoundRegistry;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.entity.projectile.ScalpelProjectile;
-import net.arna.jcraft.common.entity.stand.MetallicaEntity;
 import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
 import net.arna.jcraft.common.util.JUtils;
-import net.arna.jcraft.api.registry.JSoundRegistry;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.LivingEntity;
@@ -19,19 +19,19 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.Set;
 
-public class RemoteScalpelMove extends AbstractMove<RemoteScalpelMove, MetallicaEntity> {
+public class RemoteScalpelMove<A extends StandEntity<? extends A, ?>> extends AbstractMove<RemoteScalpelMove<A>, A> {
     public RemoteScalpelMove(int cooldown, int windup, int duration, float moveDistance) {
         super(cooldown, windup, duration, moveDistance);
         ranged = true;
     }
 
     @Override
-    public @NonNull MoveType<RemoteScalpelMove> getMoveType() {
-        return Type.INSTANCE;
+    public @NonNull MoveType<RemoteScalpelMove<A>> getMoveType() {
+        return Type.INSTANCE.cast();
     }
 
     @Override
-    public @NonNull Set<LivingEntity> perform(MetallicaEntity attacker, LivingEntity user) {
+    public @NonNull Set<LivingEntity> perform(A attacker, LivingEntity user) {
         final Vec3 eyePos = user.position().add(GravityChangerAPI.getEyeOffset(user));
         final Vec3 rotVec = user.getLookAngle();
         final HitResult hitResult = JUtils.raycastAll(user, eyePos, eyePos.add(rotVec.scale(12.0)), ClipContext.Fluid.NONE, EntitySelector.LIVING_ENTITY_STILL_ALIVE);
@@ -55,20 +55,20 @@ public class RemoteScalpelMove extends AbstractMove<RemoteScalpelMove, Metallica
     }
 
     @Override
-    protected @NonNull RemoteScalpelMove getThis() {
+    protected @NonNull RemoteScalpelMove<A> getThis() {
         return this;
     }
 
     @Override
-    public @NonNull RemoteScalpelMove copy() {
-        return copyExtras(new RemoteScalpelMove(getCooldown(), getWindup(), getDuration(), getMoveDistance()));
+    public @NonNull RemoteScalpelMove<A> copy() {
+        return copyExtras(new RemoteScalpelMove<>(getCooldown(), getWindup(), getDuration(), getMoveDistance()));
     }
 
-    public static class Type extends AbstractMove.Type<RemoteScalpelMove> {
+    public static class Type extends AbstractMove.Type<RemoteScalpelMove<?>> {
         public static final Type INSTANCE = new Type();
 
         @Override
-        protected @NonNull App<RecordCodecBuilder.Mu<RemoteScalpelMove>, RemoteScalpelMove> buildCodec(RecordCodecBuilder.Instance<RemoteScalpelMove> instance) {
+        protected @NonNull App<RecordCodecBuilder.Mu<RemoteScalpelMove<?>>, RemoteScalpelMove<?>> buildCodec(RecordCodecBuilder.Instance<RemoteScalpelMove<?>> instance) {
             return baseDefault(instance, RemoteScalpelMove::new);
         }
     }

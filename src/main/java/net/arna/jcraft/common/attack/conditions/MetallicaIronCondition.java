@@ -3,13 +3,14 @@ package net.arna.jcraft.common.attack.conditions;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
+import net.arna.jcraft.api.attack.IAttacker;
 import net.arna.jcraft.api.attack.core.MoveCondition;
 import net.arna.jcraft.api.attack.core.MoveConditionType;
-import net.arna.jcraft.common.entity.stand.MetallicaEntity;
+import net.arna.jcraft.api.stand.IIronCapable;
 import org.jetbrains.annotations.NotNull;
 
 @Getter
-public class MetallicaIronCondition extends MoveCondition<MetallicaIronCondition, MetallicaEntity> {
+public class MetallicaIronCondition extends MoveCondition<MetallicaIronCondition, IAttacker<?, ?>> {
     private final float requiredIron;
 
     private MetallicaIronCondition(float minIron) {
@@ -21,8 +22,8 @@ public class MetallicaIronCondition extends MoveCondition<MetallicaIronCondition
     }
 
     @Override
-    public boolean test(final MetallicaEntity attacker) {
-        return attacker.getIron() >= requiredIron;
+    public boolean test(final IAttacker<?, ?> attacker) {
+        return !(attacker instanceof IIronCapable iron) || iron.getIron() >= requiredIron;
     }
 
     @Override
@@ -36,7 +37,7 @@ public class MetallicaIronCondition extends MoveCondition<MetallicaIronCondition
         @Override
         public Codec<MetallicaIronCondition> getCodec() {
             return RecordCodecBuilder.create(instance -> instance.group(
-                Codec.FLOAT.fieldOf("min_iron").forGetter(MetallicaIronCondition::getRequiredIron)
+                    Codec.FLOAT.fieldOf("min_iron").forGetter(MetallicaIronCondition::getRequiredIron)
             ).apply(instance, MetallicaIronCondition::new));
         }
     }

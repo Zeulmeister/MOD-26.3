@@ -172,6 +172,7 @@ public final class JCraftConfigScreen extends Screen {
         rows.add(serverBool(JServerConfig.CREAM_VOID_VISIBLE));
         rows.add(serverBool(JServerConfig.SPAWNER_STANDS));
         rows.add(serverBool(JServerConfig.ORIGIN_FREE_BINDS));
+        rows.add(serverInt(JServerConfig.ORIGIN_MAX_ULTIMATES, 1, 2, 0, 9));
         return rows;
     }
 

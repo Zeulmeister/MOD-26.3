@@ -15,6 +15,7 @@ import net.arna.jcraft.api.spec.SpecType;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.config.JServerConfig;
 import net.arna.jcraft.common.entity.TrainingDummyEntity;
+import net.arna.jcraft.common.entity.stand.OriginEntity;
 import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
 import net.arna.jcraft.common.network.s2c.ComboCounterPacket;
 import net.arna.jcraft.common.network.s2c.DamageNumberPacket;
@@ -31,6 +32,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.AABB;
@@ -446,6 +448,13 @@ public interface Attacks {
     static void damage(final @Nullable Entity attacker, float damage, final DamageSource damageSource, final LivingEntity ent) {
         if (!JUtils.canDamage(damageSource, ent)) {
             return;
+        }
+
+        if (damage > 0.0f && damageSource != null && damageSource.getDirectEntity() instanceof Projectile) {
+            Entity resolvedOwner = JUtils.getUserIfStand(attacker != null ? attacker : damageSource.getEntity());
+            if (resolvedOwner instanceof LivingEntity livingOwner && JUtils.getStand(livingOwner) instanceof OriginEntity origin) {
+                damage *= origin.getSynergyProjectileDamageMultiplier();
+            }
         }
 
         float scaling = ((IJCraftComboTracker) ent).jcraft$getDamageScaling();

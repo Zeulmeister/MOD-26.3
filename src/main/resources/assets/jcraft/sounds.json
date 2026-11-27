@@ -1460,6 +1460,12 @@
       "jcraft:origin/origin_summon"
     ]
   },
+  "origin_desummon": {
+    "subtitle": "subtitles.jcraft.origin_desummon",
+    "sounds": [
+      "jcraft:origin/origin_desummon"
+    ]
+  },
   "origin_barrage": {
     "subtitle": "subtitles.jcraft.origin_barrage",
     "sounds": [
@@ -1482,6 +1488,42 @@
     "subtitle": "subtitles.jcraft.origin_bind",
     "sounds": [
       "jcraft:origin/origin_bind"
+    ]
+  },
+  "origin_light": {
+    "subtitle": "subtitles.jcraft.origin_light",
+    "sounds": [
+      "jcraft:origin/origin_light"
+    ]
+  },
+  "origin_special1": {
+    "subtitle": "subtitles.jcraft.origin_special1",
+    "sounds": [
+      "jcraft:origin/origin_special1"
+    ]
+  },
+  "origin_special2": {
+    "subtitle": "subtitles.jcraft.origin_special2",
+    "sounds": [
+      "jcraft:origin/origin_special2"
+    ]
+  },
+  "origin_grab": {
+    "subtitle": "subtitles.jcraft.origin_grab",
+    "sounds": [
+      "jcraft:origin/origin_grab"
+    ]
+  },
+  "origin_grab_hit": {
+    "subtitle": "subtitles.jcraft.origin_grab_hit",
+    "sounds": [
+      "jcraft:origin/origin_grab_hit"
+    ]
+  },
+  "origin_counter": {
+    "subtitle": "subtitles.jcraft.origin_counter",
+    "sounds": [
+      "jcraft:origin/origin_counter"
     ]
   }
 }

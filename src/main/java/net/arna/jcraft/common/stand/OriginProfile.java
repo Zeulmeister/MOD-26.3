@@ -6,9 +6,12 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import org.jetbrains.annotations.Nullable;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -22,6 +25,8 @@ public record OriginProfile(
         int customGlowRgb
 ) {
     public static final int MAX_PROFILES = 4;
+    public static final int MAX_NAME_LENGTH = 20;
+    public static final String BUILD_CODE_PREFIX = "ORIGIN1:";
     public static final List<String> DEFAULT_NAMES = List.of(
             "Boss Killer",
             "Time Control",
@@ -52,7 +57,7 @@ public record OriginProfile(
         if (trimmed.isEmpty()) {
             return fallback;
         }
-        return trimmed.length() > 24 ? trimmed.substring(0, 24) : trimmed;
+        return trimmed.length() > MAX_NAME_LENGTH ? trimmed.substring(0, MAX_NAME_LENGTH) : trimmed;
     }
 
     public static String defaultNameForSlot(int index) {
@@ -123,5 +128,76 @@ public record OriginProfile(
             }
         }
         return new OriginProfile(name, slots, skin, glowRgb);
+    }
+
+    /**
+     * Encodes this profile (skin, Chroma RGB, and all 9 MoveClass slots) into a compact clipboard build code.
+     */
+    public static String encodeBuildCode(final OriginProfile profile) {
+        StringBuilder slotCsv = new StringBuilder();
+        MoveClass[] allSlots = MoveClass.values();
+        for (int i = 0; i < allSlots.length; i++) {
+            if (i > 0) {
+                slotCsv.append(',');
+            }
+            String id = profile.slots().getOrDefault(allSlots[i], "");
+            if (id.startsWith("jcraft:")) {
+                id = id.substring("jcraft:".length());
+            }
+            slotCsv.append(id);
+        }
+        String glowStr = profile.customGlowRgb() < 0
+                ? "-"
+                : String.format(Locale.ROOT, "%06X", profile.customGlowRgb());
+        String payload = profile.skin() + "|" + glowStr + "|" + slotCsv;
+        return BUILD_CODE_PREFIX + Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Decodes a build code produced by {@link #encodeBuildCode(OriginProfile)}, returning {@code null} if malformed.
+     */
+    public static @Nullable OriginProfile decodeBuildCode(final @Nullable String rawCode) {
+        if (rawCode == null) {
+            return null;
+        }
+        String trimmed = rawCode.trim();
+        if (!trimmed.startsWith(BUILD_CODE_PREFIX) || trimmed.length() > 1024) {
+            return null;
+        }
+        try {
+            byte[] bytes = Base64.getUrlDecoder().decode(trimmed.substring(BUILD_CODE_PREFIX.length()));
+            String payload = new String(bytes, StandardCharsets.UTF_8);
+            String[] parts = payload.split("\\|", -1);
+            if (parts.length != 3) {
+                return null;
+            }
+            int skin = Math.max(0, Math.min(15, Integer.parseInt(parts[0])));
+            int glowRgb = "-".equals(parts[1]) ? -1 : (Integer.parseInt(parts[1], 16) & 0xFFFFFF);
+            String[] slotParts = parts[2].split(",", -1);
+            MoveClass[] allSlots = MoveClass.values();
+            if (slotParts.length != allSlots.length) {
+                return null;
+            }
+            EnumMap<MoveClass, String> map = new EnumMap<>(MoveClass.class);
+            for (int i = 0; i < allSlots.length; i++) {
+                String id = slotParts[i].trim();
+                if (id.length() > 128) {
+                    return null;
+                }
+                if (!id.isEmpty()) {
+                    if (!id.contains(":")) {
+                        id = "jcraft:" + id;
+                    }
+                    map.put(allSlots[i], id);
+                }
+            }
+            if (map.isEmpty()) {
+                return null;
+            }
+            return new OriginProfile("Imported Build", map, skin, glowRgb);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 }

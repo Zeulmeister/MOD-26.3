@@ -626,8 +626,34 @@ public final class ClientVisualDiagnostic {
                         && origin.getMoveStun() > 0 && origin.getState() == OriginEntity.State.HEAVY;
                 assertTrue(attackingOnClient, "OriginEntity active Heavy attack pose & particles visible on client");
                 capture(client, "12_origin_attack_pose.png");
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (sp != null && JUtils.getStand(sp) instanceof OriginEntity origin) {
+                        origin.setMoveStun(0);
+                        origin.initMove(MoveClass.BARRAGE);
+                    }
+                });
+                phase = 255;
+                waitTicks = 6;
+            }
+            case 255 -> {
+                boolean nativeBarrageActive = JUtils.getStand(client.player) instanceof OriginEntity origin
+                        && origin.getMoveStun() > 0 && origin.getState() == OriginEntity.State.BARRAGE;
+                assertTrue(nativeBarrageActive, "OriginEntity native MainBarrageAttack active with smear-frame barrage pose & VFX");
+                capture(client, "12b_origin_native_barrage.png");
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (sp != null) {
+                        JComponentPlatformUtils.getCooldowns(sp).clear();
+                        if (JUtils.getStand(sp) instanceof OriginEntity origin) {
+                            origin.setMoveStun(0);
+                        }
+                    }
+                });
                 phase = 26;
-                waitTicks = 24;
+                waitTicks = 4;
             }
             case 26 -> {
                 client.gui.setScreen(new OriginArsenalScreen(null));
@@ -643,7 +669,7 @@ public final class ClientVisualDiagnostic {
                     boolean slotClicked = arsenal.mouseClicked(new MouseButtonEvent(
                             arsenal.getLeftSlotCenterX(),
                             arsenal.getLeftSlotCenterY(MoveClass.BARRAGE),
-                            new MouseButtonInfo(0, 0)), false);
+                            new MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0)), false);
                     assertTrue(slotClicked && arsenal.getSelectedSlot() == MoveClass.BARRAGE,
                             "OriginArsenalScreen selects BARRAGE bind slot on left-click");
 
@@ -659,9 +685,27 @@ public final class ClientVisualDiagnostic {
                         boolean skillClicked = arsenal.mouseClicked(new MouseButtonEvent(
                                 arsenal.getFirstNonOriginSkillCenterX(),
                                 skillClickY,
-                                new MouseButtonInfo(0, 0)), false);
+                                new MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0)), false);
                         assertTrue(skillClicked, "OriginArsenalScreen accepts click on catalog skill row");
                     }
+
+                    // Also test the new ▼ arrow + [⇄ Swap] button workflow on SPECIAL1 using real SDL3 left-click
+                    boolean sp1Selected = arsenal.mouseClicked(new MouseButtonEvent(
+                            arsenal.getLeftSlotCenterX(),
+                            arsenal.getLeftSlotCenterY(MoveClass.SPECIAL1),
+                            new MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0)), false);
+                    assertTrue(sp1Selected && arsenal.getSelectedSlot() == MoveClass.SPECIAL1,
+                            "OriginArsenalScreen selects SPECIAL1 bind slot on SDL3 left-click");
+                    boolean arrowDownClicked = arsenal.mouseClicked(new MouseButtonEvent(
+                            arsenal.getDownArrowButtonCenterX(),
+                            arsenal.getDownArrowButtonCenterY(),
+                            new MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0)), false);
+                    assertTrue(arrowDownClicked, "OriginArsenalScreen ▼ arrow button responds to SDL3 left-click");
+                    boolean swapBtnClicked = arsenal.mouseClicked(new MouseButtonEvent(
+                            arsenal.getEquipButtonCenterX(),
+                            arsenal.getEquipButtonCenterY(),
+                            new MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0)), false);
+                    assertTrue(swapBtnClicked, "OriginArsenalScreen ⇄ Swap button responds to SDL3 left-click");
                 }
                 phase = 28;
                 waitTicks = 6;
@@ -670,20 +714,30 @@ public final class ClientVisualDiagnostic {
                 String clientSlot = client.player != null
                         ? JComponentPlatformUtils.getStandComponent(client.player).getOriginSlot(MoveClass.BARRAGE)
                         : null;
+                String clientSp1 = client.player != null
+                        ? JComponentPlatformUtils.getStandComponent(client.player).getOriginSlot(MoveClass.SPECIAL1)
+                        : null;
                 assertTrue(clientSlot != null && clientSlot.startsWith("jcraft:star_platinum#"),
                         "Client CommonStandComponent synced BARRAGE -> " + clientSlot);
+                assertTrue(clientSp1 != null && !clientSp1.startsWith("jcraft:origin#"),
+                        "Client ▼ + ⇄ Swap bound SPECIAL1 to another Stand skill -> " + clientSp1);
 
                 final IntegratedServer srv = client.getSingleplayerServer();
                 final String[] serverSlot = new String[1];
                 final String[] liveEntitySlot = new String[1];
+                final String[] serverSp1 = new String[1];
+                final String[] liveSp1 = new String[1];
                 try {
                     srv.submit(() -> {
                         ServerPlayer sp = getServerPlayer(srv);
                         if (sp != null) {
                             serverSlot[0] = JComponentPlatformUtils.getStandComponent(sp).getOriginSlot(MoveClass.BARRAGE);
+                            serverSp1[0] = JComponentPlatformUtils.getStandComponent(sp).getOriginSlot(MoveClass.SPECIAL1);
                             if (JUtils.getStand(sp) instanceof OriginEntity origin) {
                                 var equipped = origin.getEquippedSkill(MoveClass.BARRAGE);
                                 liveEntitySlot[0] = equipped != null ? equipped.id() : null;
+                                var eqSp1 = origin.getEquippedSkill(MoveClass.SPECIAL1);
+                                liveSp1[0] = eqSp1 != null ? eqSp1.id() : null;
                             }
                         }
                     }).get();
@@ -694,6 +748,9 @@ public final class ClientVisualDiagnostic {
                         "IntegratedServer persisted Origin BARRAGE -> " + serverSlot[0]);
                 assertTrue(liveEntitySlot[0] != null && liveEntitySlot[0].startsWith("jcraft:star_platinum#"),
                         "Live OriginEntity applied new BARRAGE skill -> " + liveEntitySlot[0]);
+                assertTrue(serverSp1[0] != null && !serverSp1[0].startsWith("jcraft:origin#")
+                                && serverSp1[0].equals(liveSp1[0]),
+                        "IntegratedServer & live OriginEntity applied ▼ + ⇄ Swap SPECIAL1 -> " + liveSp1[0]);
 
                 capture(client, "11_origin_arsenal_ui.png");
                 if (client.gui.screen() instanceof OriginArsenalScreen arsenal) {
@@ -794,14 +851,41 @@ public final class ClientVisualDiagnostic {
                 client.gui.setScreen(null);
                 client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
                 final IntegratedServer srv = client.getSingleplayerServer();
+                final boolean[] swappedBarrageFired = {false};
+                final String[] executedMoveName = {""};
+                try {
+                    srv.submit(() -> {
+                        ServerPlayer sp = getServerPlayer(srv);
+                        if (sp != null && JUtils.getStand(sp) instanceof OriginEntity origin) {
+                            origin.setMoveStun(0);
+                            boolean started = origin.initMove(MoveClass.BARRAGE);
+                            var cur = origin.getCurrentMove();
+                            swappedBarrageFired[0] = started && cur != null && origin.getMoveStun() > 0;
+                            executedMoveName[0] = cur != null ? cur.getName().getString() : "null";
+                        }
+                    }).get();
+                } catch (Exception e) {
+                    failures.add("Failed executing swapped Origin BARRAGE: " + e.getMessage());
+                }
+                assertTrue(swappedBarrageFired[0],
+                        "Live OriginEntity executed swapped Star Platinum BARRAGE move in-game (" + executedMoveName[0] + ")");
+                phase = 325;
+                waitTicks = 4;
+            }
+            case 325 -> {
+                capture(client, "14b_origin_using_swapped_skill.png");
+                final IntegratedServer srv = client.getSingleplayerServer();
                 srv.execute(() -> {
                     ServerLevel overworld = srv.getLevel(Level.OVERWORLD);
                     ServerPlayer sp = getServerPlayer(srv);
                     if (overworld == null || sp == null) return;
-                    if (JUtils.getStand(sp) != null) {
-                        JUtils.getStand(sp).desummon();
-                    }
                     CommonStandComponent sc = JComponentPlatformUtils.getStandComponent(sp);
+                    StandEntity<?, ?> curStand = JUtils.getStand(sp);
+                    if (curStand != null) {
+                        curStand.setMoveStun(0);
+                        curStand.discard();
+                        sc.setStand(null);
+                    }
                     sc.setOriginGlowRgb(-1);
                     sc.setSkin(5);
                     JCraft.summon(overworld, sp);
@@ -925,6 +1009,98 @@ public final class ClientVisualDiagnostic {
             }
             case 38 -> {
                 capture(client, "20_iconic_glow_made_in_heaven.png");
+                phase = 381;
+                waitTicks = 4;
+            }
+            case 381 -> {
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerLevel overworld = srv.getLevel(Level.OVERWORLD);
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (overworld == null || sp == null) return;
+                    JUtils.setDayTime(overworld, 6000L);
+                    sp.setInvisible(true);
+                    sp.teleportTo(overworld, 0.5, 113.0, 0.0, java.util.Set.of(), 0.0f, 5.0f, false);
+                    if (JUtils.getStand(sp) != null) {
+                        JUtils.getStand(sp).desummon(false);
+                    }
+                    CommonStandComponent sc = JComponentPlatformUtils.getStandComponent(sp);
+                    sc.setType(JStandTypeRegistry.ORIGIN.get());
+                    sc.clearOriginLoadout();
+                    sc.setOriginGlowRgb(-1);
+                    sc.setSkin(0);
+                    StandEntity<?, ?> summoned = JCraft.summon(overworld, sp);
+                    if (summoned instanceof OriginEntity o) {
+                        o.rebuildLoadoutFromUser(sc);
+                    }
+                });
+                if (client.player != null) {
+                    client.player.setInvisible(true);
+                    client.player.setYRot(0.0f);
+                    client.player.setYHeadRot(0.0f);
+                }
+                client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+                phase = 382;
+                waitTicks = 12;
+            }
+            case 382 -> {
+                assertTrue(JUtils.getStand(client.player) instanceof OriginEntity,
+                        "Origin showcase Summon active in daylight with wings spread");
+                capture(client, "21_origin_showcase_summon.png");
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (sp != null && JUtils.getStand(sp) instanceof OriginEntity origin) {
+                        JComponentPlatformUtils.getCooldowns(sp).clear();
+                        origin.setMoveStun(0);
+                        origin.initMove(MoveClass.BARRAGE);
+                    }
+                });
+                client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+                phase = 383;
+                waitTicks = 6;
+            }
+            case 383 -> {
+                assertTrue(JUtils.getStand(client.player) instanceof OriginEntity o
+                                && o.getMoveStun() > 0 && o.getState() == OriginEntity.State.BARRAGE,
+                        "Origin showcase Barrage active with open wings, spinning rings & smear arms");
+                capture(client, "22_origin_showcase_barrage_wings.png");
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (sp != null && JUtils.getStand(sp) instanceof OriginEntity origin) {
+                        JComponentPlatformUtils.getCooldowns(sp).clear();
+                        origin.setMoveStun(0);
+                        origin.initMove(MoveClass.HEAVY);
+                    }
+                });
+                client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+                phase = 384;
+                waitTicks = 11;
+            }
+            case 384 -> {
+                assertTrue(JUtils.getStand(client.player) instanceof OriginEntity o
+                                && o.getMoveStun() > 0 && o.getState() == OriginEntity.State.HEAVY,
+                        "Origin showcase Heavy active with right-fist charge arc");
+                capture(client, "23_origin_showcase_heavy.png");
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (sp != null && JUtils.getStand(sp) instanceof OriginEntity origin) {
+                        JComponentPlatformUtils.getCooldowns(sp).clear();
+                        origin.setMoveStun(0);
+                        origin.initMove(MoveClass.ULTIMATE);
+                    }
+                });
+                phase = 385;
+                waitTicks = 24;
+            }
+            case 385 -> {
+                assertTrue(JUtils.getStand(client.player) instanceof OriginEntity o
+                                && o.getMoveStun() > 0
+                                && (o.getState() == OriginEntity.State.TIME_STOP || o.getState() == OriginEntity.State.ULTIMATE),
+                        "Origin showcase Ultimate/Time Stop active with core pull & runic circle");
+                capture(client, "24_origin_showcase_ultimate.png");
                 phase = 39;
                 waitTicks = 4;
             }

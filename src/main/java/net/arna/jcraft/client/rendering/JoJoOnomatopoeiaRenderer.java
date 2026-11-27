@@ -3,6 +3,7 @@ package net.arna.jcraft.client.rendering;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.client.JClientConfig;
 import net.arna.jcraft.client.util.JClientUtils;
+import net.arna.jcraft.common.entity.stand.OriginEntity;
 import net.arna.jcraft.common.util.JUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -37,8 +38,9 @@ public final class JoJoOnomatopoeiaRenderer {
         int age;
         final int maxAge;
         final int baseRgb;
+        final int shadowRgb;
 
-        FloatingGlyph(String symbol, float normX, float normY, float scale, int maxAge, int baseRgb) {
+        FloatingGlyph(String symbol, float normX, float normY, float scale, int maxAge, int baseRgb, int shadowRgb) {
             this.symbol = symbol;
             this.normX = normX;
             this.normY = normY;
@@ -47,12 +49,37 @@ public final class JoJoOnomatopoeiaRenderer {
             this.scale = scale;
             this.maxAge = maxAge;
             this.baseRgb = baseRgb;
+            this.shadowRgb = shadowRgb;
         }
     }
 
     public static void triggerBurst(boolean menacingGo, int durationTicks) {
         burstMenacing = menacingGo;
         burstTicks = Math.max(burstTicks, durationTicks);
+    }
+
+    public static int resolveOriginGlyphColor(int skin, int customGlowRgb, boolean inTimeStop, boolean barraging) {
+        if (customGlowRgb >= 0) {
+            return customGlowRgb & 0xFFFFFF;
+        }
+        return switch (skin) {
+            case 1 -> 0xF5243D;
+            case 2 -> 0x24DBFF;
+            case 3 -> 0xFFCC29;
+            case 4 -> 0xDCE6FF;
+            case 5 -> barraging ? 0xFFFDF2 : 0xFFD94A;
+            default -> inTimeStop ? 0xD8B4FE : 0xA838FF;
+        };
+    }
+
+    public static int resolveOriginShadowColor(int skin, int baseRgb) {
+        if (skin == 4) {
+            return 0x05050B;
+        }
+        int r = (int) (((baseRgb >> 16) & 0xFF) * 0.22F);
+        int g = (int) (((baseRgb >> 8) & 0xFF) * 0.22F);
+        int b = (int) ((baseRgb & 0xFF) * 0.22F);
+        return (r << 16) | (g << 8) | b;
     }
 
     public static void tick(Minecraft client) {
@@ -70,17 +97,30 @@ public final class JoJoOnomatopoeiaRenderer {
         StandEntity<?, ?> stand = JUtils.getStand(player);
         boolean inTimeStop = JClientUtils.isInTSRange(player) || (stand != null && stand.getTsTime() > 0);
         boolean barraging = stand != null && stand.getMoveStun() > 4 && stand.isHolding();
+        boolean originShowcase = stand instanceof OriginEntity oe && oe.getMoveStun() > 6
+                && (oe.getState() == OriginEntity.State.HEAVY
+                || oe.getState() == OriginEntity.State.TIME_STOP
+                || oe.getState() == OriginEntity.State.ULTIMATE);
         boolean lowHp = player.getHealth() <= player.getMaxHealth() * 0.25F;
 
-        if ((burstTicks > 0 || inTimeStop || barraging || lowHp) && ACTIVE_GLYPHS.size() < 12) {
-            int interval = barraging ? 3 : (burstTicks > 0 ? 4 : 8);
+        if ((burstTicks > 0 || inTimeStop || barraging || originShowcase || lowHp) && ACTIVE_GLYPHS.size() < 12) {
+            int interval = barraging ? 3 : ((burstTicks > 0 || originShowcase) ? 4 : 8);
             if (player.tickCount % interval == 0) {
                 boolean leftEdge = RNG.nextBoolean();
                 float nx = leftEdge ? (0.04F + RNG.nextFloat() * 0.12F) : (0.84F + RNG.nextFloat() * 0.12F);
                 float ny = 0.25F + RNG.nextFloat() * 0.55F;
-                String sym = barraging ? "ド" : (inTimeStop ? "ゴ" : (burstMenacing ? "ゴ" : "ド"));
-                int color = inTimeStop ? 0xD8B4FE : (barraging ? 0xFBBF24 : 0xC084FC);
-                ACTIVE_GLYPHS.add(new FloatingGlyph(sym, nx, ny, 1.45F + RNG.nextFloat() * 0.65F, 34, color));
+                String sym = barraging ? "ド" : ((inTimeStop || originShowcase) ? "ゴ" : (burstMenacing ? "ゴ" : "ド"));
+                int color;
+                int shadow;
+                if (stand instanceof OriginEntity origin) {
+                    int skin = origin.getSkin();
+                    color = resolveOriginGlyphColor(skin, origin.getCustomGlowRgb(), inTimeStop, barraging);
+                    shadow = resolveOriginShadowColor(skin, color);
+                } else {
+                    color = inTimeStop ? 0xD8B4FE : (barraging ? 0xFBBF24 : 0xC084FC);
+                    shadow = 0x1E0836;
+                }
+                ACTIVE_GLYPHS.add(new FloatingGlyph(sym, nx, ny, 1.45F + RNG.nextFloat() * 0.65F, 34, color, shadow));
             }
         }
 
@@ -115,7 +155,7 @@ public final class JoJoOnomatopoeiaRenderer {
             float py = (g.normY + g.velY * partialTick) * sh;
 
             int fg = ARGB.color(alpha, g.baseRgb);
-            int shadow = ARGB.color((int) (alpha * 0.85F), 0x1E0836);
+            int shadow = ARGB.color((int) (alpha * 0.85F), g.shadowRgb);
 
             ctx.pose().pushMatrix();
             ctx.pose().translate(px, py);

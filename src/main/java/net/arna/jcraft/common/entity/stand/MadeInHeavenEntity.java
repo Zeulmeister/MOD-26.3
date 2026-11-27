@@ -144,7 +144,7 @@ public class MadeInHeavenEntity extends StandEntity<MadeInHeavenEntity, MadeInHe
                     Component.literal("Barrage"),
                     Component.literal("short, knocks back")
             );
-    public static final SpeedSliceAttack SPEED_SLICE = new SpeedSliceAttack(300, 10, 11,
+    public static final SpeedSliceAttack<MadeInHeavenEntity> SPEED_SLICE = new SpeedSliceAttack<MadeInHeavenEntity>(300, 10, 11,
             1.25f, 6f, 1.5f, 1f)
             .withSound(JSoundRegistry.MIH_SPEEDSLICE)
             .withInfo(
@@ -213,7 +213,7 @@ public class MadeInHeavenEntity extends StandEntity<MadeInHeavenEntity, MadeInHe
                     Component.literal("rapidly circles a looked-at target within 4m at a radius of 7m")
             );
 
-    public static final JudgementAttack JUDGEMENT = new JudgementAttack(300, 20, 60, 1.25f, 2)
+    public static final JudgementAttack<MadeInHeavenEntity> JUDGEMENT = new JudgementAttack<MadeInHeavenEntity>(300, 20, 60, 1.25f, 2)
             .withCrouchingVariant(CIRCLE)
             .withSound(JSoundRegistry.MIH_JUDGEMENT)
             .withInfo(

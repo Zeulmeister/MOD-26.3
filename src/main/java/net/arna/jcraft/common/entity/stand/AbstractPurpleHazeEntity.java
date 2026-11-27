@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.ints.IntSet;
 import lombok.Getter;
 import lombok.NonNull;
 import net.arna.jcraft.JCraft;
+import net.arna.jcraft.api.stand.IPoisonCapsuleCapable;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.api.stand.StandType;
 import net.arna.jcraft.api.attack.enums.MobilityType;
@@ -37,6 +38,7 @@ import static net.arna.jcraft.api.registry.JStatusRegistry.PHPOISON;
 
 @Getter
 public abstract sealed class AbstractPurpleHazeEntity<E extends AbstractPurpleHazeEntity<E, S>, S extends Enum<S> & StandAnimationState<E>> extends StandEntity<E, S>
+        implements IPoisonCapsuleCapable
         permits PurpleHazeDistortionEntity, PurpleHazeEntity {
     @NonNull
     protected PoisonType poisonType;

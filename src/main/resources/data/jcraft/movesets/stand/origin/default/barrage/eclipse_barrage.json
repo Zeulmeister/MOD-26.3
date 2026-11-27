@@ -8,12 +8,13 @@
       "backstab": true,
       "block_stun": 3,
       "hit_animation": "MID",
+      "hit_spark": "HIT_SPARK_2",
       "shockwaves": true,
       "stun_type": "WINDED"
     },
-    "cooldown": 80,
+    "cooldown": 120,
     "damage": 1.15,
-    "duration": 45,
+    "duration": 42,
     "extras": {
       "actions": [
         {
@@ -36,13 +37,13 @@
         "translate": "move.jcraft.origin.default.barrage.name"
       }
     },
-    "hitbox_size": 1.8,
+    "hitbox_size": 2.0,
     "interval": 3,
-    "knockback": 0.12,
+    "knockback": 0.22,
     "mineable_hardness": 50.0,
-    "move_distance": 1.45,
+    "move_distance": 1.15,
     "offset": 0.0,
-    "stun": 10,
-    "windup": 5
+    "stun": 30,
+    "windup": 0
   }
 }

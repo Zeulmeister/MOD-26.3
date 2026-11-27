@@ -6,7 +6,8 @@ import lombok.NonNull;
 import net.arna.jcraft.JCraft;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
-import net.arna.jcraft.common.entity.stand.MetallicaEntity;
+import net.arna.jcraft.api.stand.IIronCapable;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
 import net.arna.jcraft.common.tickable.MagneticFields;
 import net.minecraft.server.level.ServerLevel;
@@ -17,7 +18,7 @@ import net.minecraft.world.entity.LivingEntity;
 import java.lang.ref.WeakReference;
 import java.util.Set;
 
-public class InvisibilityMove extends AbstractMove<InvisibilityMove, MetallicaEntity> {
+public class InvisibilityMove<A extends StandEntity<? extends A, ?>> extends AbstractMove<InvisibilityMove<A>, A> {
     private WeakReference<MagneticFields.MagneticField> magneticField;
 
     public InvisibilityMove(int cooldown, int windup, int duration) {
@@ -25,26 +26,29 @@ public class InvisibilityMove extends AbstractMove<InvisibilityMove, MetallicaEn
     }
 
     @Override
-    public @NonNull MoveType<InvisibilityMove> getMoveType() {
-        return Type.INSTANCE;
+    public @NonNull MoveType<InvisibilityMove<A>> getMoveType() {
+        return Type.INSTANCE.cast();
     }
 
-    private void setInvisible(final MetallicaEntity metallica, final boolean invis) {
-        metallica.getEntityData().set(MetallicaEntity.INVISIBLE, invis);
+    private void setInvisible(final A stand, final boolean invis) {
+        if (!(stand instanceof IIronCapable iron)) {
+            return;
+        }
+        iron.setMetallicaInvisible(invis);
 
         if (invis) {
-            final LivingEntity user = metallica.getUserOrThrow();
+            final LivingEntity user = stand.getUserOrThrow();
 
             user.addEffect(
                     new MobEffectInstance(MobEffects.INVISIBILITY, 39, 0, true, false)
             );
 
-            magneticField = new WeakReference<>(MagneticFields.createField((ServerLevel) metallica.level(),
-                    null, metallica.position(), 3.0f, 5.0f));
+            magneticField = new WeakReference<>(MagneticFields.createField((ServerLevel) stand.level(),
+                    null, stand.position(), 3.0f, 5.0f));
         } else {
             MagneticFields.MagneticField field = magneticField == null ? null : magneticField.get();
             if (field == null) {
-                JCraft.LOGGER.warn("Metallica InvisibilityMove#MAGNETIC_FIELD was null when decloaking!");
+                JCraft.LOGGER.warn("InvisibilityMove#MAGNETIC_FIELD was null when decloaking!");
             } else {
                 field.time = 0;
             }
@@ -52,21 +56,25 @@ public class InvisibilityMove extends AbstractMove<InvisibilityMove, MetallicaEn
     }
 
     @Override
-    public @NonNull Set<LivingEntity> perform(MetallicaEntity attacker, LivingEntity user) {
-        final boolean newInvis = !attacker.getEntityData().get(MetallicaEntity.INVISIBLE);
-        setInvisible(attacker, newInvis);
+    public @NonNull Set<LivingEntity> perform(A attacker, LivingEntity user) {
+        if (attacker instanceof IIronCapable iron) {
+            final boolean newInvis = !iron.isMetallicaInvisible();
+            setInvisible(attacker, newInvis);
+        }
         return Set.of();
     }
 
     @Override
-    public void tick(MetallicaEntity attacker) {
+    public void tick(A attacker) {
         super.tick(attacker);
 
-        // Invisibility iron drain
-        final boolean invisible = attacker.getEntityData().get(MetallicaEntity.INVISIBLE);
+        if (!(attacker instanceof IIronCapable iron)) {
+            return;
+        }
+        final boolean invisible = iron.isMetallicaInvisible();
         if (!invisible || attacker.tickCount % 2 != 0) return;
 
-        final boolean canStayInvis = attacker.drainIron(0.75f);
+        final boolean canStayInvis = iron.drainIron(0.75f);
         if (!canStayInvis) {
             setInvisible(attacker, false);
         } else {
@@ -81,20 +89,20 @@ public class InvisibilityMove extends AbstractMove<InvisibilityMove, MetallicaEn
     }
 
     @Override
-    protected @NonNull InvisibilityMove getThis() {
+    protected @NonNull InvisibilityMove<A> getThis() {
         return this;
     }
 
     @Override
-    public @NonNull InvisibilityMove copy() {
-        return copyExtras(new InvisibilityMove(getCooldown(), getWindup(), getDuration()));
+    public @NonNull InvisibilityMove<A> copy() {
+        return copyExtras(new InvisibilityMove<>(getCooldown(), getWindup(), getDuration()));
     }
 
-    public static class Type extends AbstractMove.Type<InvisibilityMove> {
+    public static class Type extends AbstractMove.Type<InvisibilityMove<?>> {
         public static final Type INSTANCE = new Type();
 
         @Override
-        protected @NonNull App<RecordCodecBuilder.Mu<InvisibilityMove>, InvisibilityMove> buildCodec(RecordCodecBuilder.Instance<InvisibilityMove> instance) {
+        protected @NonNull App<RecordCodecBuilder.Mu<InvisibilityMove<?>>, InvisibilityMove<?>> buildCodec(RecordCodecBuilder.Instance<InvisibilityMove<?>> instance) {
             return instance.group(extras(), cooldown(), windup(), duration()).apply(instance, applyExtras(InvisibilityMove::new));
         }
     }

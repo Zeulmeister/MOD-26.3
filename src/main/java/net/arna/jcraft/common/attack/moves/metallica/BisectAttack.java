@@ -5,47 +5,49 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.NonNull;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
+import net.arna.jcraft.api.stand.IIronCapable;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.entity.projectile.BisectProjectile;
-import net.arna.jcraft.common.entity.stand.MetallicaEntity;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.Set;
 
-public class BisectAttack extends AbstractMove<BisectAttack, MetallicaEntity> {
+public class BisectAttack<A extends StandEntity<? extends A, ?>> extends AbstractMove<BisectAttack<A>, A> {
     public BisectAttack(int cooldown, int windup, int duration, float moveDistance) {
         super(cooldown, windup, duration, moveDistance);
     }
 
     @Override
-    public @NonNull MoveType<BisectAttack> getMoveType() {
-        return Type.INSTANCE;
+    public @NonNull MoveType<BisectAttack<A>> getMoveType() {
+        return Type.INSTANCE.cast();
     }
 
     @Override
-    public @NonNull Set<LivingEntity> perform(MetallicaEntity attacker, LivingEntity user) {
+    public @NonNull Set<LivingEntity> perform(A attacker, LivingEntity user) {
         BisectProjectile bisect = new BisectProjectile(attacker.level(), user);
         bisect.shootFromRotation(user, user.getXRot(), user.getYRot(), 0, 2.0f, 0);
-        bisect.setScale(attacker.getBisectChargeTime() / 10.0f);
+        int charge = attacker instanceof IIronCapable iron ? iron.getBisectChargeTime() : 10;
+        bisect.setScale(Math.max(0.5f, charge / 10.0f));
         attacker.level().addFreshEntity(bisect);
 
         return Set.of();
     }
 
     @Override
-    protected @NonNull BisectAttack getThis() {
+    protected @NonNull BisectAttack<A> getThis() {
         return this;
     }
 
     @Override
-    public @NonNull BisectAttack copy() {
-        return copyExtras(new BisectAttack(getCooldown(), getWindup(), getDuration(), getMoveDistance()));
+    public @NonNull BisectAttack<A> copy() {
+        return copyExtras(new BisectAttack<>(getCooldown(), getWindup(), getDuration(), getMoveDistance()));
     }
 
-    public static class Type extends AbstractMove.Type<BisectAttack> {
+    public static class Type extends AbstractMove.Type<BisectAttack<?>> {
         public static final Type INSTANCE = new Type();
 
         @Override
-        protected @NonNull App<RecordCodecBuilder.Mu<BisectAttack>, BisectAttack> buildCodec(RecordCodecBuilder.Instance<BisectAttack> instance) {
+        protected @NonNull App<RecordCodecBuilder.Mu<BisectAttack<?>>, BisectAttack<?>> buildCodec(RecordCodecBuilder.Instance<BisectAttack<?>> instance) {
             return baseDefault(instance, BisectAttack::new);
         }
     }

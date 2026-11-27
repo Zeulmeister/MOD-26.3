@@ -21,6 +21,7 @@ import net.arna.jcraft.api.component.living.CommonMiscComponent;
 import net.arna.jcraft.api.registry.JSoundRegistry;
 import net.arna.jcraft.api.registry.JStandTypeRegistry;
 import net.arna.jcraft.api.registry.JStatusRegistry;
+import net.arna.jcraft.api.stand.IIronCapable;
 import net.arna.jcraft.api.stand.StandData;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.api.stand.StandInfo;
@@ -69,7 +70,7 @@ import java.util.*;
  * @see net.arna.jcraft.client.renderer.entity.stands.MetallicaRenderer MetallicaRenderer
  * @see HarvestMove
  */
-public class MetallicaEntity extends StandEntity<MetallicaEntity, MetallicaEntity.State> {
+public class MetallicaEntity extends StandEntity<MetallicaEntity, MetallicaEntity.State> implements IIronCapable {
     public static final MoveSet<MetallicaEntity, State> MOVE_SET = MoveSetManager.create(JStandTypeRegistry.METALLICA,
             MetallicaEntity::registerMoves, MetallicaEntity.class, State.class);
     public static final StandData DATA = StandData.builder()
@@ -93,7 +94,7 @@ public class MetallicaEntity extends StandEntity<MetallicaEntity, MetallicaEntit
     public static final EntityDataAccessor<Boolean> INVISIBLE = SynchedEntityData.defineId(MetallicaEntity.class, EntityDataSerializers.BOOLEAN);
     public static final float IRON_MAX = 80.0f;
 
-    public static final GiveScalpelMove GIVE_SCALPEL = new GiveScalpelMove(0, 8, 9, 0)
+    public static final GiveScalpelMove<MetallicaEntity> GIVE_SCALPEL = new GiveScalpelMove<MetallicaEntity>(0, 8, 9, 0)
             .withInfo(
                     Component.literal("Give Scalpel"),
                     Component.empty()
@@ -202,7 +203,7 @@ public class MetallicaEntity extends StandEntity<MetallicaEntity, MetallicaEntit
             )
             .withInitAction(UserAnimationAction.play("mtl.sms"))
             .withCondition(MetallicaIronCondition.atLeast(IRON_MAX / 2.0f));
-    public static final RemoteScalpelMove REMOTE_SCALPEL_MOVE = new RemoteScalpelMove(0, 7, 12, 0)
+    public static final RemoteScalpelMove<MetallicaEntity> REMOTE_SCALPEL_MOVE = new RemoteScalpelMove<MetallicaEntity>(0, 7, 12, 0)
             .withInfo(
                     Component.literal("Scalpel Toss (Remote)"),
                     Component.literal("""
@@ -212,7 +213,7 @@ public class MetallicaEntity extends StandEntity<MetallicaEntity, MetallicaEntit
             )
             .withInitAction(UserAnimationAction.play("mtl.rs"))
             .withCondition(MetallicaIronCondition.atLeast(ScalpelProjectile.IRON_COST));
-    public static final FanTossAttack FAN_TOSS = new FanTossAttack(0, 7, 12, 0.75f)
+    public static final FanTossAttack<MetallicaEntity> FAN_TOSS = new FanTossAttack<MetallicaEntity>(0, 7, 12, 0.75f)
             .withSound(JSoundRegistry.METALLICA_SCALPEL_SUMMON)
             .withInfo(
                     Component.literal("Scalpel Toss (Wide)"),
@@ -222,7 +223,7 @@ public class MetallicaEntity extends StandEntity<MetallicaEntity, MetallicaEntit
             )
             .withInitAction(UserAnimationAction.play("mtl.ft"))
             .withCondition(MetallicaIronCondition.atLeast(ScalpelProjectile.IRON_COST));
-    public static final PreciseTossAttack PRECISE_TOSS = new PreciseTossAttack(0, 7, 12, 0.75f)
+    public static final PreciseTossAttack<MetallicaEntity> PRECISE_TOSS = new PreciseTossAttack<MetallicaEntity>(0, 7, 12, 0.75f)
             .withSound(JSoundRegistry.METALLICA_SCALPEL_SUMMON)
             .withCrouchingVariant(REMOTE_SCALPEL_MOVE)
             .withAerialVariant(FAN_TOSS)
@@ -245,7 +246,7 @@ public class MetallicaEntity extends StandEntity<MetallicaEntity, MetallicaEntit
             )
             .withInitAction(UserAnimationAction.play("mtl.rca"));
 
-    public static final CreateMagneticFieldMove CREATE_MAGNETIC_FIELD = new CreateMagneticFieldMove(200, 5, 15)
+    public static final CreateMagneticFieldMove<MetallicaEntity> CREATE_MAGNETIC_FIELD = new CreateMagneticFieldMove<MetallicaEntity>(200, 5, 15)
             .withCrouchingVariant(RAZOR_COUGH_ATTACK)
             // .withAerialVariant(EXPLODE_MAGNETIC_FIELD)
             .withInfo(
@@ -313,7 +314,7 @@ public class MetallicaEntity extends StandEntity<MetallicaEntity, MetallicaEntit
             .withImpactSound(JSoundRegistry.IMPACT_9)
             .withInitAction(CancelSpecMoveAction.cancelSpecMove())
             .withInitAction(UserAnimationAction.play("mtl.grab"));
-    public static final InvisibilityMove GO_INVISIBLE = new InvisibilityMove(20, 10, 15)
+    public static final InvisibilityMove<MetallicaEntity> GO_INVISIBLE = new InvisibilityMove<MetallicaEntity>(20, 10, 15)
             .withSound(JSoundRegistry.METALLICA_INVISIBILITY)
             .withInfo(
                     Component.literal("Invisibility"),
@@ -324,7 +325,7 @@ public class MetallicaEntity extends StandEntity<MetallicaEntity, MetallicaEntit
             )
             .withInitAction(UserAnimationAction.play("mtl.ivs"))
             .withCondition(MetallicaIronCondition.atLeast(5.0f));
-    public static final HarvestMove HARVEST = new HarvestMove(60 * 20, 0.75f, 3)
+    public static final HarvestMove<MetallicaEntity> HARVEST = new HarvestMove<MetallicaEntity>(60 * 20, 0.75f, 3)
             .withCrouchingVariant(GO_INVISIBLE)
             .withInfo(
                     Component.literal("Harvest Iron"),
@@ -334,10 +335,10 @@ public class MetallicaEntity extends StandEntity<MetallicaEntity, MetallicaEntit
                             5m max range.
                             Cannot be queued.""")
             );
-    public static final BisectAttack BISECT = new BisectAttack(0, 1, 11, 0.75f)
+    public static final BisectAttack<MetallicaEntity> BISECT = new BisectAttack<MetallicaEntity>(0, 1, 11, 0.75f)
             .withSound(JSoundRegistry.METALLICA_CRY)
             .withInitAction(UserAnimationAction.play("mtl.bsc_fire"));
-    public static final BisectChargeMove BISECT_CHARGE = new BisectChargeMove(30 * 20, 81, 80, 0.75f, 12)
+    public static final BisectChargeMove<MetallicaEntity> BISECT_CHARGE = new BisectChargeMove<MetallicaEntity>(30 * 20, 81, 80, 0.75f, 12)
             .withInfo(
                     Component.literal("Bisect"),
                     Component.literal("""
@@ -405,9 +406,9 @@ public class MetallicaEntity extends StandEntity<MetallicaEntity, MetallicaEntit
                                                      LivingEntity target, JumpControl mobJumpControl, StandEntity<?, ?> enemyStand, AbstractMove<?, ?> enemyAttack,
                                                      double distance, int enemyMoveStun, int stunTicks) {
         if (
-                (selectedAttack instanceof PreciseTossAttack precise) ||
-                (selectedAttack instanceof FanTossAttack fan) ||
-                (selectedAttack instanceof RemoteScalpelMove remote)
+                (selectedAttack instanceof PreciseTossAttack<?> precise) ||
+                (selectedAttack instanceof FanTossAttack<?> fan) ||
+                (selectedAttack instanceof RemoteScalpelMove<?> remote)
         ) {
             if (!shouldThrowScalpels()) return MoveSelectionResult.STOP;
         }
@@ -574,9 +575,9 @@ public class MetallicaEntity extends StandEntity<MetallicaEntity, MetallicaEntit
     }
 
     public static boolean ironProjectilePickup(@NonNull LivingEntity grabber, final float ironCost) {
-        if (JComponentPlatformUtils.getStandComponent(grabber).getStand() instanceof MetallicaEntity metallica) {
-            if (metallica.getIron() < MetallicaEntity.IRON_MAX) {
-                metallica.addIron(ironCost);
+        if (JComponentPlatformUtils.getStandComponent(grabber).getStand() instanceof IIronCapable ironStand) {
+            if (ironStand.getIron() < ironStand.getMaxIron()) {
+                ironStand.addIron(ironCost);
                 return true;
             }
         }
@@ -611,8 +612,24 @@ public class MetallicaEntity extends StandEntity<MetallicaEntity, MetallicaEntit
         return this;
     }
 
+    @Override
     public Optional<BlockPos> getSiphonPos() {
         return entityData.get(SIPHON_POS);
+    }
+
+    @Override
+    public void setSiphonPos(Optional<BlockPos> pos) {
+        entityData.set(SIPHON_POS, pos);
+    }
+
+    @Override
+    public boolean isMetallicaInvisible() {
+        return entityData.get(INVISIBLE);
+    }
+
+    @Override
+    public void setMetallicaInvisible(boolean invisible) {
+        entityData.set(INVISIBLE, invisible);
     }
 
     // Animations

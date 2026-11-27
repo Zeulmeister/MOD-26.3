@@ -5,6 +5,8 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.NonNull;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
+import net.arna.jcraft.api.stand.IPoisonCapsuleCapable;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.entity.projectile.PHCapsuleProjectile;
 import net.arna.jcraft.common.entity.stand.AbstractPurpleHazeEntity;
 import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
@@ -17,17 +19,19 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.Set;
 
-public class LaunchCapsuleAttack<A extends AbstractPurpleHazeEntity<? extends A, ?>> extends AbstractMove<LaunchCapsuleAttack<A>, A> {
+public class LaunchCapsuleAttack<A extends StandEntity<? extends A, ?>> extends AbstractMove<LaunchCapsuleAttack<A>, A> {
     public LaunchCapsuleAttack(int cooldown, int windup, int duration, float moveDistance) {
         super(cooldown, windup, duration, moveDistance);
         ranged = true;
     }
 
-    public static void launchCapsule(AbstractPurpleHazeEntity<?, ?> attacker, LivingEntity user, Direction gravity, float speed, float yaw) {
-        final PHCapsuleProjectile capsule = new PHCapsuleProjectile(user, attacker.level(), attacker.getPoisonType());
+    public static void launchCapsule(StandEntity<?, ?> attacker, LivingEntity user, Direction gravity, float speed, float yaw) {
+        AbstractPurpleHazeEntity.PoisonType pType = attacker instanceof IPoisonCapsuleCapable ph
+                ? ph.getPoisonType()
+                : AbstractPurpleHazeEntity.PoisonType.HARMING;
+        final PHCapsuleProjectile capsule = new PHCapsuleProjectile(user, attacker.level(), pType);
 
         final Vec2 corrected = RotationUtil.rotPlayerToWorld(yaw, user.getXRot(), gravity);
-        // Y,P to P,Y,R
         JUtils.shoot(capsule, user, corrected.y, corrected.x, 0.0F, speed, 0.1F);
 
         final Vec3 heightOffset = GravityChangerAPI.getEyeOffset(attacker.getUserOrThrow()).scale(0.5);

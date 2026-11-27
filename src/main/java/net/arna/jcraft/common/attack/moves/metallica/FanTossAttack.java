@@ -5,8 +5,8 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.NonNull;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.entity.projectile.ScalpelProjectile;
-import net.arna.jcraft.common.entity.stand.MetallicaEntity;
 import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
 import net.arna.jcraft.common.gravity.util.RotationUtil;
 import net.minecraft.world.entity.LivingEntity;
@@ -14,19 +14,19 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.Set;
 
-public class FanTossAttack extends AbstractMove<FanTossAttack, MetallicaEntity> {
+public class FanTossAttack<A extends StandEntity<? extends A, ?>> extends AbstractMove<FanTossAttack<A>, A> {
     public FanTossAttack(int cooldown, int windup, int duration, float moveDistance) {
         super(cooldown, windup, duration, moveDistance);
         ranged = true;
     }
 
     @Override
-    public @NonNull MoveType<FanTossAttack> getMoveType() {
-        return Type.INSTANCE;
+    public @NonNull MoveType<FanTossAttack<A>> getMoveType() {
+        return Type.INSTANCE.cast();
     }
 
     @Override
-    public @NonNull Set<LivingEntity> perform(MetallicaEntity attacker, LivingEntity user) {
+    public @NonNull Set<LivingEntity> perform(A attacker, LivingEntity user) {
         final float offset = 10.0F;
         int index = 0;
         // 0 -> 1 -> -1 -> 2 -> -2
@@ -53,20 +53,20 @@ public class FanTossAttack extends AbstractMove<FanTossAttack, MetallicaEntity> 
     }
 
     @Override
-    protected @NonNull FanTossAttack getThis() {
+    protected @NonNull FanTossAttack<A> getThis() {
         return this;
     }
 
     @Override
-    public @NonNull FanTossAttack copy() {
-        return copyExtras(new FanTossAttack(getCooldown(), getWindup(), getDuration(), getMoveDistance()));
+    public @NonNull FanTossAttack<A> copy() {
+        return copyExtras(new FanTossAttack<>(getCooldown(), getWindup(), getDuration(), getMoveDistance()));
     }
 
-    public static class Type extends AbstractMove.Type<FanTossAttack> {
+    public static class Type extends AbstractMove.Type<FanTossAttack<?>> {
         public static final Type INSTANCE = new Type();
 
         @Override
-        protected @NonNull App<RecordCodecBuilder.Mu<FanTossAttack>, FanTossAttack> buildCodec(RecordCodecBuilder.Instance<FanTossAttack> instance) {
+        protected @NonNull App<RecordCodecBuilder.Mu<FanTossAttack<?>>, FanTossAttack<?>> buildCodec(RecordCodecBuilder.Instance<FanTossAttack<?>> instance) {
             return baseDefault(instance, FanTossAttack::new);
         }
     }

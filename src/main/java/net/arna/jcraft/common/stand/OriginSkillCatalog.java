@@ -20,6 +20,8 @@ import net.arna.jcraft.api.stand.StandTypeUtil;
 import net.arna.jcraft.common.attack.moves.kingcrimson.TimeEraseMove;
 import net.arna.jcraft.common.attack.moves.madeinheaven.TimeAccelerationMove;
 import net.arna.jcraft.common.attack.moves.shared.TimeSkipMove;
+import net.arna.jcraft.common.attack.moves.shared.TossChargeMove;
+import net.arna.jcraft.common.attack.moves.shared.TossMove;
 import net.arna.jcraft.common.attack.moves.theworld.overheaven.ChargeOverwriteMove;
 import net.arna.jcraft.common.attack.moves.theworld.overheaven.OverwriteAttack;
 import net.arna.jcraft.common.entity.stand.OriginEntity;
@@ -31,9 +33,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Runtime-discovered catalog of Stand skills compatible with {@link OriginEntity}.
@@ -111,7 +115,7 @@ public final class OriginSkillCatalog {
                     "jcraft:the_world_over_heaven#special3",
                     "jcraft:king_crimson#ultimate",
                     "jcraft:the_world#ultimate",
-                    "jcraft:made_in_heaven#ultimate",
+                    "jcraft:king_crimson#utility",
                     "jcraft:the_world#toss"
             )),
             new LoadoutPreset("void_executioner", "jcraft.origin.preset.void_executioner", createSlotMap(
@@ -218,7 +222,7 @@ public final class OriginSkillCatalog {
         List<StandType> stands = StandTypeUtil.streamAll()
                 .filter(st -> !StandTypeUtil.isNone(st))
                 .sorted(Comparator
-                        .comparing((StandType st) -> st != JStandTypeRegistry.ORIGIN.get())
+                        .comparing((StandType st) -> st == JStandTypeRegistry.ORIGIN.get())
                         .thenComparing(st -> {
                             Identifier id = JRegistries.STAND_TYPE_REGISTRY.getId(st);
                             return id != null ? id.toString() : "";
@@ -299,6 +303,122 @@ public final class OriginSkillCatalog {
         return all.isEmpty() ? null : all.get(0);
     }
 
+    public static boolean isUltimateSkill(@Nullable SkillEntry entry) {
+        return entry != null && entry.sourceSlot() == MoveClass.ULTIMATE;
+    }
+
+    public static @Nullable MoveClass findSlotContaining(
+            @Nullable Map<MoveClass, String> loadout,
+            @Nullable MoveClass excludedSlot,
+            @Nullable String candidateId) {
+        if (loadout == null || candidateId == null || candidateId.isEmpty()) {
+            return null;
+        }
+        for (MoveClass slot : MoveClass.values()) {
+            if (slot == excludedSlot) {
+                continue;
+            }
+            String existing = loadout.getOrDefault(slot, getDefaultId(slot));
+            if (candidateId.equals(existing)) {
+                return slot;
+            }
+        }
+        return null;
+    }
+
+    public static boolean isDuplicateInOtherSlot(
+            @Nullable Map<MoveClass, String> loadout,
+            @Nullable MoveClass targetSlot,
+            @Nullable String candidateId) {
+        return findSlotContaining(loadout, targetSlot, candidateId) != null;
+    }
+
+    public static int countUltimatesExcluding(
+            @Nullable Map<MoveClass, String> loadout,
+            @Nullable MoveClass excludedSlot,
+            boolean freeBinds) {
+        int count = 0;
+        for (MoveClass slot : MoveClass.values()) {
+            if (slot == excludedSlot) {
+                continue;
+            }
+            String id = loadout != null ? loadout.getOrDefault(slot, getDefaultId(slot)) : getDefaultId(slot);
+            SkillEntry resolved = resolveForSlot(slot, id, freeBinds);
+            if (isUltimateSkill(resolved)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Resolves and sanitizes a full 9-slot Origin loadout, deduplicating cross-slot repeats
+     * and enforcing the configurable maximum Ultimate count (dedicated ULTIMATE slot has priority).
+     */
+    public static EnumMap<MoveClass, SkillEntry> sanitizeLoadout(
+            @Nullable Map<MoveClass, String> rawSlots,
+            boolean freeBinds,
+            int maxUltimates) {
+        EnumMap<MoveClass, SkillEntry> result = new EnumMap<>(MoveClass.class);
+        Set<String> usedIds = new HashSet<>();
+        int ultCount = 0;
+
+        // Prioritize the dedicated ULTIMATE bind first so it is never crowded out by earlier slots.
+        List<MoveClass> ordered = new ArrayList<>(MoveClass.values().length);
+        ordered.add(MoveClass.ULTIMATE);
+        for (MoveClass mc : MoveClass.values()) {
+            if (mc != MoveClass.ULTIMATE) {
+                ordered.add(mc);
+            }
+        }
+
+        for (MoveClass slot : ordered) {
+            String rawId = rawSlots != null ? rawSlots.get(slot) : null;
+            SkillEntry candidate = resolveForSlot(slot, rawId, freeBinds);
+            if (candidate == null) {
+                continue;
+            }
+            boolean duplicate = usedIds.contains(candidate.id());
+            boolean exceedsUlts = maxUltimates > 0 && isUltimateSkill(candidate) && ultCount >= maxUltimates;
+            if (duplicate || exceedsUlts) {
+                SkillEntry defEntry = resolveForSlot(slot, getDefaultId(slot), freeBinds);
+                if (defEntry != null && !usedIds.contains(defEntry.id())
+                        && !(maxUltimates > 0 && isUltimateSkill(defEntry) && ultCount >= maxUltimates)) {
+                    candidate = defEntry;
+                } else {
+                    SkillEntry replacement = findFirstSafeFallback(slot, freeBinds, usedIds, maxUltimates, ultCount);
+                    if (replacement != null) {
+                        candidate = replacement;
+                    }
+                }
+            }
+            usedIds.add(candidate.id());
+            if (isUltimateSkill(candidate)) {
+                ultCount++;
+            }
+            result.put(slot, candidate);
+        }
+        return result;
+    }
+
+    private static @Nullable SkillEntry findFirstSafeFallback(
+            MoveClass slot,
+            boolean freeBinds,
+            Set<String> usedIds,
+            int maxUltimates,
+            int currentUltCount) {
+        for (SkillEntry entry : getSkillsForSlot(slot, freeBinds)) {
+            if (usedIds.contains(entry.id())) {
+                continue;
+            }
+            if (maxUltimates > 0 && isUltimateSkill(entry) && currentUltCount >= maxUltimates) {
+                continue;
+            }
+            return entry;
+        }
+        return null;
+    }
+
     public static boolean isMoveCompatibleWithOrigin(@Nullable AbstractMove<?, ?> move) {
         if (move == null) {
             return false;
@@ -326,6 +446,10 @@ public final class OriginSkillCatalog {
             return false;
         }
         if (move.getFinisher() != null && !isMoveCompatibleWithOrigin(move.getFinisher().right())) {
+            return false;
+        }
+        if (move instanceof AbstractGrabAttack<?, ?, ?> grab && grab.getHitMove() != null
+                && !isMoveCompatibleWithOrigin(grab.getHitMove())) {
             return false;
         }
         return true;
@@ -377,6 +501,18 @@ public final class OriginSkillCatalog {
         if (move instanceof AbstractUppercutAttack) {
             return OriginEntity.State.UPPERCUT;
         }
+        if (move instanceof TossChargeMove) {
+            return OriginEntity.State.ITEM_TOSS_CHARGE;
+        }
+        if (move instanceof TossMove) {
+            return OriginEntity.State.ITEM_TOSS;
+        }
+        if (move != null && move.isFollowup() && targetSlot == MoveClass.LIGHT) {
+            return OriginEntity.State.LIGHT_FOLLOWUP;
+        }
+        if (move != null && move.isCrouchingVariant() && targetSlot == MoveClass.HEAVY) {
+            return OriginEntity.State.GRAB_HIT;
+        }
         return defaultStateForSlot(targetSlot);
     }
 
@@ -389,7 +525,8 @@ public final class OriginSkillCatalog {
             case SPECIAL2 -> OriginEntity.State.SPECIAL2;
             case SPECIAL3 -> OriginEntity.State.SPECIAL3;
             case ULTIMATE -> OriginEntity.State.ULTIMATE;
-            case UTILITY, TOSS -> OriginEntity.State.UTILITY;
+            case UTILITY -> OriginEntity.State.UTILITY;
+            case TOSS -> OriginEntity.State.ITEM_TOSS_CHARGE;
         };
     }
 

@@ -125,7 +125,7 @@ public final class TheSunEntity extends StandEntity<TheSunEntity, TheSunEntity.S
                             Amount of meteors changes proportional to the size of The Sun.""")
             );
 
-    private static final MeteorShowerAttack METEOR_SHOWER = new MeteorShowerAttack(120, 10, 110, 2)
+    private static final MeteorShowerAttack<TheSunEntity> METEOR_SHOWER = new MeteorShowerAttack<TheSunEntity>(120, 10, 110, 2)
             .withSound(JSoundRegistry.SUN_SHOWER)
             .withoutSlowness()
             .withInfo(

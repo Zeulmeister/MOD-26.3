@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import net.arna.jcraft.JCraft;
 import net.arna.jcraft.api.attack.MoveType;
-import net.arna.jcraft.common.entity.stand.AbstractKillerQueenEntity;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
 import net.arna.jcraft.api.registry.JStatusRegistry;
 import net.arna.jcraft.common.attack.moves.killerqueen.KQDetonateAttack;
@@ -27,7 +27,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 import java.util.Set;
 
-public final class BTDDetonateAttack<A extends AbstractKillerQueenEntity<? extends A, ?>> extends AbstractMove<BTDDetonateAttack<A>, A> {
+public final class BTDDetonateAttack<A extends StandEntity<? extends A, ?>> extends AbstractMove<BTDDetonateAttack<A>, A> {
 
     @Getter
     private final int reach;

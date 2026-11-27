@@ -1634,14 +1634,94 @@ public final class JCraft263ValidationTest {
 
         String animRaw = Files.readString(RESOURCES_ROOT.resolve("assets/jcraft/animations/origin.animation.json"), StandardCharsets.UTF_8);
         check(animRaw.contains("\"vector\":"), "origin.animation.json must use AzureLib 1.8.0 vector objects");
+        check(animRaw.contains("\"easing\":"), "origin.animation.json must use AzureLib easing curves");
         JsonObject animObj = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/animations/origin.animation.json"));
         JsonObject anims = animObj.getAsJsonObject("animations");
-        for (String anim : List.of("idle", "summon", "block", "light", "heavy", "barrage", "special1", "special2", "special3",
-                "uppercut", "counter", "counter_miss", "grab", "grab_hit", "ultimate", "utility", "time_stop", "overwrite")) {
+        List<String> expectedOriginClips = List.of(
+                "idle", "summon", "block", "light", "light_followup", "heavy", "barrage",
+                "special1", "special2", "special3", "uppercut", "counter", "counter_miss",
+                "grab", "grab_hit", "ultimate", "utility", "time_stop", "overwrite",
+                "itemthrow_charge", "itemthrow");
+        List<String> secondaryBones = List.of(
+                "wing_left_mid", "wing_left_lower", "wing_right_mid", "wing_right_lower",
+                "cloak_back_lower", "cloak_left", "cloak_right",
+                "pauldron_left", "pauldron_right", "crown_halo", "chest_core");
+        for (String anim : expectedOriginClips) {
             check(anims.has(anim), "origin.animation.json must define animation: " + anim);
             JsonObject bones = anims.getAsJsonObject(anim).getAsJsonObject("bones");
             check(bones != null && bones.has("base"), "origin.animation.json '" + anim + "' must reset base bone rotation");
+            for (String sec : secondaryBones) {
+                check(bones.has(sec), "origin.animation.json '" + anim + "' must animate secondary bone: " + sec);
+            }
         }
+        for (String showcaseClip : List.of("summon", "idle", "heavy", "time_stop")) {
+            JsonObject cBones = anims.getAsJsonObject(showcaseClip).getAsJsonObject("bones");
+            int clipKfs = 0;
+            for (var bEntry : cBones.entrySet()) {
+                JsonObject bObj = bEntry.getValue().getAsJsonObject();
+                for (String ch : List.of("rotation", "position", "scale")) {
+                    if (bObj.has(ch) && bObj.get(ch).isJsonObject()) {
+                        JsonObject chObj = bObj.getAsJsonObject(ch);
+                        clipKfs += chObj.has("vector") ? 1 : chObj.size();
+                    }
+                }
+            }
+            check(clipKfs >= 90, "origin.animation.json '" + showcaseClip + "' must have >= 90 keyframes (actual=" + clipKfs + ")");
+        }
+        JsonObject originTossJson = parseJsonObject(
+                RESOURCES_ROOT.resolve("data/jcraft/movesets/stand/origin/default/toss/item_toss.json"));
+        check("ITEM_TOSS_CHARGE".equals(originTossJson.get("anim_state").getAsString())
+                        && "ITEM_TOSS".equals(originTossJson.getAsJsonObject("followup").get("anim_state").getAsString()),
+                "Origin item_toss.json must bind ITEM_TOSS_CHARGE and followup ITEM_TOSS");
+        JsonObject originBarrageAnim = anims.getAsJsonObject("barrage");
+        JsonObject originBarrageBones = originBarrageAnim.getAsJsonObject("bones");
+        for (String reqBone : List.of("upperBody", "armRight", "lower_armRight", "armLeft", "lower_armLeft",
+                "pauldron_left", "pauldron_right", "wing_left_upper", "wing_left_mid", "wing_left_lower",
+                "wing_right_upper", "wing_right_mid", "wing_right_lower", "void_ring_outer", "void_ring_inner",
+                "cloak_back", "cloak_back_lower", "cloak_left", "cloak_right",
+                "barrage_right_arm", "barrage_right_arm2", "barrage_right_arm3",
+                "barrage_left_arm", "barrage_left_arm2", "barrage_left_arm3")) {
+            check(originBarrageBones.has(reqBone), "origin.animation.json barrage must animate bone: " + reqBone);
+        }
+        int originBarrageKfs = 0;
+        for (var boneEntry : originBarrageBones.entrySet()) {
+            JsonObject bObj = boneEntry.getValue().getAsJsonObject();
+            for (String ch : List.of("rotation", "position", "scale")) {
+                if (bObj.has(ch) && bObj.get(ch).isJsonObject()) {
+                    JsonObject chObj = bObj.getAsJsonObject(ch);
+                    originBarrageKfs += chObj.has("vector") ? 1 : chObj.size();
+                }
+            }
+        }
+        check(originBarrageKfs >= 300, "origin.animation.json barrage must have >= 300 keyframes (actual=" + originBarrageKfs + ")");
+        for (String smearArm : List.of("barrage_right_arm", "barrage_left_arm")) {
+            JsonObject scaleObj = originBarrageBones.getAsJsonObject(smearArm).getAsJsonObject("scale");
+            boolean hasStretch = false;
+            for (var kf : scaleObj.entrySet()) {
+                JsonArray vec = kf.getValue().getAsJsonObject().getAsJsonArray("vector");
+                if (vec != null && vec.get(2).getAsDouble() >= 1.8) {
+                    hasStretch = true;
+                    break;
+                }
+            }
+            check(hasStretch, "origin.animation.json barrage " + smearArm + " must include smear-frame Z scale >= 1.8");
+        }
+        for (String ringBone : List.of("void_ring_outer", "void_ring_inner")) {
+            JsonObject rotObj = originBarrageBones.getAsJsonObject(ringBone).getAsJsonObject("rotation");
+            check(rotObj != null && rotObj.size() >= 4,
+                    "origin.animation.json barrage " + ringBone + " must animate accelerated counter-spin (>= 4 keyframes)");
+        }
+
+        JsonObject originBarrageMoveJson = parseJsonObject(
+                RESOURCES_ROOT.resolve("data/jcraft/movesets/stand/origin/default/barrage/eclipse_barrage.json"));
+        JsonObject bm = originBarrageMoveJson.getAsJsonObject("move");
+        check("jcraft:shared_main_barrage_attack".equals(bm.get("type").getAsString()),
+                "Origin native barrage must use MainBarrageAttack");
+        check(bm.get("stun").getAsInt() >= 30 && bm.get("windup").getAsInt() == 0,
+                "Origin native barrage must have 30-tick combo stun and 0 windup");
+        check(bm.getAsJsonObject("attack_extras").get("shockwaves").getAsBoolean()
+                && bm.getAsJsonObject("extras").get("is_holdable").getAsBoolean(),
+                "Origin native barrage must enable shockwaves and holdable release-cancel");
 
         // 2. Textures (5 stand textures + 8 ability icons + 4 stand discs)
         Path texRoot = RESOURCES_ROOT.resolve("assets/jcraft/textures/entity/stands/origin");
@@ -1664,17 +1744,108 @@ public final class JCraft263ValidationTest {
             parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/models/item/stand_disc_origin_" + s + ".json"));
         }
 
-        // 3. Synthesized OGG Sounds + sounds.json + 9 Movesets + Translations
+        // 3. Synthesized OGG Sounds (12 dedicated Origin clips) + sounds.json + subtitles + 9 Movesets + Translations
         JsonObject soundsObj = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/sounds.json"));
-        for (String snd : List.of("origin_summon", "origin_barrage", "origin_heavy", "origin_ult", "origin_bind")) {
+        JsonObject enUsSnd = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/en_us.json"));
+        JsonObject ptBrSnd = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/pt_br.json"));
+        List<String> originSounds = List.of(
+                "origin_summon", "origin_desummon", "origin_barrage", "origin_heavy",
+                "origin_ult", "origin_bind", "origin_light", "origin_special1",
+                "origin_special2", "origin_grab", "origin_grab_hit", "origin_counter");
+        for (String snd : originSounds) {
             check(soundsObj.has(snd), "sounds.json must define " + snd);
             Path ogg = RESOURCES_ROOT.resolve("assets/jcraft/sounds/origin/" + snd + ".ogg");
-            check(Files.isRegularFile(ogg) && Files.size(ogg) > 1024L, "OGG sound must exist and be non-empty: " + snd);
+            check(Files.isRegularFile(ogg) && Files.size(ogg) > 4096L, "OGG sound must exist and exceed 4KB: " + snd);
+            byte[] header = Files.readAllBytes(ogg);
+            check(header.length >= 4 && header[0] == 'O' && header[1] == 'g' && header[2] == 'g' && header[3] == 'S',
+                    "OGG sound must start with valid OggS header: " + snd);
+            String subKey = "subtitles.jcraft." + snd;
+            check(enUsSnd.has(subKey), "en_us.json must define subtitle key: " + subKey);
+            check(ptBrSnd.has(subKey), "pt_br.json must define subtitle key: " + subKey);
         }
         List<Path> originMovesets = collectJsonFiles(RESOURCES_ROOT.resolve("data/jcraft/movesets/stand/origin/default"));
         checkEquals(9, originMovesets.size(), "All 9 default Origin moveset JSONs must exist");
         for (Path ms : originMovesets) {
             parseJsonObject(ms);
+        }
+        check(Files.readString(RESOURCES_ROOT.resolve("data/jcraft/movesets/stand/origin/default/light/abyssal_lash.json"), StandardCharsets.UTF_8)
+                .contains("\"jcraft:origin_light\""), "abyssal_lash.json must trigger jcraft:origin_light");
+        check(Files.readString(RESOURCES_ROOT.resolve("data/jcraft/movesets/stand/origin/default/special1/soul_sever.json"), StandardCharsets.UTF_8)
+                .contains("\"jcraft:origin_special1\""), "soul_sever.json must trigger jcraft:origin_special1");
+        check(Files.readString(RESOURCES_ROOT.resolve("data/jcraft/movesets/stand/origin/default/special2/void_flurry.json"), StandardCharsets.UTF_8)
+                .contains("\"jcraft:origin_special2\""), "void_flurry.json must trigger jcraft:origin_special2");
+        String graspRaw = Files.readString(RESOURCES_ROOT.resolve("data/jcraft/movesets/stand/origin/default/special3/void_grasp.json"), StandardCharsets.UTF_8);
+        check(graspRaw.contains("\"jcraft:origin_grab\"") && graspRaw.contains("\"jcraft:origin_grab_hit\""),
+                "void_grasp.json must trigger jcraft:origin_grab and jcraft:origin_grab_hit");
+
+        JsonObject originLightJson = parseJsonObject(
+                RESOURCES_ROOT.resolve("data/jcraft/movesets/stand/origin/default/light/abyssal_lash.json"));
+        JsonObject originFollowup = originLightJson.getAsJsonObject("followup");
+        check(originFollowup != null && "LIGHT_FOLLOWUP".equals(originFollowup.get("anim_state").getAsString()),
+                "abyssal_lash.json must define LIGHT_FOLLOWUP followup");
+        check("CRUSH".equals(originFollowup.getAsJsonObject("move").getAsJsonObject("attack_extras").get("hit_animation").getAsString())
+                        && originFollowup.getAsJsonObject("move").getAsJsonObject("attack_extras").has("extra_hit_boxes"),
+                "Origin LIGHT_FOLLOWUP must use CRUSH hit_animation and extra_hit_boxes");
+        check("HIGH".equals(originLightJson.getAsJsonObject("crouching_variant").getAsJsonObject("move")
+                        .getAsJsonObject("attack_extras").get("hit_animation").getAsString())
+                        && "LOW".equals(originLightJson.getAsJsonObject("move")
+                        .getAsJsonObject("attack_extras").get("hit_animation").getAsString()),
+                "Origin abyssal_lash must assign LOW/HIGH HitAnimations");
+
+        JsonObject originHeavyJson = parseJsonObject(
+                RESOURCES_ROOT.resolve("data/jcraft/movesets/stand/origin/default/heavy/obsidian_judgement.json"));
+        JsonObject originSlamCr = originHeavyJson.getAsJsonObject("crouching_variant");
+        check(originSlamCr != null && "GRAB_HIT".equals(originSlamCr.get("anim_state").getAsString())
+                        && "CRUSH".equals(originSlamCr.getAsJsonObject("move").getAsJsonObject("attack_extras").get("hit_animation").getAsString())
+                        && originSlamCr.getAsJsonObject("move").getAsJsonObject("attack_extras").has("extra_hit_boxes"),
+                "obsidian_judgement.json must define crouching Gravity Slam variant with GRAB_HIT, CRUSH and extra_hit_boxes");
+
+        for (String extraKey : List.of(
+                "move.jcraft.origin.default.light_followup.name",
+                "move.jcraft.origin.default.light_followup.description",
+                "move.jcraft.origin.default.gravity_slam.name",
+                "move.jcraft.origin.default.gravity_slam.description")) {
+            check(enUsSnd.has(extraKey) && ptBrSnd.has(extraKey), "Both lang files must define " + extraKey);
+        }
+
+        checkEquals(0x00FFAA,
+                net.arna.jcraft.client.rendering.JoJoOnomatopoeiaRenderer.resolveOriginGlyphColor(0, 0x00FFAA, false, false),
+                "Custom Chroma RGB must override Origin onomatopoeia color");
+        checkEquals(0xF5243D,
+                net.arna.jcraft.client.rendering.JoJoOnomatopoeiaRenderer.resolveOriginGlyphColor(1, -1, false, false),
+                "Origin Skin 1 must tint onomatopoeia Crimson Eclipse");
+        checkEquals(0x24DBFF,
+                net.arna.jcraft.client.rendering.JoJoOnomatopoeiaRenderer.resolveOriginGlyphColor(2, -1, false, false),
+                "Origin Skin 2 must tint onomatopoeia Astral Cyan");
+        checkEquals(0xDCE6FF,
+                net.arna.jcraft.client.rendering.JoJoOnomatopoeiaRenderer.resolveOriginGlyphColor(4, -1, false, true),
+                "Origin Skin 4 must tint onomatopoeia silver-abyssal");
+        checkEquals(0xFFFDF2,
+                net.arna.jcraft.client.rendering.JoJoOnomatopoeiaRenderer.resolveOriginGlyphColor(5, -1, false, true),
+                "Origin Skin 5 barrage must tint onomatopoeia radiant celestial");
+
+        try (InputStream sndIn = cl.getResourceAsStream("net/arna/jcraft/api/registry/JSoundRegistry.class")) {
+            check(sndIn != null, "JSoundRegistry.class must exist");
+            ClassNode sndCn = new ClassNode();
+            new ClassReader(sndIn).accept(sndCn, ClassReader.SKIP_CODE);
+            for (String regField : List.of(
+                    "ORIGIN_SUMMON", "ORIGIN_DESUMMON", "ORIGIN_BARRAGE", "ORIGIN_HEAVY",
+                    "ORIGIN_ULT", "ORIGIN_BIND", "ORIGIN_LIGHT", "ORIGIN_SPECIAL1",
+                    "ORIGIN_SPECIAL2", "ORIGIN_GRAB", "ORIGIN_GRAB_HIT", "ORIGIN_COUNTER")) {
+                check(sndCn.fields.stream().anyMatch(f -> regField.equals(f.name)),
+                        "JSoundRegistry must declare " + regField);
+            }
+        }
+        try (InputStream oeIn = cl.getResourceAsStream("net/arna/jcraft/common/entity/stand/OriginEntity.class")) {
+            check(oeIn != null, "OriginEntity.class must exist");
+            ClassNode oeCn = new ClassNode();
+            new ClassReader(oeIn).accept(oeCn, ClassReader.SKIP_CODE);
+            check(oeCn.fields.stream().anyMatch(f -> "LIGHT_FOLLOWUP".equals(f.name))
+                            && oeCn.fields.stream().anyMatch(f -> "GRAVITY_SLAM".equals(f.name)),
+                    "OriginEntity must declare LIGHT_FOLLOWUP and GRAVITY_SLAM");
+            check(oeCn.methods.stream().anyMatch(m -> "desummon".equals(m.name) && "(Z)V".equals(m.desc))
+                            && oeCn.methods.stream().anyMatch(m -> "setState".equals(m.name)),
+                    "OriginEntity must override desummon(boolean) and setState(...)");
         }
 
         JsonObject enUs = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/en_us.json"));
@@ -1727,13 +1898,110 @@ public final class JCraft263ValidationTest {
                 && harmonySyn.isActive(net.arna.jcraft.common.stand.OriginSynergy.SynergyType.OMNIPOTENT_HARMONY),
                 "Multi-category build must activate Heavy, Ranged, Tempest & Harmony synergies");
 
-        // 5. Dedicated-Server bytecode isolation for Origin common classes
+        // 5. Build code encode/decode round-trip & malformed rejection
+        String buildCode = net.arna.jcraft.common.stand.OriginProfile.encodeBuildCode(prof);
+        check(buildCode.startsWith(net.arna.jcraft.common.stand.OriginProfile.BUILD_CODE_PREFIX),
+                "Origin build code must start with ORIGIN1: prefix");
+        net.arna.jcraft.common.stand.OriginProfile decodedCode = net.arna.jcraft.common.stand.OriginProfile.decodeBuildCode(buildCode);
+        check(decodedCode != null && decodedCode.skin() == 4 && decodedCode.customGlowRgb() == 0x00FFAA
+                && "jcraft:star_platinum#barrage".equals(decodedCode.slots().get(net.arna.jcraft.api.attack.enums.MoveClass.BARRAGE)),
+                "Origin build code decode must round-trip skin, glowRgb and slots");
+        check(net.arna.jcraft.common.stand.OriginProfile.decodeBuildCode("INVALID_CODE") == null,
+                "Malformed build code must safely return null");
+
+        // 6. Anti-exploit Ultimate cap, duplicate sanitization, shared cooldown & grab/finisher/projectile Synergy scaling
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/common/config/JServerConfig.class")) {
+            check(in != null, "JServerConfig.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            check(cn.fields.stream().anyMatch(f -> "ORIGIN_MAX_ULTIMATES".equals(f.name)),
+                    "JServerConfig must expose ORIGIN_MAX_ULTIMATES");
+        }
+        for (String key : List.of(
+                "jcraft.serverconfig.option.origin_max_ultimates",
+                "jcraft.serverconfig.option.origin_max_ultimates.tooltip",
+                "jcraft.origin.arsenal.locked_combat",
+                "jcraft.origin.arsenal.duplicate_skill",
+                "jcraft.origin.arsenal.max_ultimates",
+                "jcraft.origin.studio.anim.barrage",
+                "jcraft.origin.profile.copy_code",
+                "jcraft.origin.profile.paste_code",
+                "jcraft.origin.arsenal.swap_btn",
+                "jcraft.origin.arsenal.editing_slot",
+                "jcraft.origin.arsenal.equip_action")) {
+            check(enUs.has(key) && ptBr.has(key), "EN/PT-BR must define new Origin key: " + key);
+        }
+        java.util.Map<net.arna.jcraft.api.attack.enums.MoveClass, String> testSwapMap = java.util.Map.of(
+                net.arna.jcraft.api.attack.enums.MoveClass.LIGHT, "jcraft:star_platinum#light",
+                net.arna.jcraft.api.attack.enums.MoveClass.SPECIAL1, "jcraft:the_world#special1"
+        );
+        checkEquals(net.arna.jcraft.api.attack.enums.MoveClass.LIGHT,
+                net.arna.jcraft.common.stand.OriginSkillCatalog.findSlotContaining(
+                        testSwapMap, net.arna.jcraft.api.attack.enums.MoveClass.SPECIAL1, "jcraft:star_platinum#light"),
+                "findSlotContaining must locate other slot owning candidate skill for auto-swap");
+
+        // Verify OriginSynergy projectile multiplier + grab hitMove & finisher scaling without mutating static templates
+        float baseProjMult = net.arna.jcraft.common.stand.OriginSynergy.computeProjectileDamageMultiplier(
+                net.arna.jcraft.common.stand.OriginSynergy.SynergySummary.EMPTY);
+        checkClose(1.0, baseProjMult, 1.0E-5, "Empty synergy projectile multiplier must be 1.0");
+        checkClose(1.12 * 1.08, net.arna.jcraft.common.stand.OriginSynergy.computeProjectileDamageMultiplier(harmonySyn),
+                1.0E-4, "Astral Artillery + Omnipotent Harmony must stack to 1.12 * 1.08 projectile multiplier");
+
+        class TestSynergyMove extends net.arna.jcraft.api.attack.moves.AbstractMove<TestSynergyMove, net.arna.jcraft.common.entity.stand.OriginEntity> {
+            TestSynergyMove(int cd, int windup, int dur) { super(cd, windup, dur, 1.0f); }
+            @Override public net.arna.jcraft.api.attack.MoveType<TestSynergyMove> getMoveType() { return null; }
+            @Override public java.util.Set<net.minecraft.world.entity.LivingEntity> perform(
+                    net.arna.jcraft.common.entity.stand.OriginEntity a, net.minecraft.world.entity.LivingEntity u) { return java.util.Set.of(); }
+            @Override protected TestSynergyMove getThis() { return this; }
+            @Override public TestSynergyMove copy() {
+                return copyExtras(new TestSynergyMove(getCooldown(), getWindup(), getDuration()));
+            }
+        }
+        var finChild = new TestSynergyMove(100, 10, 20);
+        var finParent = new TestSynergyMove(100, 10, 20).withFinisher(8, finChild);
+        var finCloned = finParent.copy();
+        net.arna.jcraft.common.stand.OriginSynergy.applyToMoveCopy(
+                finCloned, net.arna.jcraft.common.stand.OriginSkillCatalog.SkillCategory.TIME_SPACE, chronoSyn);
+        check(finCloned.getFinisher() != null && finCloned.getFinisher().right() != finChild,
+                "AbstractMove.copy() must deep-copy finisher move");
+        check(finCloned.getFinisher().right().getCooldown() < 100 && finChild.getCooldown() == 100,
+                "OriginSynergy must scale finisher move without mutating original template");
+
+        // Verify bytecode wiring for AbstractGrabAttack.hitMove copy, OriginSynergy hitMove/finisher traversal, and Attacks projectile scaling
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/common/stand/OriginSynergy.class")) {
+            check(in != null, "OriginSynergy.class must exist");
+            String raw = new String(in.readAllBytes(), StandardCharsets.ISO_8859_1);
+            check(raw.contains("getHitMove") && raw.contains("getFinisher") && raw.contains("computeProjectileDamageMultiplier"),
+                    "OriginSynergy must handle getHitMove, getFinisher and projectile multiplier");
+        }
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/api/Attacks.class")) {
+            check(in != null, "Attacks.class must exist");
+            String raw = new String(in.readAllBytes(), StandardCharsets.ISO_8859_1);
+            check(raw.contains("getSynergyProjectileDamageMultiplier"),
+                    "Attacks.damage must apply OriginEntity.getSynergyProjectileDamageMultiplier");
+        }
+
+        // 7. New capability interfaces implemented on OriginEntity
+        for (Class<?> iface : List.of(
+                net.arna.jcraft.api.stand.IIronCapable.class,
+                net.arna.jcraft.api.stand.IPoisonCapsuleCapable.class,
+                net.arna.jcraft.api.stand.IIceLanceCapable.class,
+                net.arna.jcraft.api.stand.IRevolverCapable.class)) {
+            check(iface.isAssignableFrom(net.arna.jcraft.common.entity.stand.OriginEntity.class),
+                    "OriginEntity must implement capability interface " + iface.getSimpleName());
+        }
+
+        // 8. Dedicated-Server bytecode isolation for Origin & new capability classes
         for (String clsPath : List.of(
                 "net/arna/jcraft/common/stand/OriginSkillCatalog.class",
                 "net/arna/jcraft/common/stand/OriginProfile.class",
                 "net/arna/jcraft/common/stand/OriginSynergy.class",
                 "net/arna/jcraft/common/entity/stand/OriginEntity.class",
-                "net/arna/jcraft/common/network/c2s/OriginLoadoutPacket.class")) {
+                "net/arna/jcraft/common/network/c2s/OriginLoadoutPacket.class",
+                "net/arna/jcraft/api/stand/IIronCapable.class",
+                "net/arna/jcraft/api/stand/IPoisonCapsuleCapable.class",
+                "net/arna/jcraft/api/stand/IIceLanceCapable.class",
+                "net/arna/jcraft/api/stand/IRevolverCapable.class")) {
             try (InputStream in = cl.getResourceAsStream(clsPath)) {
                 check(in != null, clsPath + " must exist");
                 String rawBytes = new String(in.readAllBytes(), StandardCharsets.ISO_8859_1);
@@ -1741,6 +2009,22 @@ public final class JCraft263ValidationTest {
                         clsPath + " must not reference client classes");
             }
         }
+
+        // 8b. Guard against legacy GLFW event.button() == 0 checks (MC 26.3 SDL3 uses InputConstants.MOUSE_BUTTON_LEFT == 1)
+        for (String screenFile : List.of(
+                "src/main/java/net/arna/jcraft/client/gui/screen/OriginArsenalScreen.java",
+                "src/main/java/net/arna/jcraft/client/gui/screen/JoJoRadialWheelScreen.java")) {
+            String src = Files.readString(Path.of(screenFile), StandardCharsets.UTF_8);
+            check(!src.contains("event.button() == 0") && !src.contains("event.button() == 1"),
+                    screenFile + " must use InputConstants.MOUSE_BUTTON_LEFT/RIGHT instead of legacy GLFW 0/1");
+            check(src.contains("InputConstants.MOUSE_BUTTON_LEFT"),
+                    screenFile + " must handle InputConstants.MOUSE_BUTTON_LEFT");
+        }
+
+        // 9. README.md documents Origin & 30 Stands
+        String readme = Files.readString(Path.of("README.md"), StandardCharsets.UTF_8);
+        check(readme.contains("Origin") && readme.contains("30 Stands"),
+                "README.md must highlight Origin and 30 playable Stands");
     }
 
     static void verifyVisualPolishAndGameFeel() throws Exception {
@@ -1829,7 +2113,24 @@ public final class JCraft263ValidationTest {
                 && (Math.abs(activeShake[0]) > 0.0f || Math.abs(activeShake[1]) > 0.0f),
                 "Active impact shake must be bounded and non-zero");
 
-        // 5. EN/PT-BR config keys present
+        // 5. AuraAfterimageManager uses frozen EntityRenderState snapshot + GhostSubmitCollector (never extractEntity inside renderAll)
+        check(cl.getResource("net/arna/jcraft/client/rendering/AuraAfterimageManager$GhostSubmitCollector.class") != null,
+                "AuraAfterimageManager must define GhostSubmitCollector for translucent aura fade");
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/client/rendering/AuraAfterimageManager.class")) {
+            check(in != null, "AuraAfterimageManager.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            var renderAll = cn.methods.stream().filter(m -> "renderAll".equals(m.name)).findFirst().orElseThrow();
+            boolean callsExtractInRender = false;
+            for (var insn = renderAll.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi && "extractEntity".equals(mi.name)) {
+                    callsExtractInRender = true;
+                }
+            }
+            check(!callsExtractInRender, "AuraAfterimageManager.renderAll must reuse frozen GhostEcho state instead of extracting live entity per frame");
+        }
+
+        // 6. EN/PT-BR config keys present
         JsonObject enUs = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/en_us.json"));
         JsonObject ptBr = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/pt_br.json"));
         for (String key : List.of(

@@ -5,6 +5,7 @@ import lombok.NonNull;
 import net.arna.jcraft.api.component.living.CommonHitPropertyComponent;
 import net.arna.jcraft.JCraft;
 import net.arna.jcraft.api.registry.JEntityTypeRegistry;
+import net.arna.jcraft.api.stand.IIronCapable;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.entity.stand.MetallicaEntity;
 import net.arna.jcraft.common.tickable.MagneticFields;
@@ -34,8 +35,8 @@ public class ScalpelProjectile extends AbstractArrow {
         super(JEntityTypeRegistry.SCALPEL.get(), owner, world, net.minecraft.world.item.ItemStack.EMPTY, null);
     }
 
-    public static ScalpelProjectile fromMetallica(MetallicaEntity metallica) {
-        if (metallica.drainIron(IRON_COST)) {
+    public static ScalpelProjectile fromMetallica(StandEntity<?, ?> metallica) {
+        if (metallica instanceof IIronCapable iron && iron.drainIron(IRON_COST)) {
             return new ScalpelProjectile(metallica.level(), metallica.getUserOrThrow());
         }
         return null;

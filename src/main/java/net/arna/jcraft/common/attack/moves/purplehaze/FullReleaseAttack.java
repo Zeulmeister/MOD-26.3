@@ -6,15 +6,14 @@ import it.unimi.dsi.fastutil.ints.IntCollection;
 import lombok.NonNull;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.moves.AbstractMultiHitAttack;
-import net.arna.jcraft.common.entity.stand.AbstractPurpleHazeEntity;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.Set;
 
-// Ambattukam
-public class FullReleaseAttack<A extends AbstractPurpleHazeEntity<? extends A, ?>> extends AbstractMultiHitAttack<FullReleaseAttack<A>, A> {
+public class FullReleaseAttack<A extends StandEntity<? extends A, ?>> extends AbstractMultiHitAttack<FullReleaseAttack<A>, A> {
     public FullReleaseAttack(int cooldown, int duration, float moveDistance, float damage, int stun, float hitboxSize,
                              float knockback, float offset, @NonNull IntCollection hitMoments) {
         super(cooldown, duration, moveDistance, damage, stun, hitboxSize, knockback, offset, hitMoments);

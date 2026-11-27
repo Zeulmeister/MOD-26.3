@@ -19,16 +19,25 @@ Recriação completa e aprimorada do **JCraft (JoJo's Bizarre Adventure)** para 
 - **SkyBoxes Nativos (`SkyBoxManager` + `SkyRendererMixin`)**: Céu dimensional estrelado no *Time Erase* (King Crimson) e rastros celestes/ecos de sol e lua no *Made in Heaven*.
 - **Arte Final Dedicada**: 88 ícones 18×18 exclusivos, 28 poses distintas de usuário de Stand, corona emissiva de dupla passagem em *The Sun*, armaduras em `SpecUserMob` e texturas humanoides 64×32 para máscaras/chapéus.
 
-### 3. Conteúdo Completo & Balanceamento
-- **29 Stands Jogáveis e Obtíveis** (37 definições no registro), incluindo os novos **Crazy Diamond** (obtível via Flecha Stand, restauração de blocos, cura de aliados em Co-op, *Wall Breaker* e *Bearing Snap*) e **Chariot Requiem** (evolução exclusiva de *Silver Chariot + Flecha Requiem* com *Somnolence*, *Soul Swap*, contra-ataque *Stand Rebellion*, *Requiem Dominion* e *Shadow Step*).
-- **5 Specs** (*Brawler*, *Anubis*, *Vampire*, *Hamon*, *Ranger*), **8 Evoluções**, **298+ Movesets** data-driven, **223 Itens**, dimensão *AU* e trocas data-driven da 26.3.
-- **Todas as Opções de Servidor Expostas**: `CMOON_UTIL_DURATION`, `CMOON_ULT_RANGE`, `MIH_ACCELERATE_TICKS`, `SHA_SEARCH_RADIUS`, `USE_FOOLISH_SAND`, `UNIVERSAL_ABILITIES`, `SPTW_IGNITE_CAMPFIRES`, `ENABLE_HITSTOP`, `RESET_GRAVITY_ON_RESPAWN` e `VOID_DAMAGE_ABOVE_WORLD`.
-- **Voo Condicional Balanceado em Survival**: Voo permitido apenas durante *Time Stop* ativo ou voo do *Gold Experience Requiem*, com revogação segura ao término.
+### 3. Origin — O Stand Emblemático da Edição 26.3 (`OriginEntity` & Arsenal Origin)
+- **30º Stand Jogável e Modular**: O **Origin** conta com **6 visuais exclusivos** (*Default Obsidiana*, *Crimson Eclipse*, *Astral Void*, *Sovereign Eclipse*, *Absolute Abyss* e *Celestial Divinity*), disco dedicado por skin, sons espaciais próprios e camada emissiva dinâmica (`OriginGlowLayer`).
+- **Arsenal Origin (`K` ou Roda Radial `Y`)**:
+  - **Estúdio 3D + Forja Chroma RGB**: Preview 3D interativo 360° com prévia rápida das animações (*Summon*, *Barrage*, *Heavy*, *T.Stop*, *Grab*) e mistura RGB livre em tempo real.
+  - **Catálogo Dinâmico Unificado**: Suporta habilidades icônicas de todo o elenco via interfaces de capacidade (`Time Stop`, `Time Erase`, `Time Accel`, `Overwrite`, `Flight`, `Inhale`, `IIronCapable` do Metallica, `IPoisonCapsuleCapable` do Purple Haze, `IIceLanceCapable` do Horus, `IRevolverCapable` do D4C, além de `KQGrabAttack`, `BTDDetonateAttack`, `RageAttack`, `SpeedSliceAttack` e `MeteorShowerAttack`).
+  - **Perfis, Códigos de Build & 5 Sinergias Passivas**: 4 slots de perfil nomeáveis livremente + botões **Copiar Build / Colar Build** (`ORIGIN1:...`) e 5 sinergias que escalam dano melee, `hitMove` de grabs, `finisher`, projéteis reais (`+12%` *Artilharia Astral* / `+8%` *Harmonia Onipotente*) e recargas.
+  - **Balanceamento Competitivo (`PvP/Survival`)**: Trava anti-exploit em combate, recarga ativa ou golpe em execução, prevenção de skills duplicadas, recarga compartilhada de Ultimates (`CooldownType.STAND_ULTIMATE`) e limite configurável `ORIGIN_MAX_ULTIMATES`.
 
-### 4. UI, HUD & UX Polidos
-- **Barra de Habilidades Escalável (`hudScale` 0.75x–1.50x)**: Destaque em tempo real do golpe ativo, micro-indicadores `↓` (agachado) e `↑` (aéreo) para variantes desbloqueadas, pílulas de contagem para *Za Warudo*, *Time Erase* e *Made in Heaven* e respeito automático a `UNIVERSAL_ABILITIES`.
-- **Roda Radial Dinâmica (`Y`)**: Cabeçalho com o Stand equipado, nomes reais das skins, marcação da skin ativa (`✓`), desabilitação visual de slots inexistentes, animação suave e atalhos `1–8` + `G`.
-- **Enciclopédia & Guia de Stands (`StandGuideScreen`)**: Consulta de todos os 29 Stands obtíveis (`◀ ▶`), prós/contras, variantes, `WINDUP`, `Armor`, `Unblockable`, evoluções e progressão.
+### 4. Conteúdo Completo & Balanceamento
+- **30 Stands Jogáveis e Obtíveis** (38 definições no registro), incluindo o novo **Origin**, **Crazy Diamond** (obtível via Flecha Stand, restauração de blocos, cura de aliados em Co-op, *Wall Breaker* e *Bearing Snap*) e **Chariot Requiem** (evolução exclusiva de *Silver Chariot + Flecha Requiem* com *Somnolence*, *Soul Swap*, contra-ataque *Stand Rebellion*, *Requiem Dominion* e *Shadow Step*).
+- **5 Specs** (*Brawler*, *Anubis*, *Vampire*, *Hamon*, *Ranger*), **8 Evoluções**, **307+ Movesets** data-driven, dimensão *AU* e trocas data-driven da 26.3.
+- **Todas as Opções de Servidor Expostas**: `CMOON_UTIL_DURATION`, `CMOON_ULT_RANGE`, `MIH_ACCELERATE_TICKS`, `SHA_SEARCH_RADIUS`, `USE_FOOLISH_SAND`, `UNIVERSAL_ABILITIES`, `SPTW_IGNITE_CAMPFIRES`, `ENABLE_HITSTOP`, `ORIGIN_FREE_BINDS`, `ORIGIN_MAX_ULTIMATES`, `RESET_GRAVITY_ON_RESPAWN` e `VOID_DAMAGE_ABOVE_WORLD`.
+- **Voo Condicional Balanceado em Survival**: Voo permitido apenas durante *Time Stop* ativo ou voo do *Gold Experience Requiem* / *Origin*, com revogação segura ao término.
+
+### 5. UI, HUD, Roda Radial & Visuais de Combate
+- **Barra de Habilidades Escalável (`hudScale` 0.75x–1.50x)**: Destaque em tempo real do golpe ativo, micro-indicadores `↓` (agachado) e `↑` (aéreo) para variantes desbloqueadas, ícones dinâmicos para os 9 binds do Origin, pílulas de contagem e respeito automático a `UNIVERSAL_ABILITIES`.
+- **Afterimages Translúcidos com Pose Congelada (`AuraAfterimageManager`)**: Ecos espectrais congelam a pose exata do instante do *Dash*, *Time Skip* ou golpe pesado com fade translúcido real na cor da aura/Chroma + runas de solo.
+- **Roda Radial Dinâmica (`Y`)**: Cabeçalho com o Stand equipado, nomes reais das skins, marcação da skin ativa (`✓`), atalho para o Arsenal Origin, animação suave e atalhos `1–8` + `G`.
+- **Enciclopédia & Guia de Stands (`StandGuideScreen`)**: Consulta de todos os 30 Stands obtíveis (`◀ ▶`), prós/contras, variantes, `WINDUP`, `Armor`, `Unblockable`, evoluções e progressão.
 - **Tradução Completa EN-US & PT-BR** com paridade 1:1 de chaves.
 
 ---
@@ -37,16 +46,19 @@ Recriação completa e aprimorada do **JCraft (JoJo's Bizarre Adventure)** para 
 
 | Tecla | Ação |
 | :---: | :--- |
-| `V` | Invocar / Recolher Stand |
+| `N` | Invocar / Recolher Stand |
 | `R` | Heavy Attack |
 | `B` | Barrage (segurar; soltar cancela instantaneamente) |
 | `H` | Ultimate / Time Stop (pressione novamente para retomar o tempo cedo) |
-| `G` / `J` / `K` | Specials 1, 2 e 3 |
-| `U` | Utility / Mobilidade |
-| `O` | Modo Piloto Universal (câmera e voo 3D no Stand até 36m) |
+| `V` / `G` / `M` | Specials 1, 2 e 3 |
+| `J` | Utility / Mobilidade |
+| `LALT` | Cooldown Cancel |
+| `X` | Dash Universal |
 | `Z` | Visão de Precisão 5x (Segurar) |
 | `P` | JoJo Pose Taunt |
-| `Y` | Roda Radial Rápida JoJo (Skins, Pose, Piloto, HUD, Guia e Configurações) |
+| `O` | Modo Piloto Universal (câmera e voo 3D no Stand até 36m) |
+| `Y` | Roda Radial Rápida JoJo (Skins, Pose, Piloto, Arsenal, HUD, Guia e Configurações) |
+| `K` | **Arsenal Origin** (Estúdio 3D, Binds, Chroma RGB, Perfis & Build Codes) |
 
 ---
 

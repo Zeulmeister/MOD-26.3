@@ -120,6 +120,7 @@ public class JServerConfig {
     public static final BooleanOption CREAM_VOID_VISIBLE = new BooleanOption(JCraft.id("cream_void_visible"), GAMEPLAY, true);
     public static final BooleanOption SPAWNER_STANDS = new BooleanOption(JCraft.id("spawner_stands"), GAMEPLAY, true);
     public static final BooleanOption ORIGIN_FREE_BINDS = new BooleanOption(JCraft.id("origin_free_binds"), GAMEPLAY, true);
+    public static final IntOption ORIGIN_MAX_ULTIMATES = new IntOption(JCraft.id("origin_max_ultimates"), GAMEPLAY, 2, 0, 9);
 
     // TODO list options
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();

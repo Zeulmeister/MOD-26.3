@@ -5,12 +5,13 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.NonNull;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
-import net.arna.jcraft.common.entity.stand.AbstractPurpleHazeEntity;
+import net.arna.jcraft.api.stand.IPoisonCapsuleCapable;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.Set;
 
-public class DistortionMove<A extends AbstractPurpleHazeEntity<? extends A, ?>> extends AbstractMove<DistortionMove<A>, A> {
+public class DistortionMove<A extends StandEntity<? extends A, ?>> extends AbstractMove<DistortionMove<A>, A> {
     public DistortionMove(int cooldown) {
         super(cooldown, 0, 0, 0);
     }
@@ -22,7 +23,9 @@ public class DistortionMove<A extends AbstractPurpleHazeEntity<? extends A, ?>> 
 
     @Override
     public @NonNull Set<LivingEntity> perform(A attacker, LivingEntity user) {
-        attacker.nextPoisonType();
+        if (attacker instanceof IPoisonCapsuleCapable ph) {
+            ph.nextPoisonType();
+        }
         return Set.of();
     }
 

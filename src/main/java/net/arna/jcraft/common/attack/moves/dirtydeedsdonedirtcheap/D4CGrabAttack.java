@@ -7,35 +7,42 @@ import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.StateContainer;
 import net.arna.jcraft.api.attack.moves.AbstractGrabAttack;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
+import net.arna.jcraft.api.stand.IRevolverCapable;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.entity.stand.D4CEntity;
+import net.arna.jcraft.common.util.StandAnimationState;
 import net.minecraft.world.entity.LivingEntity;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Set;
 
-public class D4CGrabAttack extends AbstractGrabAttack<D4CGrabAttack, D4CEntity, D4CEntity.State> {
+public class D4CGrabAttack<A extends StandEntity<A, S>, S extends Enum<S> & StandAnimationState<A>>
+        extends AbstractGrabAttack<D4CGrabAttack<A, S>, A, S> {
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public D4CGrabAttack(final int cooldown, final int windup, final int duration, final float moveDistance,
                          final float damage, final int stun, final float hitboxSize, final float knockback,
-                         final float offset, final AbstractMove<?, ? super D4CEntity> hitMove, final int grabDuration,
+                         final float offset, final AbstractMove<?, ? super A> hitMove, final int grabDuration,
                          final double grabOffset) {
         super(cooldown, windup, duration, moveDistance, damage, stun, hitboxSize, knockback, offset, hitMove,
-                StateContainer.of(D4CEntity.State.THROW_HIT), grabDuration, grabOffset);
+                (StateContainer<S>) (StateContainer) StateContainer.of(D4CEntity.State.THROW_HIT), grabDuration, grabOffset);
     }
 
     @Override
-    public @NotNull MoveType<D4CGrabAttack> getMoveType() {
-        return Type.INSTANCE;
+    public @NotNull MoveType<D4CGrabAttack<A, S>> getMoveType() {
+        return Type.INSTANCE.cast();
     }
 
     @Override
-    public void onInitiate(D4CEntity attacker) {
+    public void onInitiate(A attacker) {
         super.onInitiate(attacker);
-
-        attacker.equipRevolver();
+        if (attacker instanceof IRevolverCapable rev) {
+            rev.equipRevolver();
+        }
     }
 
     @Override
-    public @NonNull Set<LivingEntity> perform(final D4CEntity attacker, final LivingEntity user) {
+    public @NonNull Set<LivingEntity> perform(final A attacker, final LivingEntity user) {
         Set<LivingEntity> targets = super.perform(attacker, user);
 
         if (targets.isEmpty()) {
@@ -46,24 +53,27 @@ public class D4CGrabAttack extends AbstractGrabAttack<D4CGrabAttack, D4CEntity, 
     }
 
     @Override
-    protected @NonNull D4CGrabAttack getThis() {
+    protected @NonNull D4CGrabAttack<A, S> getThis() {
         return this;
     }
 
     @Override
-    public @NonNull D4CGrabAttack copy() {
-        return copyExtras(new D4CGrabAttack(getCooldown(), getWindup(), getDuration(), getMoveDistance(), getDamage(),
+    public @NonNull D4CGrabAttack<A, S> copy() {
+        return copyExtras(new D4CGrabAttack<A, S>(getCooldown(), getWindup(), getDuration(), getMoveDistance(), getDamage(),
                 getStun(), getHitboxSize(), getKnockback(), getOffset(), getHitMove(), getGrabDuration(), getGrabOffset()));
     }
 
-    public static class Type extends AbstractGrabAttack.Type<D4CGrabAttack> {
+    public static class Type extends AbstractGrabAttack.Type<D4CGrabAttack<?, ?>> {
         public static final Type INSTANCE = new Type();
 
+        @SuppressWarnings({"rawtypes", "unchecked"})
         @Override
-        protected @NotNull App<RecordCodecBuilder.Mu<D4CGrabAttack>, D4CGrabAttack> buildCodec(RecordCodecBuilder.Instance<D4CGrabAttack> instance) {
+        protected @NotNull App<RecordCodecBuilder.Mu<D4CGrabAttack<?, ?>>, D4CGrabAttack<?, ?>> buildCodec(RecordCodecBuilder.Instance<D4CGrabAttack<?, ?>> instance) {
             return instance.group(extras(), attackExtras(), cooldown(), windup(), duration(), moveDistance(), damage(),
-                            stun(), hitboxSize(), knockback(), offset(), this.<D4CEntity>hitMove(), grabDuration(), grabOffset())
-                    .apply(instance, applyAttackExtras(D4CGrabAttack::new));
+                            stun(), hitboxSize(), knockback(), offset(), hitMove(), grabDuration(), grabOffset())
+                    .apply(instance, applyAttackExtras(
+                            (cooldown, windup, duration, moveDistance, damage, stun, hitboxSize, knockback, offset, hitMove, grabDuration, grabOffset) ->
+                                    new D4CGrabAttack(cooldown, windup, duration, moveDistance, damage, stun, hitboxSize, knockback, offset, hitMove, grabDuration, grabOffset)));
         }
     }
 }

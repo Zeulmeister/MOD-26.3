@@ -8,7 +8,14 @@
       "backstab": true,
       "block_stun": 8,
       "blockable_type": "NON_BLOCKABLE_EFFECTS_ONLY",
-      "hit_animation": "MID",
+      "extra_hit_boxes": [
+        {
+          "forward_offset": 0.95,
+          "size": 1.15,
+          "vertical_offset": 0.1
+        }
+      ],
+      "hit_animation": "HIGH",
       "hit_spark": "HIT_SPARK_3"
     },
     "cooldown": 120,
@@ -26,7 +33,7 @@
         {
           "type": "jcraft:play_sound",
           "run": "at_init",
-          "sound": "jcraft:origin_heavy"
+          "sound": "jcraft:origin_special1"
         },
         {
           "type": "jcraft:play_sound",

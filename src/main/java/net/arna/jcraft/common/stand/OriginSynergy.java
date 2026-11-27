@@ -1,7 +1,9 @@
 package net.arna.jcraft.common.stand;
 
+import net.arna.jcraft.api.attack.moves.AbstractGrabAttack;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
 import net.arna.jcraft.api.attack.moves.AbstractSimpleAttack;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -211,5 +213,28 @@ public final class OriginSynergy {
         applyRecursive(move.getFollowup(), category, summary, visited);
         applyRecursive(move.getCrouchingVariant(), category, summary, visited);
         applyRecursive(move.getAerialVariant(), category, summary, visited);
+        if (move instanceof AbstractGrabAttack<?, ?, ?> grab && grab.getHitMove() != null) {
+            applyRecursive(grab.getHitMove(), category, summary, visited);
+        }
+        if (move.getFinisher() != null && move.getFinisher().right() != null) {
+            applyRecursive(move.getFinisher().right(), category, summary, visited);
+        }
+    }
+
+    /**
+     * Computes projectile damage multiplier for Origin when Astral Artillery / Omnipotent Harmony are active.
+     */
+    public static float computeProjectileDamageMultiplier(final @Nullable SynergySummary summary) {
+        if (summary == null || summary.activeCount() == 0) {
+            return 1.0f;
+        }
+        float mult = 1.0f;
+        if (summary.isActive(SynergyType.ASTRAL_ARTILLERY)) {
+            mult *= 1.12f;
+        }
+        if (summary.isActive(SynergyType.OMNIPOTENT_HARMONY)) {
+            mult *= 1.08f;
+        }
+        return mult;
     }
 }

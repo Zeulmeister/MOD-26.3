@@ -18,6 +18,7 @@ import net.arna.jcraft.api.component.living.CommonHitPropertyComponent;
 import net.arna.jcraft.api.registry.JItemRegistry;
 import net.arna.jcraft.api.registry.JSoundRegistry;
 import net.arna.jcraft.api.registry.JStandTypeRegistry;
+import net.arna.jcraft.api.stand.IRevolverCapable;
 import net.arna.jcraft.api.stand.StandData;
 import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.api.stand.StandInfo;
@@ -51,7 +52,7 @@ import org.joml.Vector3f;
  * @see GiveGunMove
  * @see ItemPlaceMove
  */
-public class D4CEntity extends StandEntity<D4CEntity, D4CEntity.State> {
+public class D4CEntity extends StandEntity<D4CEntity, D4CEntity.State> implements IRevolverCapable {
     public static final MoveSet<D4CEntity, State> MOVE_SET = MoveSetManager.create(JStandTypeRegistry.D4C, D4CEntity::registerMoves, D4CEntity.class, State.class);
     public static final StandData DATA = StandData.builder()
             .idleRotation(-45f)
@@ -154,7 +155,7 @@ public class D4CEntity extends StandEntity<D4CEntity, D4CEntity.State> {
                     Component.literal("Dimensional Hop"),
                     Component.literal("Travels to the Alternate Universe at your current exact coordinates.")
             );
-    public static final GiveGunMove GIVE_GUN = new GiveGunMove(280, 10, 14, 0.75f)
+    public static final GiveGunMove<D4CEntity> GIVE_GUN = new GiveGunMove<D4CEntity>(280, 10, 14, 0.75f)
             .withSound(JSoundRegistry.D4C_THROW)
             .withInfo(
                     Component.literal("Summon Gun"),
@@ -182,7 +183,7 @@ public class D4CEntity extends StandEntity<D4CEntity, D4CEntity.State> {
                     Component.empty()
             );
 
-    public static final D4CGrabAttack GRAB = new D4CGrabAttack(280, 12, 21, 0.75f,
+    public static final D4CGrabAttack<D4CEntity, State> GRAB = new D4CGrabAttack<>(280, 12, 21, 0.75f,
             0f, 40, 1.5f, 0f, 0f, GRAB_HIT, 25, 1)
             .withCrouchingVariant(GIVE_GUN)
             .withSound(JSoundRegistry.D4C_THROW)

@@ -5,8 +5,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.NonNull;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
+import net.arna.jcraft.api.stand.IIceLanceCapable;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.entity.projectile.LargeIcicleProjectile;
-import net.arna.jcraft.common.entity.stand.HorusEntity;
 import net.arna.jcraft.common.gravity.api.GravityChangerAPI;
 import net.minecraft.core.Vec3i;
 import net.minecraft.util.Mth;
@@ -15,24 +16,25 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.Set;
 
-public class IceLanceAttack extends AbstractMove<IceLanceAttack, HorusEntity> {
+public class IceLanceAttack<A extends StandEntity<? extends A, ?>> extends AbstractMove<IceLanceAttack<A>, A> {
     public IceLanceAttack(int cooldown, int windup, int duration, float moveDistance) {
         super(cooldown, windup, duration, moveDistance);
         ranged = true;
     }
 
     @Override
-    public @NonNull MoveType<IceLanceAttack> getMoveType() {
-        return Type.INSTANCE;
+    public @NonNull MoveType<IceLanceAttack<A>> getMoveType() {
+        return Type.INSTANCE.cast();
     }
 
     @Override
-    public @NonNull Set<LivingEntity> perform(HorusEntity attacker, LivingEntity user) {
-        final AbstractMove<?, ? super HorusEntity> move = attacker.getCurrentMove();
-        if (move == null) return Set.of();
+    public @NonNull Set<LivingEntity> perform(A attacker, LivingEntity user) {
+        if (attacker.getCurrentMove() == null) return Set.of();
 
         LargeIcicleProjectile icicle = new LargeIcicleProjectile(attacker.level(), user);
-        attacker.setLastLargeIcicle(icicle);
+        if (attacker instanceof IIceLanceCapable ice) {
+            ice.setLastLargeIcicle(icicle);
+        }
 
         final Vec3i gravity = GravityChangerAPI.getGravityDirection(user).getUnitVec3i();
         final Vec3 velocity = user.getLookAngle();
@@ -47,26 +49,24 @@ public class IceLanceAttack extends AbstractMove<IceLanceAttack, HorusEntity> {
         icicle.lock();
 
         attacker.level().addFreshEntity(icicle);
-        // attacker.playSound(JSoundRegistry.HORUS_LANCE_THROW.get());
-
         return Set.of();
     }
 
     @Override
-    protected @NonNull IceLanceAttack getThis() {
+    protected @NonNull IceLanceAttack<A> getThis() {
         return this;
     }
 
     @Override
-    public @NonNull IceLanceAttack copy() {
-        return copyExtras(new IceLanceAttack(getCooldown(), getWindup(), getDuration(), getMoveDistance()));
+    public @NonNull IceLanceAttack<A> copy() {
+        return copyExtras(new IceLanceAttack<>(getCooldown(), getWindup(), getDuration(), getMoveDistance()));
     }
 
-    public static class Type extends AbstractMove.Type<IceLanceAttack> {
+    public static class Type extends AbstractMove.Type<IceLanceAttack<?>> {
         public static final Type INSTANCE = new Type();
 
         @Override
-        protected @NonNull App<RecordCodecBuilder.Mu<IceLanceAttack>, IceLanceAttack> buildCodec(RecordCodecBuilder.Instance<IceLanceAttack> instance) {
+        protected @NonNull App<RecordCodecBuilder.Mu<IceLanceAttack<?>>, IceLanceAttack<?>> buildCodec(RecordCodecBuilder.Instance<IceLanceAttack<?>> instance) {
             return baseDefault(instance, IceLanceAttack::new);
         }
     }

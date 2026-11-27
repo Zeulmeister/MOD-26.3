@@ -5,13 +5,15 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.NonNull;
 import net.arna.jcraft.api.attack.MoveType;
 import net.arna.jcraft.api.attack.moves.AbstractSimpleAttack;
+import net.arna.jcraft.api.stand.IPoisonCapsuleCapable;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.entity.PurpleHazeCloudEntity;
 import net.arna.jcraft.common.entity.stand.AbstractPurpleHazeEntity;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.Set;
 
-public class PHGroundSlamAttack<A extends AbstractPurpleHazeEntity<? extends A, ?>> extends AbstractSimpleAttack<PHGroundSlamAttack<A>, A> {
+public class PHGroundSlamAttack<A extends StandEntity<? extends A, ?>> extends AbstractSimpleAttack<PHGroundSlamAttack<A>, A> {
     public PHGroundSlamAttack(int cooldown, int windup, int duration, float moveDistance, float damage, int stun,
                               float hitboxSize, float knockback, float offset) {
         super(cooldown, windup, duration, moveDistance, damage, stun, hitboxSize, knockback, offset);
@@ -26,7 +28,10 @@ public class PHGroundSlamAttack<A extends AbstractPurpleHazeEntity<? extends A, 
     public @NonNull Set<LivingEntity> perform(A attacker, LivingEntity user) {
         Set<LivingEntity> targets = super.perform(attacker, user);
 
-        final PurpleHazeCloudEntity cloud = new PurpleHazeCloudEntity(attacker.level(), 3.0f, attacker.getPoisonType());
+        AbstractPurpleHazeEntity.PoisonType pType = attacker instanceof IPoisonCapsuleCapable ph
+                ? ph.getPoisonType()
+                : AbstractPurpleHazeEntity.PoisonType.HARMING;
+        final PurpleHazeCloudEntity cloud = new PurpleHazeCloudEntity(attacker.level(), 3.0f, pType);
         cloud.copyPosition(attacker);
         cloud.setOwner(user);
         attacker.level().addFreshEntity(cloud);

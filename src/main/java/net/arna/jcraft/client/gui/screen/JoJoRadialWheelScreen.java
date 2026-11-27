@@ -261,7 +261,7 @@ public final class JoJoRadialWheelScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == 0) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             if (hoveringCenter) {
                 Minecraft.getInstance().gui.setScreen(new StandGuideScreen(null));
                 return true;

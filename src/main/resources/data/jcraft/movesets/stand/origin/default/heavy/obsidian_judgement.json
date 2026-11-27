@@ -2,13 +2,73 @@
   "anim_state": "HEAVY",
   "class": "HEAVY",
   "cooldown_type": "STAND_HEAVY",
+  "crouching_variant": {
+    "anim_state": "GRAB_HIT",
+    "class": "HEAVY",
+    "cooldown_type": "STAND_HEAVY",
+    "move": {
+      "type": "jcraft:shared_simple_attack",
+      "attack_extras": {
+        "backstab": true,
+        "block_stun": 12,
+        "blockable_type": "NON_BLOCKABLE",
+        "extra_hit_boxes": [
+          {
+            "size": 2.35,
+            "vertical_offset": -0.25
+          }
+        ],
+        "hit_animation": "CRUSH",
+        "hit_spark": "HIT_SPARK_3",
+        "override_stun": true,
+        "shockwaves": true,
+        "stun_type": "LAUNCH"
+      },
+      "cooldown": 60,
+      "damage": 8.5,
+      "duration": 20,
+      "extras": {
+        "actions": [
+          {
+            "type": "jcraft:play_sound",
+            "run": "at_init",
+            "sound": "jcraft:origin_grab_hit"
+          },
+          {
+            "type": "jcraft:play_sound",
+            "bind": false,
+            "run": "on_hit",
+            "sound": "jcraft:impact10"
+          }
+        ],
+        "armor": 2,
+        "description": {
+          "translate": "move.jcraft.origin.default.gravity_slam.description"
+        },
+        "name": {
+          "translate": "move.jcraft.origin.default.gravity_slam.name"
+        }
+      },
+      "hitbox_size": 2.65,
+      "knockback": 1.15,
+      "move_distance": 1.25,
+      "offset": -0.35,
+      "stun": 22,
+      "windup": 12
+    }
+  },
   "move": {
     "type": "jcraft:shared_simple_attack",
     "attack_extras": {
       "backstab": true,
       "block_stun": 12,
       "blockable_type": "NON_BLOCKABLE",
-      "hit_animation": "LAUNCH",
+      "extra_hit_boxes": [
+        {
+          "size": 1.35
+        }
+      ],
+      "hit_animation": "CRUSH",
       "hit_spark": "HIT_SPARK_3",
       "override_stun": true,
       "shockwaves": true,

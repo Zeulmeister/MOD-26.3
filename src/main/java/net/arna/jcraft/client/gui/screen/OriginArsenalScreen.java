@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.arna.jcraft.api.attack.enums.MoveClass;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
 import net.arna.jcraft.api.attack.moves.AbstractSimpleAttack;
+import net.arna.jcraft.api.component.living.CommonCooldownsComponent;
 import net.arna.jcraft.api.component.living.CommonStandComponent;
 import net.arna.jcraft.api.registry.JSoundRegistry;
 import net.arna.jcraft.api.registry.JStandTypeRegistry;
@@ -17,6 +18,7 @@ import net.arna.jcraft.common.network.c2s.RadialMenuActionPacket;
 import net.arna.jcraft.common.stand.OriginProfile;
 import net.arna.jcraft.common.stand.OriginSkillCatalog;
 import net.arna.jcraft.common.stand.OriginSynergy;
+import net.arna.jcraft.common.util.CooldownType;
 import net.arna.jcraft.common.util.JUtils;
 import net.arna.jcraft.platform.JComponentPlatformUtils;
 import net.fabricmc.api.EnvType;
@@ -45,6 +47,7 @@ import java.util.EnumMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -74,13 +77,14 @@ public class OriginArsenalScreen extends Screen {
             0xDCE6FF  // Abyssal Silver
     };
 
-    private static final String[] PROFILE_NAME_POOL = {
-            "Boss Killer",
-            "Time Control",
-            "Mobility",
-            "Sovereign",
-            "PvP Rush"
-    };
+    private record StudioAnimSpec(OriginEntity.State state, String labelKey, int durationTicks) {}
+
+    private static final List<StudioAnimSpec> STUDIO_ANIM_SPECS = List.of(
+            new StudioAnimSpec(OriginEntity.State.BARRAGE, "jcraft.origin.studio.anim.barrage", 44),
+            new StudioAnimSpec(OriginEntity.State.HEAVY, "jcraft.origin.studio.anim.heavy", 32),
+            new StudioAnimSpec(OriginEntity.State.TIME_STOP, "jcraft.origin.studio.anim.timestop", 44),
+            new StudioAnimSpec(OriginEntity.State.GRAB, "jcraft.origin.studio.anim.grab", 34)
+    );
 
     private record PillRect(int x, int y, int w, int h, Runnable action) {
         boolean contains(double mx, double my) {
@@ -111,6 +115,7 @@ public class OriginArsenalScreen extends Screen {
     private int standFilterIdx = -1; // -1 = All Stands
     private String searchQuery = "";
     private int scrollPixels = 0;
+    private int selectedSkillIdx = 0;
 
     // Studio 3D & Chroma state
     private @Nullable OriginEntity previewOrigin;
@@ -119,6 +124,8 @@ public class OriginArsenalScreen extends Screen {
     private float previewPitchDeg = -8.0f;
     private boolean autoSpin = true;
     private boolean draggingPreview = false;
+    private OriginEntity.State previewAnimState = OriginEntity.State.IDLE;
+    private int previewAnimTicks = 0;
     private boolean chromaEnabled = false;
     private int chromaR = 168;
     private int chromaG = 40;
@@ -126,25 +133,29 @@ public class OriginArsenalScreen extends Screen {
     private int draggingChromaChannel = -1;
     private boolean chromaDirtyOnRelease = false;
 
-    // Profiles label drafts
+    // Profiles label drafts & inline rename state
     private final String[] profileDraftNames = {
             OriginProfile.defaultNameForSlot(0),
             OriginProfile.defaultNameForSlot(1),
             OriginProfile.defaultNameForSlot(2),
             OriginProfile.defaultNameForSlot(3)
     };
+    private int editingProfileIdx = -1;
+    private int lastSeenLoadoutVersion = -1;
 
     // Cached synergies evaluated from current loadout
     private OriginSynergy.SynergySummary cachedSynergies = OriginSynergy.SynergySummary.EMPTY;
 
     // Widgets
     private EditBox searchBox;
+    private EditBox profileNameBox;
     private Button standPrevBtn;
     private Button standCycleBtn;
     private Button standNextBtn;
     private Button standResetBtn;
     private Button scrollUpBtn;
     private Button scrollDownBtn;
+    private Button equipSelectedBtn;
     private Button skinCycleBtn;
 
     // Layout geometry
@@ -190,6 +201,7 @@ public class OriginArsenalScreen extends Screen {
                     profileDraftNames[i] = prof.name();
                 }
             }
+            lastSeenLoadoutVersion = comp.getOriginLoadoutVersion();
         } else {
             for (MoveClass slot : MoveClass.values()) {
                 localLoadout.put(slot, OriginSkillCatalog.getDefaultId(slot));
@@ -259,11 +271,26 @@ public class OriginArsenalScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player != null) {
+            CommonStandComponent comp = JComponentPlatformUtils.getStandComponent(player);
+            if (comp.getOriginLoadoutVersion() != lastSeenLoadoutVersion) {
+                loadFromClientPlayer();
+                updateSkinButtonLabel();
+            }
+        }
         if (previewOrigin != null) {
             previewOrigin.tickCount++;
             if (previewOrigin.isPlaySummonAnim() && previewOrigin.tickCount > 24) {
                 previewOrigin.setPlaySummonAnim(false);
                 previewOrigin.setStateNoReset(OriginEntity.State.IDLE);
+                previewAnimState = OriginEntity.State.IDLE;
+            } else if (!previewOrigin.isPlaySummonAnim() && previewAnimTicks > 0) {
+                previewAnimTicks--;
+                if (previewAnimTicks <= 0) {
+                    previewAnimState = OriginEntity.State.IDLE;
+                    previewOrigin.setStateNoReset(OriginEntity.State.IDLE);
+                }
             }
         }
         if (activeTab == TAB_STUDIO && autoSpin && !draggingPreview) {
@@ -307,7 +334,17 @@ public class OriginArsenalScreen extends Screen {
             }
             filteredSkills.add(entry);
         }
+        StandType originType = JStandTypeRegistry.ORIGIN.get();
+        filteredSkills.sort(java.util.Comparator
+                .comparing((OriginSkillCatalog.SkillEntry e) -> e.sourceSlot() != selectedSlot)
+                .thenComparing(e -> e.standType() == originType)
+                .thenComparing(e -> e.standId().toString())
+                .thenComparing(e -> e.sourceSlot().ordinal()));
+        selectedSkillIdx = filteredSkills.isEmpty() ? 0 : Mth.clamp(selectedSkillIdx, 0, filteredSkills.size() - 1);
         scrollPixels = Mth.clamp(scrollPixels, 0, getMaxScroll());
+        if (equipSelectedBtn != null) {
+            equipSelectedBtn.active = (activeTab == TAB_SKILLS) && !filteredSkills.isEmpty();
+        }
         updateStandFilterLabels();
     }
 
@@ -356,6 +393,18 @@ public class OriginArsenalScreen extends Screen {
             scrollDownBtn.visible = isSkills;
             scrollDownBtn.active = isSkills;
         }
+        if (equipSelectedBtn != null) {
+            equipSelectedBtn.visible = isSkills;
+            equipSelectedBtn.active = isSkills && !filteredSkills.isEmpty();
+        }
+        if (profileNameBox != null) {
+            boolean showRename = (activeTab == TAB_PROFILES && editingProfileIdx >= 0);
+            profileNameBox.visible = showRename;
+            profileNameBox.active = showRename;
+            if (!showRename) {
+                profileNameBox.setFocused(false);
+            }
+        }
     }
 
     @Override
@@ -398,6 +447,14 @@ public class OriginArsenalScreen extends Screen {
         });
         this.addRenderableWidget(this.searchBox);
 
+        this.profileNameBox = new EditBox(this.font, this.listX, this.contentTop, 80, 11, Component.empty());
+        this.profileNameBox.setMaxLength(OriginProfile.MAX_NAME_LENGTH);
+        this.profileNameBox.setTextColor(0xFFFDE68A);
+        this.profileNameBox.setBordered(true);
+        this.profileNameBox.visible = false;
+        this.profileNameBox.active = false;
+        this.addRenderableWidget(this.profileNameBox);
+
         int standBtnStart = this.listX + searchW + 4;
         int arrowW = 14;
         int clearW = 14;
@@ -419,21 +476,26 @@ public class OriginArsenalScreen extends Screen {
         this.listY = this.presetBarY + 15;
         this.listBottom = this.contentBottom - 2;
 
-        // Footer controls
+        // Footer controls: ▲/▼ skill cursor arrows + [Swap/Equip] button + Skin + Done
         int footerY = this.panelTop + this.panelH - 19;
-        this.scrollUpBtn = this.addRenderableWidget(Button.builder(Component.literal("▲"), b -> scrollBy(-SCROLL_STEP * 3))
+        this.scrollUpBtn = this.addRenderableWidget(Button.builder(Component.literal("▲"), b -> moveSkillCursor(-1))
                 .bounds(this.listX, footerY, 18, 15).build());
-        this.scrollDownBtn = this.addRenderableWidget(Button.builder(Component.literal("▼"), b -> scrollBy(SCROLL_STEP * 3))
+        this.scrollDownBtn = this.addRenderableWidget(Button.builder(Component.literal("▼"), b -> moveSkillCursor(1))
                 .bounds(this.listX + 20, footerY, 18, 15).build());
+        int equipBtnW = Math.min(64, Math.max(48, this.listW - 190));
+        this.equipSelectedBtn = this.addRenderableWidget(Button.builder(
+                        Component.translatable("jcraft.origin.arsenal.equip_action"),
+                        b -> equipHighlightedSkill())
+                .bounds(this.listX + 40, footerY, equipBtnW, 15).build());
 
-        int doneX = this.panelLeft + this.panelW - 60;
-        int skinBtnW = Math.min(108, Math.max(68, this.listW - 152));
+        int doneX = this.panelLeft + this.panelW - 56;
+        int skinBtnW = Math.min(92, Math.max(58, this.listW - equipBtnW - 148));
         int skinBtnX = doneX - skinBtnW - 4;
         this.skinCycleBtn = this.addRenderableWidget(Button.builder(Component.empty(), b -> cycleOriginSkin(1))
                 .bounds(skinBtnX, footerY, skinBtnW, 15).build());
         updateSkinButtonLabel();
         this.addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
-                .bounds(doneX, footerY, 53, 15).build());
+                .bounds(doneX, footerY, 50, 15).build());
 
         updateFooterBadgeBounds();
 
@@ -492,27 +554,40 @@ public class OriginArsenalScreen extends Screen {
         this.previewBoxX = this.listX;
         this.previewBoxY = this.contentTop;
         this.previewBoxW = leftPaneW;
-        this.previewBoxH = Math.max(64, this.contentBottom - this.contentTop - 32);
+        this.previewBoxH = Math.max(54, this.contentBottom - this.contentTop - 46);
 
         int ctrlY1 = this.previewBoxY + this.previewBoxH + 3;
-        int ctrlY2 = ctrlY1 + 15;
+        int ctrlY2 = ctrlY1 + 14;
+        int ctrlY3 = ctrlY2 + 14;
         int skinNavArrowW = 16;
         int skinLabelW = Math.max(40, leftPaneW - skinNavArrowW * 2 - 4);
-        studioPills.add(new PillRect(this.previewBoxX, ctrlY1, skinNavArrowW, 13, () -> cycleOriginSkin(-1)));
-        studioPills.add(new PillRect(this.previewBoxX + skinNavArrowW + 2 + skinLabelW + 2, ctrlY1, skinNavArrowW, 13, () -> cycleOriginSkin(1)));
+        studioPills.add(new PillRect(this.previewBoxX, ctrlY1, skinNavArrowW, 12, () -> cycleOriginSkin(-1)));
+        studioPills.add(new PillRect(this.previewBoxX + skinNavArrowW + 2 + skinLabelW + 2, ctrlY1, skinNavArrowW, 12, () -> cycleOriginSkin(1)));
 
         int halfCtrlW = (leftPaneW - 3) / 2;
-        studioPills.add(new PillRect(this.previewBoxX, ctrlY2, halfCtrlW, 13, () -> {
+        studioPills.add(new PillRect(this.previewBoxX, ctrlY2, halfCtrlW, 12, () -> {
             autoSpin = !autoSpin;
             playUiClick();
         }));
-        studioPills.add(new PillRect(this.previewBoxX + halfCtrlW + 3, ctrlY2, halfCtrlW, 13, () -> {
+        studioPills.add(new PillRect(this.previewBoxX + halfCtrlW + 3, ctrlY2, halfCtrlW, 12, () -> {
             ensurePreviewEntity();
+            float summonPitch = 1.0F;
             if (previewOrigin != null) {
+                previewAnimState = OriginEntity.State.IDLE;
+                previewAnimTicks = 0;
                 previewOrigin.tickCount = 1;
                 previewOrigin.setPlaySummonAnim(true);
+                summonPitch = switch (previewOrigin.getSkin()) {
+                    case 1 -> 0.86F;
+                    case 2 -> 1.15F;
+                    case 3 -> 0.94F;
+                    case 4 -> 0.64F;
+                    case 5 -> 1.26F;
+                    default -> 1.0F;
+                };
             }
-            playUiClick();
+            Minecraft.getInstance().getSoundManager().play(
+                    SimpleSoundInstance.forUI(JSoundRegistry.ORIGIN_SUMMON.get(), summonPitch, 0.85F));
         }));
 
         // Right Chroma Forge pane
@@ -552,9 +627,18 @@ public class OriginArsenalScreen extends Screen {
             playUiClick();
         }));
 
+        // Studio quick move-animation preview pills (last 4 entries in studioPills)
+        int animGap = 2;
+        int animW = Math.max(18, (leftPaneW - animGap * (STUDIO_ANIM_SPECS.size() - 1)) / STUDIO_ANIM_SPECS.size());
+        for (int i = 0; i < STUDIO_ANIM_SPECS.size(); i++) {
+            final StudioAnimSpec spec = STUDIO_ANIM_SPECS.get(i);
+            int ax = this.previewBoxX + i * (animW + animGap);
+            studioPills.add(new PillRect(ax, ctrlY3, animW, 12, () -> playStudioPreviewAnim(spec.state(), spec.durationTicks())));
+        }
+
         // Tab 2 (Profiles & Synergies) pills
         profilePills.clear();
-        int cardsTop = this.contentTop + 11;
+        int cardsTop = this.contentTop + 12;
         int totalH = Math.max(115, this.contentBottom - cardsTop);
         int profilesSectionH = Math.max(60, Math.min(96, (int) (totalH * 0.43f)));
         int cardGap = 3;
@@ -567,11 +651,8 @@ public class OriginArsenalScreen extends Screen {
             int cx = this.listX + col * (cardW + cardGap);
             int cy = cardsTop + row * (cardH + cardGap);
 
-            // Rename cycler [✎] on top-right
-            profilePills.add(new PillRect(cx + cardW - 14, cy + 2, 12, 9, () -> {
-                cycleProfileDraftName(idx);
-                playUiClick();
-            }));
+            // Rename toggle [✎ / ✓] on top-right
+            profilePills.add(new PillRect(cx + cardW - 14, cy + 2, 12, 9, () -> toggleProfileRename(idx, cx, cy, cardW)));
 
             // Action pills on bottom of card: Load | Save | ✕
             int btnY = cy + cardH - 12;
@@ -581,19 +662,67 @@ public class OriginArsenalScreen extends Screen {
             profilePills.add(new PillRect(cx + 3 + halfActionW + 2, btnY, halfActionW, 10, () -> saveProfile(idx)));
             profilePills.add(new PillRect(cx + cardW - clearW - 3, btnY, clearW, 10, () -> clearProfile(idx)));
         }
+
+        // Build-code Copy / Paste pills on the Profiles title row
+        int codeBtnW = Math.min(62, Math.max(46, this.listW / 5));
+        int pasteX = this.listX + this.listW - codeBtnW;
+        int copyX = pasteX - codeBtnW - 3;
+        profilePills.add(new PillRect(copyX, this.contentTop - 1, codeBtnW, 11, this::copyBuildCode));
+        profilePills.add(new PillRect(pasteX, this.contentTop - 1, codeBtnW, 11, this::pasteBuildCode));
     }
 
     private void updateFooterBadgeBounds() {
         int skinBtnX = this.skinCycleBtn != null ? this.skinCycleBtn.getX() : (this.panelLeft + this.panelW - 120);
-        int badgeX = (activeTab == TAB_SKILLS) ? (this.listX + 42) : this.listX;
-        int badgeW = Math.max(16, skinBtnX - badgeX - 4);
-        this.footerSynergyBadge = new PillRect(badgeX, this.panelTop + this.panelH - 19, badgeW, 15,
-                () -> selectTab(TAB_PROFILES));
+        int badgeX = (activeTab == TAB_SKILLS && this.equipSelectedBtn != null)
+                ? (this.equipSelectedBtn.getX() + this.equipSelectedBtn.getWidth() + 3)
+                : this.listX;
+        int badgeW = skinBtnX - badgeX - 4;
+        this.footerSynergyBadge = badgeW >= 24
+                ? new PillRect(badgeX, this.panelTop + this.panelH - 19, badgeW, 15, () -> selectTab(TAB_PROFILES))
+                : null;
+    }
+
+    private void moveSkillCursor(int delta) {
+        if (activeTab != TAB_SKILLS || filteredSkills.isEmpty()) {
+            return;
+        }
+        selectedSkillIdx = Math.floorMod(selectedSkillIdx + delta, filteredSkills.size());
+        ensureSkillCursorVisible();
+        playUiClick();
+    }
+
+    private void ensureSkillCursorVisible() {
+        if (filteredSkills.isEmpty()) {
+            selectedSkillIdx = 0;
+            return;
+        }
+        selectedSkillIdx = Mth.clamp(selectedSkillIdx, 0, filteredSkills.size() - 1);
+        int pitch = ROW_H + ROW_GAP;
+        int rowTop = selectedSkillIdx * pitch;
+        int rowBot = rowTop + ROW_H;
+        int viewH = Math.max(1, listBottom - listY);
+        if (rowTop < scrollPixels) {
+            scrollPixels = rowTop;
+        } else if (rowBot > scrollPixels + viewH) {
+            scrollPixels = rowBot - viewH;
+        }
+        scrollPixels = Mth.clamp(scrollPixels, 0, getMaxScroll());
+    }
+
+    private void equipHighlightedSkill() {
+        if (activeTab != TAB_SKILLS || filteredSkills.isEmpty()) {
+            return;
+        }
+        selectedSkillIdx = Mth.clamp(selectedSkillIdx, 0, filteredSkills.size() - 1);
+        assignSkillToSelectedSlot(filteredSkills.get(selectedSkillIdx));
     }
 
     public void selectTab(int tab) {
         int clamped = Mth.clamp(tab, TAB_SKILLS, TAB_PROFILES);
         if (this.activeTab != clamped) {
+            if (this.activeTab == TAB_PROFILES && editingProfileIdx >= 0) {
+                commitProfileNameEdit();
+            }
             this.activeTab = clamped;
             if (this.activeTab == TAB_STUDIO) {
                 ensurePreviewEntity();
@@ -603,16 +732,170 @@ public class OriginArsenalScreen extends Screen {
         }
     }
 
-    private void cycleProfileDraftName(int idx) {
-        String current = profileDraftNames[idx];
-        int found = -1;
-        for (int i = 0; i < PROFILE_NAME_POOL.length; i++) {
-            if (PROFILE_NAME_POOL[i].equals(current)) {
-                found = i;
-                break;
+    private void playStudioPreviewAnim(OriginEntity.State state, int durationTicks) {
+        ensurePreviewEntity();
+        if (previewOrigin != null) {
+            previewOrigin.setPlaySummonAnim(false);
+            previewOrigin.setState(state);
+            previewAnimState = state;
+            previewAnimTicks = durationTicks;
+        }
+        var previewSound = switch (state) {
+            case BARRAGE -> JSoundRegistry.ORIGIN_BARRAGE.get();
+            case HEAVY -> JSoundRegistry.ORIGIN_HEAVY.get();
+            case TIME_STOP, ULTIMATE -> JSoundRegistry.ORIGIN_ULT.get();
+            case GRAB, SPECIAL3 -> JSoundRegistry.ORIGIN_GRAB.get();
+            case COUNTER -> JSoundRegistry.ORIGIN_COUNTER.get();
+            case SPECIAL1 -> JSoundRegistry.ORIGIN_SPECIAL1.get();
+            case SPECIAL2 -> JSoundRegistry.ORIGIN_SPECIAL2.get();
+            case LIGHT, LIGHT_FOLLOWUP, UPPERCUT -> JSoundRegistry.ORIGIN_LIGHT.get();
+            default -> null;
+        };
+        if (previewSound != null) {
+            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(previewSound, 1.0F, 0.85F));
+        } else {
+            playUiClick();
+        }
+    }
+
+    private void toggleProfileRename(int idx, int cardX, int cardY, int cardW) {
+        if (editingProfileIdx == idx) {
+            commitProfileNameEdit();
+            return;
+        }
+        if (editingProfileIdx >= 0) {
+            commitProfileNameEdit();
+        }
+        editingProfileIdx = idx;
+        LocalPlayer player = Minecraft.getInstance().player;
+        CommonStandComponent comp = player != null ? JComponentPlatformUtils.getStandComponent(player) : null;
+        OriginProfile existing = comp != null ? comp.getOriginProfile(idx) : null;
+        String startName = existing != null ? existing.name() : profileDraftNames[idx];
+        if (profileNameBox != null) {
+            profileNameBox.setX(cardX + 3);
+            profileNameBox.setY(cardY + 1);
+            profileNameBox.setWidth(Math.max(36, cardW - 19));
+            profileNameBox.setHeight(11);
+            profileNameBox.setValue(startName);
+            profileNameBox.moveCursorToEnd(false);
+            profileNameBox.visible = true;
+            profileNameBox.active = true;
+            this.setFocused(profileNameBox);
+            profileNameBox.setFocused(true);
+        }
+        playUiClick();
+    }
+
+    private void commitProfileNameEdit() {
+        int idx = editingProfileIdx;
+        editingProfileIdx = -1;
+        if (profileNameBox != null) {
+            String raw = profileNameBox.getValue();
+            profileNameBox.visible = false;
+            profileNameBox.active = false;
+            profileNameBox.setFocused(false);
+            if (idx >= 0 && idx < OriginProfile.MAX_PROFILES) {
+                String cleanName = OriginProfile.sanitizeName(raw, OriginProfile.defaultNameForSlot(idx));
+                profileDraftNames[idx] = cleanName;
+                LocalPlayer player = Minecraft.getInstance().player;
+                if (player != null) {
+                    CommonStandComponent comp = JComponentPlatformUtils.getStandComponent(player);
+                    OriginProfile existing = comp.getOriginProfile(idx);
+                    if (existing != null) {
+                        comp.setOriginProfile(idx, new OriginProfile(cleanName, existing.slots(), existing.skin(), existing.customGlowRgb()));
+                        OriginLoadoutPacket.sendRenameProfile(idx, cleanName);
+                        showStatus("✓ " + Component.translatable("jcraft.origin.profile.renamed", cleanName).getString());
+                    }
+                }
             }
         }
-        profileDraftNames[idx] = PROFILE_NAME_POOL[(found + 1) % PROFILE_NAME_POOL.length];
+        playUiClick();
+    }
+
+    private void cancelProfileNameEdit() {
+        editingProfileIdx = -1;
+        if (profileNameBox != null) {
+            profileNameBox.visible = false;
+            profileNameBox.active = false;
+            profileNameBox.setFocused(false);
+        }
+        playUiClick();
+    }
+
+    private @Nullable String getClientLoadoutLockReason() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null || player.isCreative()) {
+            return null;
+        }
+        if (JUtils.getStand(player) instanceof OriginEntity origin
+                && (origin.getMoveStun() > 0 || origin.getTETime() > 0 || origin.getAccelTime() > 0 || origin.getFlightTime() > 0)) {
+            return Component.translatable("jcraft.origin.arsenal.locked_busy").getString();
+        }
+        CommonCooldownsComponent cds = JComponentPlatformUtils.getCooldowns(player);
+        for (CooldownType ct : CooldownType.values()) {
+            if ((ct.getCategory() == CooldownType.Category.STAND || ct == CooldownType.UTILITY)
+                    && cds.getCooldown(ct) > 0) {
+                return Component.translatable("jcraft.origin.arsenal.locked_cooldown").getString();
+            }
+        }
+        return null;
+    }
+
+    private void copyBuildCode() {
+        OriginProfile current = new OriginProfile(
+                "Build",
+                localLoadout,
+                getCurrentSkin(),
+                chromaEnabled ? getCurrentPackedRgb() : -1
+        );
+        String code = OriginProfile.encodeBuildCode(current);
+        Minecraft.getInstance().keyboardHandler.setClipboard(code);
+        playBindSound();
+        showStatus("✦ " + Component.translatable("jcraft.origin.profile.code_copied").getString());
+    }
+
+    private void pasteBuildCode() {
+        String lock = getClientLoadoutLockReason();
+        if (lock != null) {
+            showStatus("⚠ " + lock);
+            playUiClick();
+            return;
+        }
+        String clip = Minecraft.getInstance().keyboardHandler.getClipboard();
+        OriginProfile decoded = OriginProfile.decodeBuildCode(clip);
+        if (decoded == null) {
+            showStatus("⚠ " + Component.translatable("jcraft.origin.profile.code_invalid").getString());
+            playUiClick();
+            return;
+        }
+        boolean freeBinds = JServerConfig.ORIGIN_FREE_BINDS.getValue();
+        int maxUlts = JServerConfig.ORIGIN_MAX_ULTIMATES.getValue();
+        EnumMap<MoveClass, OriginSkillCatalog.SkillEntry> sanitized =
+                OriginSkillCatalog.sanitizeLoadout(decoded.slots(), freeBinds, maxUlts);
+        EnumMap<MoveClass, String> cleanMap = new EnumMap<>(MoveClass.class);
+        for (Map.Entry<MoveClass, OriginSkillCatalog.SkillEntry> e : sanitized.entrySet()) {
+            localLoadout.put(e.getKey(), e.getValue().id());
+            cleanMap.put(e.getKey(), e.getValue().id());
+        }
+        LocalPlayer player = Minecraft.getInstance().player;
+        int skinCount = JStandTypeRegistry.ORIGIN.get().getData().getInfo().getSkinCount();
+        int safeSkin = Mth.clamp(decoded.skin(), 0, Math.max(0, skinCount - 1));
+        if (player != null) {
+            CommonStandComponent comp = JComponentPlatformUtils.getStandComponent(player);
+            comp.setOriginLoadout(cleanMap);
+            comp.setOriginGlowRgb(decoded.customGlowRgb());
+            comp.setSkin(safeSkin);
+            if (JUtils.getStand(player) instanceof OriginEntity origin) {
+                origin.setSkin(safeSkin);
+                origin.rebuildLoadoutFromUser(comp);
+            }
+        }
+        applyRgbFields(decoded.customGlowRgb());
+        recomputeSynergies();
+        updateSkinButtonLabel();
+        OriginLoadoutPacket.sendImportBuild(new OriginProfile("Imported Build", cleanMap, safeSkin, decoded.customGlowRgb()));
+        playBindSound();
+        showStatus("✓ " + Component.translatable("jcraft.origin.profile.code_imported").getString());
     }
 
     private void commitChromaRgb(int rgb) {
@@ -647,6 +930,12 @@ public class OriginArsenalScreen extends Screen {
     }
 
     private void loadProfile(int slotIdx) {
+        String lock = getClientLoadoutLockReason();
+        if (lock != null) {
+            showStatus("⚠ " + lock);
+            playUiClick();
+            return;
+        }
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {
             return;
@@ -657,14 +946,23 @@ public class OriginArsenalScreen extends Screen {
             playUiClick();
             return;
         }
-        comp.loadOriginProfile(slotIdx);
-        if (JUtils.getStand(player) instanceof OriginEntity origin) {
-            origin.setSkin(comp.getSkin());
-            origin.rebuildLoadoutFromUser(comp);
+        boolean freeBinds = JServerConfig.ORIGIN_FREE_BINDS.getValue();
+        int maxUlts = JServerConfig.ORIGIN_MAX_ULTIMATES.getValue();
+        EnumMap<MoveClass, OriginSkillCatalog.SkillEntry> sanitized =
+                OriginSkillCatalog.sanitizeLoadout(prof.slots(), freeBinds, maxUlts);
+        EnumMap<MoveClass, String> cleanMap = new EnumMap<>(MoveClass.class);
+        for (Map.Entry<MoveClass, OriginSkillCatalog.SkillEntry> e : sanitized.entrySet()) {
+            localLoadout.put(e.getKey(), e.getValue().id());
+            cleanMap.put(e.getKey(), e.getValue().id());
         }
-        for (MoveClass slot : MoveClass.values()) {
-            String id = comp.getOriginSlot(slot);
-            localLoadout.put(slot, id != null && !id.isEmpty() ? id : OriginSkillCatalog.getDefaultId(slot));
+        comp.setOriginLoadout(cleanMap);
+        comp.setOriginGlowRgb(prof.customGlowRgb());
+        int skinCount = JStandTypeRegistry.ORIGIN.get().getData().getInfo().getSkinCount();
+        int safeSkin = Mth.clamp(prof.skin(), 0, Math.max(0, skinCount - 1));
+        comp.setSkin(safeSkin);
+        if (JUtils.getStand(player) instanceof OriginEntity origin) {
+            origin.setSkin(safeSkin);
+            origin.rebuildLoadoutFromUser(comp);
         }
         applyRgbFields(comp.getOriginGlowRgb());
         recomputeSynergies();
@@ -734,15 +1032,20 @@ public class OriginArsenalScreen extends Screen {
     }
 
     private void applyPreset(OriginSkillCatalog.LoadoutPreset preset) {
+        String lock = getClientLoadoutLockReason();
+        if (lock != null) {
+            showStatus("⚠ " + lock);
+            playUiClick();
+            return;
+        }
         boolean freeBinds = JServerConfig.ORIGIN_FREE_BINDS.getValue();
+        int maxUlts = JServerConfig.ORIGIN_MAX_ULTIMATES.getValue();
+        EnumMap<MoveClass, OriginSkillCatalog.SkillEntry> sanitized =
+                OriginSkillCatalog.sanitizeLoadout(preset.slots(), freeBinds, maxUlts);
         EnumMap<MoveClass, String> nextMap = new EnumMap<>(MoveClass.class);
-        for (MoveClass slot : MoveClass.values()) {
-            String rawId = preset.slots().getOrDefault(slot, OriginSkillCatalog.getDefaultId(slot));
-            OriginSkillCatalog.SkillEntry resolved = OriginSkillCatalog.resolveForSlot(slot, rawId, freeBinds);
-            if (resolved != null) {
-                localLoadout.put(slot, resolved.id());
-                nextMap.put(slot, resolved.id());
-            }
+        for (Map.Entry<MoveClass, OriginSkillCatalog.SkillEntry> e : sanitized.entrySet()) {
+            localLoadout.put(e.getKey(), e.getValue().id());
+            nextMap.put(e.getKey(), e.getValue().id());
         }
         syncClientPlayerOptimistically(nextMap, false, null, null);
         recomputeSynergies();
@@ -753,6 +1056,12 @@ public class OriginArsenalScreen extends Screen {
     }
 
     private void resetDefault() {
+        String lock = getClientLoadoutLockReason();
+        if (lock != null) {
+            showStatus("⚠ " + lock);
+            playUiClick();
+            return;
+        }
         for (MoveClass slot : MoveClass.values()) {
             localLoadout.put(slot, OriginSkillCatalog.getDefaultId(slot));
         }
@@ -763,7 +1072,56 @@ public class OriginArsenalScreen extends Screen {
         showStatus("✓ " + Component.translatable("jcraft.origin.arsenal.reset_done").getString());
     }
 
+    private void resetSingleSlot(MoveClass slot) {
+        String lock = getClientLoadoutLockReason();
+        if (lock != null) {
+            showStatus("⚠ " + lock);
+            playUiClick();
+            return;
+        }
+        selectedSlot = slot;
+        OriginSkillCatalog.SkillEntry defEntry = OriginSkillCatalog.getById(OriginSkillCatalog.getDefaultId(slot));
+        if (defEntry != null) {
+            assignSkillToSelectedSlot(defEntry);
+        }
+    }
+
     private void assignSkillToSelectedSlot(OriginSkillCatalog.SkillEntry entry) {
+        String lock = getClientLoadoutLockReason();
+        if (lock != null) {
+            showStatus("⚠ " + lock);
+            playUiClick();
+            return;
+        }
+        boolean freeBinds = JServerConfig.ORIGIN_FREE_BINDS.getValue();
+        int maxUlts = JServerConfig.ORIGIN_MAX_ULTIMATES.getValue();
+
+        MoveClass prevOwner = OriginSkillCatalog.findSlotContaining(localLoadout, selectedSlot, entry.id());
+        if (prevOwner != null) {
+            String displacedId = localLoadout.getOrDefault(selectedSlot, OriginSkillCatalog.getDefaultId(selectedSlot));
+            OriginSkillCatalog.SkillEntry displacedEntry = OriginSkillCatalog.resolveForSlot(prevOwner, displacedId, freeBinds);
+            String replacementForPrev = (displacedEntry != null && !displacedEntry.id().equals(entry.id()))
+                    ? displacedEntry.id()
+                    : OriginSkillCatalog.getDefaultId(prevOwner);
+            localLoadout.put(prevOwner, replacementForPrev);
+            localLoadout.put(selectedSlot, entry.id());
+            EnumMap<MoveClass, String> copyMap = new EnumMap<>(localLoadout);
+            syncClientPlayerOptimistically(copyMap, false, null, null);
+            recomputeSynergies();
+            OriginLoadoutPacket.sendSetSlot(selectedSlot, entry.id());
+            playBindSound();
+            showStatus("⇄ " + selectedSlot.getFriendlyName().getString()
+                    + " ⇄ " + prevOwner.getFriendlyName().getString()
+                    + " — " + entry.templateMove().getName().getString());
+            return;
+        }
+
+        if (maxUlts > 0 && OriginSkillCatalog.isUltimateSkill(entry)
+                && OriginSkillCatalog.countUltimatesExcluding(localLoadout, selectedSlot, freeBinds) >= maxUlts) {
+            showStatus("⚠ " + Component.translatable("jcraft.origin.arsenal.max_ultimates", maxUlts).getString());
+            playUiClick();
+            return;
+        }
         localLoadout.put(selectedSlot, entry.id());
         syncClientPlayerOptimistically(null, false, selectedSlot, entry.id());
         recomputeSynergies();
@@ -774,7 +1132,7 @@ public class OriginArsenalScreen extends Screen {
                 + " — " + entry.templateMove().getName().getString());
     }
 
-    private static void syncClientPlayerOptimistically(
+    private void syncClientPlayerOptimistically(
             @Nullable EnumMap<MoveClass, String> fullMap,
             boolean reset,
             @Nullable MoveClass singleSlot,
@@ -791,6 +1149,7 @@ public class OriginArsenalScreen extends Screen {
         } else if (singleSlot != null) {
             comp.setOriginSlot(singleSlot, singleId);
         }
+        this.lastSeenLoadoutVersion = comp.getOriginLoadoutVersion();
         if (JUtils.getStand(player) instanceof OriginEntity origin) {
             origin.rebuildLoadoutFromUser(comp);
         }
@@ -870,14 +1229,34 @@ public class OriginArsenalScreen extends Screen {
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
+    private static String slotKeyBadge(MoveClass slot) {
+        CooldownType ct = slot.getDefaultCooldownType();
+        return ct != null ? JCraftAbilityHud.cooldownTypeToKeybind(ct, true) : slot.name();
+    }
+
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == 0) {
-            double mx = event.x();
-            double my = event.y();
+        double mx = event.x();
+        double my = event.y();
 
+        if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT) {
+            MoveClass[] slots = MoveClass.values();
+            for (int i = 0; i < slots.length; i++) {
+                int sy = leftRowStartY + i * slotPitch;
+                if (mx >= leftColX && mx <= leftColX + leftColW && my >= sy && my <= sy + slotH) {
+                    resetSingleSlot(slots[i]);
+                    rebuildFiltersAndCatalog();
+                    return true;
+                }
+            }
+        }
+
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             if (this.searchBox != null && !this.searchBox.isMouseOver(mx, my)) {
                 this.searchBox.setFocused(false);
+            }
+            if (this.profileNameBox != null && this.profileNameBox.visible && this.profileNameBox.isMouseOver(mx, my)) {
+                return super.mouseClicked(event, doubleClick);
             }
 
             // Tab pills
@@ -901,12 +1280,16 @@ public class OriginArsenalScreen extends Screen {
             for (int i = 0; i < slots.length; i++) {
                 int sy = leftRowStartY + i * slotPitch;
                 if (mx >= leftColX && mx <= leftColX + leftColW && my >= sy && my <= sy + slotH) {
-                    if (selectedSlot != slots[i]) {
-                        selectedSlot = slots[i];
-                        scrollPixels = 0;
-                        rebuildFiltersAndCatalog();
-                        playUiClick();
+                    selectedSlot = slots[i];
+                    if (activeTab != TAB_SKILLS) {
+                        selectTab(TAB_SKILLS);
                     }
+                    selectedSkillIdx = 0;
+                    scrollPixels = 0;
+                    rebuildFiltersAndCatalog();
+                    playUiClick();
+                    showStatus("✦ " + Component.translatable("jcraft.origin.arsenal.editing_slot",
+                            slotKeyBadge(slots[i]), slots[i].getFriendlyName().getString()).getString());
                     return true;
                 }
             }
@@ -927,8 +1310,8 @@ public class OriginArsenalScreen extends Screen {
                 if (mx >= listX && mx <= listX + listW && my >= listY && my <= listBottom) {
                     int relY = (int) (my - listY + scrollPixels);
                     int idx = relY / (ROW_H + ROW_GAP);
-                    int offsetInRow = relY % (ROW_H + ROW_GAP);
-                    if (idx >= 0 && idx < filteredSkills.size() && offsetInRow <= ROW_H) {
+                    if (idx >= 0 && idx < filteredSkills.size()) {
+                        selectedSkillIdx = idx;
                         assignSkillToSelectedSlot(filteredSkills.get(idx));
                         return true;
                     }
@@ -971,7 +1354,7 @@ public class OriginArsenalScreen extends Screen {
 
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
-        if (event.button() == 0 && activeTab == TAB_STUDIO) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && activeTab == TAB_STUDIO) {
             if (draggingPreview) {
                 previewYawDeg = (previewYawDeg + (float) dragX * 1.15f) % 360.0f;
                 previewPitchDeg = Mth.clamp(previewPitchDeg + (float) dragY * 0.65f, -32.0f, 28.0f);
@@ -987,7 +1370,7 @@ public class OriginArsenalScreen extends Screen {
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
-        if (event.button() == 0) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             draggingPreview = false;
             if (draggingChromaChannel >= 0) {
                 draggingChromaChannel = -1;
@@ -1004,6 +1387,17 @@ public class OriginArsenalScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (profileNameBox != null && profileNameBox.isFocused()) {
+            if (event.key() == InputConstants.KEY_RETURN || event.key() == InputConstants.KEY_NUMPADENTER) {
+                commitProfileNameEdit();
+                return true;
+            }
+            if (event.isEscape()) {
+                cancelProfileNameEdit();
+                return true;
+            }
+            return super.keyPressed(event);
+        }
         if (searchBox == null || !searchBox.isFocused()) {
             if (JCraftClient.ORIGIN_ARSENAL_KEY != null
                     && JCraftClient.ORIGIN_ARSENAL_KEY.getParent().matches(event)) {
@@ -1011,6 +1405,28 @@ public class OriginArsenalScreen extends Screen {
                 return true;
             }
             int key = event.key();
+            if (key == InputConstants.KEY_UP && activeTab == TAB_SKILLS) {
+                moveSkillCursor(-1);
+                return true;
+            }
+            if (key == InputConstants.KEY_DOWN && activeTab == TAB_SKILLS) {
+                moveSkillCursor(1);
+                return true;
+            }
+            if ((key == InputConstants.KEY_RETURN || key == InputConstants.KEY_NUMPADENTER) && activeTab == TAB_SKILLS) {
+                equipHighlightedSkill();
+                return true;
+            }
+            if (key == InputConstants.KEY_LEFT || key == InputConstants.KEY_RIGHT) {
+                MoveClass[] values = MoveClass.values();
+                int nextIdx = Math.floorMod(selectedSlot.ordinal() + (key == InputConstants.KEY_RIGHT ? 1 : -1), values.length);
+                selectedSlot = values[nextIdx];
+                selectedSkillIdx = 0;
+                scrollPixels = 0;
+                rebuildFiltersAndCatalog();
+                playUiClick();
+                return true;
+            }
             if (key == InputConstants.KEY_PAGEUP) {
                 return scrollBy(-SCROLL_STEP * 4);
             }
@@ -1022,6 +1438,7 @@ public class OriginArsenalScreen extends Screen {
                 MoveClass[] values = MoveClass.values();
                 if (idx < values.length) {
                     selectedSlot = values[idx];
+                    selectedSkillIdx = 0;
                     scrollPixels = 0;
                     rebuildFiltersAndCatalog();
                     playUiClick();
@@ -1108,7 +1525,8 @@ public class OriginArsenalScreen extends Screen {
                 JCraftAbilityHud.renderIcon(gui, leftColX + 1, iconY, resolved.standId(), resolved.getIconName());
             }
 
-            String slotTitle = slot.getFriendlyName().getString();
+            String keyTag = "[" + slotKeyBadge(slot) + "] ";
+            String slotTitle = (active ? "▶ " : "") + keyTag + slot.getFriendlyName().getString();
             String moveLabel = resolved != null ? resolved.templateMove().getName().getString() : "-";
             String standShort = resolved != null ? resolved.standType().getData().getInfo().getName().getString() : "";
 
@@ -1119,8 +1537,8 @@ public class OriginArsenalScreen extends Screen {
             var sPose = gui.pose();
             sPose.pushMatrix();
             sPose.translate(tx, topLineY);
-            sPose.scale(0.82f, 0.82f);
-            gui.text(this.font, fitText("§d" + slotTitle + " §7• §f" + standShort, (int) (maxW / 0.82f)),
+            sPose.scale(0.80f, 0.80f);
+            gui.text(this.font, fitText((active ? "§e" : "§d") + slotTitle + " §7• §f" + standShort, (int) (maxW / 0.80f)),
                     0, 0, 0xFFE9D5FF, false);
             sPose.popMatrix();
 
@@ -1203,14 +1621,16 @@ public class OriginArsenalScreen extends Screen {
                     continue;
                 }
                 boolean equipped = entry.id().equals(currentEquippedId);
+                boolean cursorSel = (i == selectedSkillIdx);
+                MoveClass otherOwner = equipped ? null : OriginSkillCatalog.findSlotContaining(localLoadout, selectedSlot, entry.id());
                 boolean rowHover = mouseX >= listX && mouseX <= listX + listW
                         && mouseY >= Math.max(listY, ry) && mouseY <= Math.min(listBottom, ry + ROW_H);
                 if (rowHover) {
                     this.hoveredSkill = entry;
                 }
 
-                int bg = equipped ? 0xDD1A2E2A : (rowHover ? 0xEE2B1648 : 0xAA150E26);
-                int border = equipped ? 0xFF34D399 : (rowHover ? 0xFFE879F9 : 0x557C3AED);
+                int bg = equipped ? 0xDD1A2E2A : (cursorSel ? 0xEE351759 : (otherOwner != null ? 0xCC1E2038 : (rowHover ? 0xEE2B1648 : 0xAA150E26)));
+                int border = cursorSel ? 0xFFFBBF24 : (equipped ? 0xFF34D399 : (otherOwner != null ? 0xFF38BDF8 : (rowHover ? 0xFFE879F9 : 0x557C3AED)));
                 gui.fill(listX, ry, listX + listW, ry + ROW_H, bg);
                 gui.outline(listX, ry, listW, ROW_H, border);
 
@@ -1220,6 +1640,10 @@ public class OriginArsenalScreen extends Screen {
                 String moveTitle = move.getName().getString();
                 if (equipped) {
                     moveTitle = "✓ " + moveTitle;
+                } else if (otherOwner != null) {
+                    moveTitle = "⇄ " + moveTitle;
+                } else if (cursorSel) {
+                    moveTitle = "➤ " + moveTitle;
                 }
                 String standTitle = entry.standType().getData().getInfo().getName().getString()
                         + " [" + entry.sourceSlot().getFriendlyName().getString() + "]";
@@ -1231,24 +1655,26 @@ public class OriginArsenalScreen extends Screen {
                 tPose.pushMatrix();
                 tPose.translate(listX + listW - standW - rightPad, ry + 3);
                 tPose.scale(standScale, standScale);
-                gui.text(this.font, standTitle, 0, 0, equipped ? 0xFF6EE7B7 : 0xFFC084FC, false);
+                gui.text(this.font, standTitle, 0, 0, equipped ? 0xFF6EE7B7 : (otherOwner != null ? 0xFF7DD3FC : 0xFFC084FC), false);
                 tPose.popMatrix();
 
                 int textLeft = listX + 26;
                 int titleMaxW = Math.max(50, listW - 32 - standW - rightPad);
                 gui.text(this.font, fitText(moveTitle, titleMaxW), textLeft, ry + 3,
-                        equipped ? 0xFFA7F3D0 : 0xFFF3E8FF, true);
+                        equipped ? 0xFFA7F3D0 : (otherOwner != null ? 0xFFBAE6FD : 0xFFF3E8FF), true);
 
-                String actionTag = Component.translatable(equipped
-                        ? "jcraft.origin.arsenal.equipped_btn"
-                        : "jcraft.origin.arsenal.equip_btn").getString();
+                String actionTag = equipped
+                        ? Component.translatable("jcraft.origin.arsenal.equipped_btn").getString()
+                        : (otherOwner != null
+                                ? Component.translatable("jcraft.origin.arsenal.swap_btn", slotKeyBadge(otherOwner)).getString()
+                                : Component.translatable("jcraft.origin.arsenal.equip_btn").getString());
                 float actScale = 0.74f;
                 int actW = Math.round(this.font.width(actionTag) * actScale) + 6;
                 int actX = listX + listW - actW - 4;
                 int actY = ry + 13;
-                int pillFill = equipped ? 0xCC064E3B : (rowHover ? 0xEE581C87 : 0x99261342);
-                int pillBorder = equipped ? 0xFF34D399 : (rowHover ? 0xFFE879F9 : 0x889333EA);
-                int pillText = equipped ? 0xFFA7F3D0 : (rowHover ? 0xFFFDE68A : 0xFFC4B5FD);
+                int pillFill = equipped ? 0xCC064E3B : (otherOwner != null ? 0xCC0C3547 : (rowHover ? 0xEE581C87 : 0x99261342));
+                int pillBorder = equipped ? 0xFF34D399 : (otherOwner != null ? 0xFF38BDF8 : (rowHover ? 0xFFE879F9 : 0x889333EA));
+                int pillText = equipped ? 0xFFA7F3D0 : (otherOwner != null ? 0xFFBAE6FD : (rowHover ? 0xFFFDE68A : 0xFFC4B5FD));
                 gui.fill(actX, actY, actX + actW, actY + 10, pillFill);
                 gui.outline(actX, actY, actW, 10, pillBorder);
                 drawScaledCenteredText(gui, actionTag, actX + actW / 2.0f, actY + 2.0f, actScale, actW - 2, pillText);
@@ -1353,6 +1779,20 @@ public class OriginArsenalScreen extends Screen {
                     mouseX, mouseY, 0xEE271546, 0xFFC084FC, 0xFFE9D5FF);
         }
 
+        // Studio combat animation preview row (last STUDIO_ANIM_SPECS.size() pills in studioPills)
+        int animStartIdx = studioPills.size() - STUDIO_ANIM_SPECS.size();
+        for (int i = 0; i < STUDIO_ANIM_SPECS.size() && animStartIdx + i < studioPills.size(); i++) {
+            StudioAnimSpec spec = STUDIO_ANIM_SPECS.get(i);
+            PillRect animBtn = studioPills.get(animStartIdx + i);
+            boolean activeAnim = previewAnimTicks > 0 && previewAnimState == spec.state();
+            drawPillButton(gui, animBtn,
+                    Component.translatable(spec.labelKey()).getString(),
+                    mouseX, mouseY,
+                    activeAnim ? 0xEE4C1D95 : 0xBB160E28,
+                    activeAnim ? 0xFFF0ABFC : 0x889333EA,
+                    activeAnim ? 0xFFFDE68A : 0xFFD8B4FE);
+        }
+
         // Right: Chroma RGB Color Forge
         int rightPaneX = previewBoxX + previewBoxW + 8;
         int rightPaneW = Math.max(88, (this.listX + this.listW) - rightPaneX);
@@ -1444,16 +1884,19 @@ public class OriginArsenalScreen extends Screen {
 
     private void renderProfilesAndSynergiesTab(GuiGraphicsExtractor gui, int mouseX, int mouseY) {
         var pPose = gui.pose();
+        int codeBtnW = Math.min(62, Math.max(46, this.listW / 5));
+        int titleMaxW = Math.max(48, this.listW - codeBtnW * 2 - 8);
         pPose.pushMatrix();
         pPose.translate(this.listX, this.contentTop);
-        pPose.scale(0.80f, 0.80f);
-        gui.text(this.font, Component.translatable("jcraft.origin.profiles.title"), 0, 0, 0xFFE9D5FF, false);
+        pPose.scale(0.78f, 0.78f);
+        gui.text(this.font, fitText(Component.translatable("jcraft.origin.profiles.title").getString(),
+                (int) (titleMaxW / 0.78f)), 0, 0, 0xFFE9D5FF, false);
         pPose.popMatrix();
 
         LocalPlayer player = Minecraft.getInstance().player;
         CommonStandComponent comp = player != null ? JComponentPlatformUtils.getStandComponent(player) : null;
 
-        int cardsTop = this.contentTop + 11;
+        int cardsTop = this.contentTop + 12;
         int totalH = Math.max(115, this.contentBottom - cardsTop);
         int profilesSectionH = Math.max(60, Math.min(96, (int) (totalH * 0.43f)));
         int cardGap = 3;
@@ -1471,13 +1914,15 @@ public class OriginArsenalScreen extends Screen {
             gui.fill(cx, cy, cx + cardW, cy + cardH, hasData ? 0xDD17112B : 0x99100B1C);
             gui.outline(cx, cy, cardW, cardH, hasData ? 0xFFA855F7 : 0x555B21B6);
 
-            String headerTitle = (i + 1) + ". " + (hasData ? saved.name() : profileDraftNames[i]);
-            pPose.pushMatrix();
-            pPose.translate(cx + 4, cy + 2.5f);
-            pPose.scale(0.76f, 0.76f);
-            gui.text(this.font, fitText(headerTitle, (int) ((cardW - 22) / 0.76f)), 0, 0,
-                    hasData ? 0xFFFDE68A : 0xFFA78BFA, false);
-            pPose.popMatrix();
+            if (editingProfileIdx != i) {
+                String headerTitle = (i + 1) + ". " + (hasData ? saved.name() : profileDraftNames[i]);
+                pPose.pushMatrix();
+                pPose.translate(cx + 4, cy + 2.5f);
+                pPose.scale(0.76f, 0.76f);
+                gui.text(this.font, fitText(headerTitle, (int) ((cardW - 22) / 0.76f)), 0, 0,
+                        hasData ? 0xFFFDE68A : 0xFFA78BFA, false);
+                pPose.popMatrix();
+            }
 
             // Subline: Skin + Chroma swatch (or Empty Slot)
             int subY = cy + (cardH >= 32 ? 12 : 10);
@@ -1503,7 +1948,13 @@ public class OriginArsenalScreen extends Screen {
 
             int pillBase = i * 4;
             if (pillBase + 3 < profilePills.size()) {
-                drawPillButton(gui, profilePills.get(pillBase), "✎", mouseX, mouseY, 0xAA251342, 0x889333EA, 0xFFD8B4FE);
+                boolean editingThis = (editingProfileIdx == i);
+                drawPillButton(gui, profilePills.get(pillBase),
+                        editingThis ? "✓" : "✎",
+                        mouseX, mouseY,
+                        editingThis ? 0xEE183830 : 0xAA251342,
+                        editingThis ? 0xFF34D399 : 0x889333EA,
+                        editingThis ? 0xFFA7F3D0 : 0xFFD8B4FE);
                 drawPillButton(gui, profilePills.get(pillBase + 1),
                         Component.translatable("jcraft.origin.profile.load").getString(),
                         mouseX, mouseY, hasData ? 0xEE183830 : 0x66161420,
@@ -1515,6 +1966,16 @@ public class OriginArsenalScreen extends Screen {
                         mouseX, mouseY, hasData ? 0xCC3B1320 : 0x551A121C,
                         hasData ? 0xFFF87171 : 0x444B5563, hasData ? 0xFFFCA5A5 : 0xFF6B7280);
             }
+        }
+
+        int codeBase = OriginProfile.MAX_PROFILES * 4;
+        if (codeBase + 1 < profilePills.size()) {
+            drawPillButton(gui, profilePills.get(codeBase),
+                    Component.translatable("jcraft.origin.profile.copy_code").getString(),
+                    mouseX, mouseY, 0xEE23133D, 0xFFA855F7, 0xFFE9D5FF);
+            drawPillButton(gui, profilePills.get(codeBase + 1),
+                    Component.translatable("jcraft.origin.profile.paste_code").getString(),
+                    mouseX, mouseY, 0xEE16302B, 0xFF34D399, 0xFFA7F3D0);
         }
 
         // Bottom half: Passive Synergies (guaranteed to fit above contentBottom even at 427x240)
@@ -1589,16 +2050,25 @@ public class OriginArsenalScreen extends Screen {
         boolean hasToast = statusMessage != null && System.currentTimeMillis() < statusUntilMs;
         var dPose = gui.pose();
         if (hasToast) {
+            boolean isWarn = statusMessage.startsWith("⚠");
+            int toastBg = isWarn ? 0xEE3B1D0A : 0xEE102E26;
+            int toastBorder = isWarn ? 0xFFFBBF24 : 0xFF34D399;
+            int toastColor = isWarn ? 0xFFFDE68A : 0xFFA7F3D0;
+            gui.fill(listX, descY - 2, listX + listW, descY + 10, toastBg);
+            gui.outline(listX, descY - 2, listW, 12, toastBorder);
             dPose.pushMatrix();
-            dPose.translate(listX, descY);
-            dPose.scale(0.84f, 0.84f);
-            gui.text(this.font, fitText(statusMessage, (int) ((listW - 4) / 0.84f)), 0, 0, 0xFF34D399, true);
+            dPose.translate(listX + 4, descY + 0.5f);
+            dPose.scale(0.82f, 0.82f);
+            gui.text(this.font, fitText(statusMessage, (int) ((listW - 8) / 0.82f)), 0, 0, toastColor, true);
             dPose.popMatrix();
         } else if (activeTab == TAB_SKILLS) {
             String currentEquippedId = localLoadout.get(selectedSlot);
+            OriginSkillCatalog.SkillEntry cursorEntry = (!filteredSkills.isEmpty() && selectedSkillIdx >= 0 && selectedSkillIdx < filteredSkills.size())
+                    ? filteredSkills.get(selectedSkillIdx)
+                    : null;
             OriginSkillCatalog.SkillEntry preview = hoveredSkill != null
                     ? hoveredSkill
-                    : OriginSkillCatalog.resolveForSlot(selectedSlot, currentEquippedId, freeBinds);
+                    : (cursorEntry != null ? cursorEntry : OriginSkillCatalog.resolveForSlot(selectedSlot, currentEquippedId, freeBinds));
             if (preview != null) {
                 List<FormattedCharSequence> lines = this.font.split(preview.templateMove().getDescription(), Math.max(80, listW - 6));
                 if (!lines.isEmpty()) {
@@ -1621,8 +2091,7 @@ public class OriginArsenalScreen extends Screen {
         // Bottom-left footer badge
         if (footerSynergyBadge != null) {
             String badgeText = activeTab == TAB_SKILLS
-                    ? Component.translatable("jcraft.origin.arsenal.catalog", filteredSkills.size()).getString()
-                    + (cachedSynergies.activeCount() > 0 ? " • ✦" + cachedSynergies.activeCount() : "")
+                    ? (filteredSkills.size() + " • ✦" + cachedSynergies.activeCount())
                     : Component.translatable("jcraft.origin.synergies.badge", cachedSynergies.activeCount()).getString();
             boolean hov = footerSynergyBadge.contains(mouseX, mouseY);
             int synCount = cachedSynergies.activeCount();
@@ -1723,5 +2192,21 @@ public class OriginArsenalScreen extends Screen {
 
     public void loadProfileForTest(int slotIdx) {
         loadProfile(slotIdx);
+    }
+
+    public double getDownArrowButtonCenterX() {
+        return scrollDownBtn != null ? scrollDownBtn.getX() + scrollDownBtn.getWidth() * 0.5 : listX + 29;
+    }
+
+    public double getDownArrowButtonCenterY() {
+        return scrollDownBtn != null ? scrollDownBtn.getY() + scrollDownBtn.getHeight() * 0.5 : panelTop + panelH - 12;
+    }
+
+    public double getEquipButtonCenterX() {
+        return equipSelectedBtn != null ? equipSelectedBtn.getX() + equipSelectedBtn.getWidth() * 0.5 : listX + 70;
+    }
+
+    public double getEquipButtonCenterY() {
+        return equipSelectedBtn != null ? equipSelectedBtn.getY() + equipSelectedBtn.getHeight() * 0.5 : panelTop + panelH - 12;
     }
 }

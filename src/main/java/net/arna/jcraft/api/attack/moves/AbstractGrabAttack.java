@@ -45,7 +45,7 @@ public abstract class AbstractGrabAttack<T extends AbstractGrabAttack<T, A, S>, 
 
         grab = true;
 
-        this.hitMove = hitMove;
+        this.hitMove = hitMove != null ? hitMove.copy() : null;
         this.hitState = hitState.copy();
         this.grabDuration = grabDuration;
         this.grabOffset = grabOffset;
@@ -112,6 +112,9 @@ public abstract class AbstractGrabAttack<T extends AbstractGrabAttack<T, A, S>, 
     public static void configureHitStateWithFallback(AbstractMove<?, ?> move, Class<?> stateClass, Enum<?> fallback) {
         if (move instanceof AbstractGrabAttack<?, ?, ?> grab) {
             ((StateContainer) grab.hitState).configureWithFallback(stateClass, fallback);
+            if (grab.getHitMove() != null) {
+                configureHitStateWithFallback(grab.getHitMove(), stateClass, fallback);
+            }
         }
         if (move.getFollowup() != null) {
             configureHitStateWithFallback(move.getFollowup(), stateClass, fallback);
@@ -121,6 +124,9 @@ public abstract class AbstractGrabAttack<T extends AbstractGrabAttack<T, A, S>, 
         }
         if (move.getAerialVariant() != null) {
             configureHitStateWithFallback(move.getAerialVariant(), stateClass, fallback);
+        }
+        if (move.getFinisher() != null && move.getFinisher().right() != null) {
+            configureHitStateWithFallback(move.getFinisher().right(), stateClass, fallback);
         }
     }
 

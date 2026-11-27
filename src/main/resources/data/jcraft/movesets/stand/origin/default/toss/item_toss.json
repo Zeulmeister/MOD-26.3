@@ -1,9 +1,9 @@
 {
-  "anim_state": "UTILITY",
+  "anim_state": "ITEM_TOSS_CHARGE",
   "class": "TOSS",
   "cooldown_type": "STAND_TOSS",
   "followup": {
-    "anim_state": "UTILITY",
+    "anim_state": "ITEM_TOSS",
     "class": "TOSS",
     "cooldown_type": "STAND_TOSS",
     "move": {

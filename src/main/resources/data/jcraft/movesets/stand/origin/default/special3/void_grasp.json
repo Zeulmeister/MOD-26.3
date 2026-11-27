@@ -16,6 +16,13 @@
     "damage": 2.5,
     "duration": 20,
     "extras": {
+      "actions": [
+        {
+          "type": "jcraft:play_sound",
+          "run": "at_init",
+          "sound": "jcraft:origin_grab"
+        }
+      ],
       "description": {
         "translate": "move.jcraft.origin.default.special3.description"
       },
@@ -38,6 +45,11 @@
       "duration": 20,
       "extras": {
         "actions": [
+          {
+            "type": "jcraft:play_sound",
+            "run": "at_init",
+            "sound": "jcraft:origin_grab_hit"
+          },
           {
             "type": "jcraft:play_sound",
             "bind": false,

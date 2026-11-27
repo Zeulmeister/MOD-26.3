@@ -11,7 +11,8 @@ import net.arna.jcraft.api.attack.enums.MobilityType;
 import net.arna.jcraft.api.attack.moves.AbstractMove;
 import net.arna.jcraft.api.component.living.CommonHitPropertyComponent;
 import net.arna.jcraft.api.registry.JSoundRegistry;
-import net.arna.jcraft.common.entity.stand.MadeInHeavenEntity;
+import net.arna.jcraft.api.stand.ITimeAccelCapable;
+import net.arna.jcraft.api.stand.StandEntity;
 import net.arna.jcraft.common.util.JUtils;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntitySelector;
@@ -29,7 +30,7 @@ import java.util.Set;
 import static net.arna.jcraft.api.Attacks.damageLogic;
 
 @Getter
-public final class SpeedSliceAttack extends AbstractMove<SpeedSliceAttack, MadeInHeavenEntity> {
+public final class SpeedSliceAttack<A extends StandEntity<? extends A, ?>> extends AbstractMove<SpeedSliceAttack<A>, A> {
     private final float damage, hitboxSize, knockback;
 
     public SpeedSliceAttack(final int cooldown, final int windup, final int duration, final float moveDistance, final float damage, final float hitboxSize,
@@ -44,17 +45,17 @@ public final class SpeedSliceAttack extends AbstractMove<SpeedSliceAttack, MadeI
     }
 
     @Override
-    public @NonNull MoveType<SpeedSliceAttack> getMoveType() {
-        return Type.INSTANCE;
+    public @NonNull MoveType<SpeedSliceAttack<A>> getMoveType() {
+        return Type.INSTANCE.cast();
     }
 
     @Override
-    public @NonNull Set<LivingEntity> perform(final MadeInHeavenEntity attacker, final LivingEntity user) {
+    public @NonNull Set<LivingEntity> perform(final A attacker, final LivingEntity user) {
         return doSpeedSlice(attacker, user.getEyePosition(), user.getEyePosition().add(user.getLookAngle().scale(8)),
                 getDamage(), getKnockback(), getHitboxSize(), 20, 1);
     }
 
-    public static Set<LivingEntity> doSpeedSlice(final MadeInHeavenEntity attacker, final Vec3 start, final Vec3 end,
+    public static Set<LivingEntity> doSpeedSlice(final StandEntity<?, ?> attacker, final Vec3 start, final Vec3 end,
                                                  final float damage, final float knockback, final float size,
                                                  final int stunTicks, final int stunType) {
         final Level world = attacker.level();
@@ -97,8 +98,8 @@ public final class SpeedSliceAttack extends AbstractMove<SpeedSliceAttack, MadeI
             ));
         }
 
-        if (attacker.getAccelTime() > 0 && !targets.isEmpty()) {
-            attacker.incrementSpeedometer();
+        if (attacker instanceof ITimeAccelCapable ta && ta.getAccelTime() > 0 && !targets.isEmpty()) {
+            ta.setSpeedometer(ta.getSpeedometer() + 1);
         }
 
         attacker.playSound(JSoundRegistry.MIH_ZOOM.get(), 1f, 1f);
@@ -107,21 +108,21 @@ public final class SpeedSliceAttack extends AbstractMove<SpeedSliceAttack, MadeI
     }
 
     @Override
-    protected @NonNull SpeedSliceAttack getThis() {
+    protected @NonNull SpeedSliceAttack<A> getThis() {
         return this;
     }
 
     @Override
-    public @NonNull SpeedSliceAttack copy() {
-        return copyExtras(new SpeedSliceAttack(getCooldown(), getWindup(), getDuration(), getMoveDistance(),
+    public @NonNull SpeedSliceAttack<A> copy() {
+        return copyExtras(new SpeedSliceAttack<>(getCooldown(), getWindup(), getDuration(), getMoveDistance(),
                 getDamage(), getHitboxSize(), getKnockback()));
     }
 
-    public static class Type extends AbstractMove.Type<SpeedSliceAttack> {
+    public static class Type extends AbstractMove.Type<SpeedSliceAttack<?>> {
         public static final Type INSTANCE = new Type();
 
         @Override
-        protected @NonNull App<RecordCodecBuilder.Mu<SpeedSliceAttack>, SpeedSliceAttack> buildCodec(RecordCodecBuilder.Instance<SpeedSliceAttack> instance) {
+        protected @NonNull App<RecordCodecBuilder.Mu<SpeedSliceAttack<?>>, SpeedSliceAttack<?>> buildCodec(RecordCodecBuilder.Instance<SpeedSliceAttack<?>> instance) {
             return baseDefault(instance).and(instance.group(
                     Codec.FLOAT.fieldOf("damage").forGetter(SpeedSliceAttack::getDamage),
                     Codec.FLOAT.fieldOf("hitbox_size").forGetter(SpeedSliceAttack::getHitboxSize),
