@@ -41,8 +41,13 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.ProjectileUtil;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
@@ -503,12 +508,22 @@ public abstract class AbstractSimpleAttack<T extends AbstractSimpleAttack<T, A>,
         final boolean meleeAttack = hitboxSize > 0 || !extraHitBoxes.isEmpty();
         final boolean airWindEligible = isPunchWindEligible(meleeAttack);
 
+        Vec3 vfxPos = fPos;
+        @Nullable Vec3 aimedShockwavePos = null;
+        if (targets.isEmpty() && meleeAttack && attacker.hasUser() && (doShockwaves || airWindEligible)) {
+            final BlockHitResult aimedBlock = raycastAimedBlock(attacker.getEntityWorld(), attacker, getBlockBreakReach());
+            if (aimedBlock.getType() == HitResult.Type.BLOCK) {
+                vfxPos = aimedBlock.getLocation().subtract(getAimDirection(attacker).scale(0.12));
+                aimedShockwavePos = vfxPos;
+            }
+        }
+
         // Air shockwaves & punch wind burst (for both impacts and clean air swings)
         if (doShockwaves || airWindEligible) {
-            createShockwaves(attacker, user, rotVec, targets);
+            createShockwaves(attacker, user, rotVec, targets, aimedShockwavePos);
         }
         if (airWindEligible && attacker.getEntityWorld() instanceof ServerLevel serverWorld) {
-            spawnPunchAirBurst(attacker, serverWorld, fPos, rotVec, !targets.isEmpty());
+            spawnPunchAirBurst(attacker, serverWorld, vfxPos, rotVec, !targets.isEmpty());
         }
         if (!targets.isEmpty() && airWindEligible) {
             playPunchHitAudio(attacker);
@@ -516,6 +531,130 @@ public abstract class AbstractSimpleAttack<T extends AbstractSimpleAttack<T, A>,
 
         performHook(attacker, targets, boxes, damageSource, fPos, rotVec);
         return targets;
+    }
+
+    public static Vec3 getAimOrigin(final IAttacker<?, ?> attacker) {
+        final LivingEntity aimEntity = attacker.isRemote() ? attacker.getBaseEntity() : attacker.getUserOrThrow();
+        return aimEntity.position().add(GravityChangerAPI.getEyeOffset(aimEntity));
+    }
+
+    public static Vec3 getAimDirection(final IAttacker<?, ?> attacker) {
+        final LivingEntity aimEntity = attacker.isRemote() ? attacker.getBaseEntity() : attacker.getUserOrThrow();
+        Vec3 dir = aimEntity.getLookAngle();
+        if (GravityChangerAPI.getGravityDirection(aimEntity) == Direction.UP) {
+            dir = new Vec3(dir.x, -dir.y, dir.z);
+        }
+        return dir.lengthSqr() > 1.0e-6 ? dir.normalize() : new Vec3(0.0, 0.0, 1.0);
+    }
+
+    public static BlockHitResult raycastAimedBlock(final Level level, final IAttacker<?, ?> attacker, final double range) {
+        final LivingEntity aimEntity = attacker.isRemote() ? attacker.getBaseEntity() : attacker.getUserOrThrow();
+        final Vec3 eyePos = getAimOrigin(attacker);
+        final Vec3 endPos = eyePos.add(getAimDirection(attacker).scale(range));
+        final BlockHitResult colliderHit = level.clip(new ClipContext(
+                eyePos, endPos, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, aimEntity));
+        if (colliderHit.getType() == HitResult.Type.BLOCK) {
+            return colliderHit;
+        }
+        return level.clip(new ClipContext(
+                eyePos, endPos, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, aimEntity));
+    }
+
+    protected boolean shouldUseSimpleBlockBreakage() {
+        return true;
+    }
+
+    protected boolean requiresLineOfSight() {
+        return true;
+    }
+
+    protected double getBlockBreakReach() {
+        double reach = Math.max(getMoveDistance() * 2.0 + getHitboxSize() * 0.5, 3.0);
+        for (final HitBoxData extra : extraHitBoxes) {
+            reach = Math.max(reach, getMoveDistance() + extra.forwardOffset() + extra.size() * 0.5);
+        }
+        return Mth.clamp(reach, 3.0, 5.5);
+    }
+
+    protected double getMeleeCrosshairReach() {
+        double reach = Math.max(getMoveDistance() * 2.0 + getHitboxSize() * 0.5, 2.0);
+        for (final HitBoxData extra : extraHitBoxes) {
+            reach = Math.max(reach, getMoveDistance() + extra.forwardOffset() + extra.size() * 0.5);
+        }
+        return Mth.clamp(reach, 2.0, 5.5);
+    }
+
+    private boolean hasMeleeLineOfSight(final A attacker, final Level level, final Vec3 eyePos, final LivingEntity target) {
+        final Entity aimEntity = attacker.isRemote() ? attacker.getBaseEntity() : attacker.getUserOrThrow();
+        final AABB box = target.getBoundingBox();
+        final Vec3 clamped = new Vec3(
+                Mth.clamp(eyePos.x, box.minX, box.maxX),
+                Mth.clamp(eyePos.y, box.minY, box.maxY),
+                Mth.clamp(eyePos.z, box.minZ, box.maxZ)
+        );
+        final Vec3 center = box.getCenter();
+        final Vec3 targetEye = target.position().add(GravityChangerAPI.getEyeOffset(target));
+        for (final Vec3 probe : new Vec3[]{clamped, center, targetEye}) {
+            final double dist = eyePos.distanceTo(probe);
+            if (dist <= 0.15) {
+                return true;
+            }
+            final BlockHitResult hit = level.clip(new ClipContext(
+                    eyePos, probe, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, aimEntity));
+            if (hit.getType() != HitResult.Type.BLOCK || eyePos.distanceTo(hit.getLocation()) >= dist - 0.12) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void addCrosshairAimedTargets(final A attacker, final DamageSource damageSource, final Set<LivingEntity> targets) {
+        if (hitboxSize <= 0 || hitboxSize >= 2.5f || staticY || !attacker.hasUser()) {
+            return;
+        }
+        final Level level = attacker.getEntityWorld();
+        final LivingEntity user = attacker.getUserOrThrow();
+        final LivingEntity aimEntity = attacker.isRemote() ? attacker.getBaseEntity() : user;
+        final Vec3 eyePos = getAimOrigin(attacker);
+        final Vec3 aimDir = getAimDirection(attacker);
+        final double reach = getMeleeCrosshairReach();
+        final Vec3 rawEnd = eyePos.add(aimDir.scale(reach));
+        final BlockHitResult blockHit = level.clip(new ClipContext(
+                eyePos, rawEnd, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, aimEntity));
+        final double maxDist = blockHit.getType() == HitResult.Type.BLOCK
+                ? Math.min(reach, eyePos.distanceTo(blockHit.getLocation()))
+                : reach;
+        if (maxDist <= 0.05) {
+            return;
+        }
+        final Vec3 endPos = eyePos.add(aimDir.scale(maxDist));
+        final Predicate<Entity> baseFilter = e -> e != attacker && (mayHitUser || (e != user && e != user.getVehicle() && e != JUtils.getStand(user)));
+        final Predicate<Entity> isCreativeStand = e -> e instanceof final StandEntity<?, ?> stand && stand.getUser() instanceof final Player player && (player.isCreative() || player.isSpectator());
+        final Predicate<Entity> combinedFilter = EntitySelector.NO_CREATIVE_OR_SPECTATOR.and(baseFilter).and(isCreativeStand.negate());
+
+        final EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(
+                aimEntity,
+                eyePos,
+                endPos,
+                new AABB(eyePos, endPos).inflate(0.5),
+                combinedFilter,
+                maxDist * maxDist
+        );
+        if (entityHit == null) {
+            return;
+        }
+        final Entity hitEntity = entityHit.getEntity();
+        if (hitEntity instanceof final LivingEntity living) {
+            if (damageSource == null || JUtils.canDamage(damageSource, living)) {
+                targets.add(living);
+            }
+            if (living instanceof final StandEntity<?, ?> hitStand && !hitStand.isRemote() && hitStand.hasUser()) {
+                final LivingEntity hitUser = hitStand.getUserOrThrow();
+                if (damageSource == null || JUtils.canDamage(damageSource, hitUser)) {
+                    targets.add(hitUser);
+                }
+            }
+        }
     }
 
     protected boolean isPunchWindEligible(final boolean meleeAttack) {
@@ -607,14 +746,24 @@ public abstract class AbstractSimpleAttack<T extends AbstractSimpleAttack<T, A>,
     }
 
     protected void createShockwaves(final A attacker, final LivingEntity user, final Vec3 rotVec, final Set<LivingEntity> targets) {
+        createShockwaves(attacker, user, rotVec, targets, null);
+    }
+
+    protected void createShockwaves(final A attacker, final LivingEntity user, final Vec3 rotVec, final Set<LivingEntity> targets,
+                                    @Nullable final Vec3 aimedPos) {
         final LivingEntity attackerEntity = attacker.getBaseEntity();
         final Vec3 dir = rotVec.lengthSqr() > 1.0e-4 ? rotVec.normalize() : attackerEntity.getLookAngle();
-        Vec3 shockwavePos = attackerEntity.position();
-        shockwavePos = shockwavePos.add(dir.scale(targets.isEmpty() ? 1.05 : 1.0));
-        shockwavePos = shockwavePos.add(RotationUtil.vecPlayerToWorld(
-                new Vec3(0, attackerEntity.getBbHeight() / 2.0 - offset, 0),
-                GravityChangerAPI.getGravityDirection(user)
-        ));
+        Vec3 shockwavePos;
+        if (aimedPos != null && targets.isEmpty()) {
+            shockwavePos = aimedPos;
+        } else {
+            shockwavePos = attackerEntity.position();
+            shockwavePos = shockwavePos.add(dir.scale(targets.isEmpty() ? 1.05 : 1.0));
+            shockwavePos = shockwavePos.add(RotationUtil.vecPlayerToWorld(
+                    new Vec3(0, attackerEntity.getBbHeight() / 2.0 - offset, 0),
+                    GravityChangerAPI.getGravityDirection(user)
+            ));
+        }
         final float scale = doShockwaves
                 ? (targets.isEmpty() ? Mth.clamp(damage / 3.0f, 0.85f, 3.0f) : Mth.clamp(damage / 2.4f, 1.0f, 4.0f))
                 : (targets.isEmpty() ? Mth.clamp(damage / 4.2f, 0.72f, 1.25f) : Mth.clamp(damage / 3.2f, 0.90f, 1.60f));
@@ -656,9 +805,17 @@ public abstract class AbstractSimpleAttack<T extends AbstractSimpleAttack<T, A>,
      * @return A set of all affected targets.
      */
     protected final Set<LivingEntity> attackBoxes(final A attacker, final Set<AABB> boxes, final DamageSource damageSource, final Vec3 center) {
+        if (boxes.isEmpty()) {
+            return Set.of();
+        }
         JUtils.displayHitboxes(attacker.getEntityWorld(), boxes);
 
         Set<LivingEntity> targets = findHits(attacker, boxes, damageSource, mayHitUser);
+        if (requiresLineOfSight() && attacker.hasUser()) {
+            final Vec3 eyePos = getAimOrigin(attacker);
+            targets.removeIf(target -> !hasMeleeLineOfSight(attacker, attacker.getEntityWorld(), eyePos, target));
+        }
+        addCrosshairAimedTargets(attacker, damageSource, targets);
         if (targets.isEmpty()) {
             // Break blocks
             breakBlocks(attacker, boxes);
@@ -722,21 +879,66 @@ public abstract class AbstractSimpleAttack<T extends AbstractSimpleAttack<T, A>,
     }
 
     private void breakBlocks(final A attacker, final Set<AABB> boxes) {
-        Level level = attacker.getEntityWorld();
+        if (boxes.isEmpty() || !shouldUseSimpleBlockBreakage() || !attacker.hasUser()) {
+            return;
+        }
+        final LivingEntity user = attacker.getUserOrThrow();
+        if (!mayBreak(user, null)) {
+            return;
+        }
+        final Level level = attacker.getEntityWorld();
+        final Entity aimEntity = attacker.isRemote() ? attacker.getBaseEntity() : user;
+        final double reach = getBlockBreakReach();
+        final BlockHitResult hit = raycastAimedBlock(level, attacker, reach);
+        if (hit.getType() != HitResult.Type.BLOCK) {
+            return;
+        }
 
-        Object2FloatMap<BlockPos> breakages = boxes.stream()
-                .flatMap(box -> BlockPos.betweenClosedStream(box)
-                        .map(BlockPos::immutable) // make an immutable copy
-                        .filter(p -> mayBreak(attacker.getUser(), p)) // check if we can break this block
-                        // Map each block pos to a breakage
-                        .map(p -> ObjectFloatPair.of(p.immutable(), getBreakage(attacker, level, p, box)))
-                )
-                // Collect the block positions and their breakage into a map
-                .collect(Collectors.toMap(Pair::left, ObjectFloatPair::rightFloat,
-                        (f1, f2) -> f1, Object2FloatOpenHashMap::new));
+        final BlockPos hitPos = hit.getBlockPos().immutable();
+        final Direction hitFace = hit.getDirection();
+        final float strength = getBlockDestructionMultiplier(attacker) * JServerConfig.BLOCK_BREAKAGE_MULTIPLIER.getValue();
+        final Object2FloatMap<com.mojang.datafixers.util.Pair<BlockPos, Direction>> breakages = new Object2FloatOpenHashMap<>();
 
-        // Send the breakages, treat block attack as coming from the user.
-        JBlockBreaker.setBreakState(level, attacker.getUser(), breakages, attacker.getUser().position());
+        if (mayBreak(user, hitPos)) {
+            final float breakage = JBlockBreaker.calcBreakage(level, hitPos, strength);
+            if (breakage > 0.0f) {
+                breakages.put(com.mojang.datafixers.util.Pair.of(hitPos, hitFace), breakage);
+            }
+        }
+
+        // Only wide-radius slam attacks splash lightly onto unobstructed face-tangent neighbors (never behind the hit block).
+        if (hitboxSize >= 2.2f && strength > 0.0f) {
+            final Vec3 eyePos = getAimOrigin(attacker);
+            final Vec3 aimDir = getAimDirection(attacker);
+            final Vec3 hitLoc = hit.getLocation();
+            final double maxNeighborDistSq = eyePos.distanceToSqr(hitLoc) + 0.75;
+            for (final Direction dir : Direction.values()) {
+                if (dir.getAxis() == hitFace.getAxis()) {
+                    continue;
+                }
+                final BlockPos neighbor = hitPos.relative(dir).immutable();
+                final Vec3 neighborCenter = Vec3.atCenterOf(neighbor);
+                if (neighborCenter.subtract(hitLoc).dot(aimDir) > 0.35 || eyePos.distanceToSqr(neighborCenter) > maxNeighborDistSq) {
+                    continue;
+                }
+                if (!mayBreak(user, neighbor)) {
+                    continue;
+                }
+                final BlockHitResult los = level.clip(new ClipContext(
+                        eyePos, neighborCenter, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, aimEntity));
+                if (los.getType() == HitResult.Type.BLOCK && !los.getBlockPos().equals(neighbor)) {
+                    continue;
+                }
+                final float neighborBreakage = JBlockBreaker.calcBreakage(level, neighbor, strength) * 0.35f;
+                if (neighborBreakage > 0.0f) {
+                    breakages.put(com.mojang.datafixers.util.Pair.of(neighbor, hitFace), neighborBreakage);
+                }
+            }
+        }
+
+        if (!breakages.isEmpty()) {
+            JBlockBreaker.setBreakStateDirectional(level, user, breakages);
+        }
     }
 
     protected float getBreakage(A attacker, Level level, BlockPos pos, AABB box) {

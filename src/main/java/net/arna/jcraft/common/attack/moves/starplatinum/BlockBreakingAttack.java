@@ -35,35 +35,54 @@ public final class BlockBreakingAttack<A extends IAttacker<? extends A, ?>> exte
         if (!mayBreak(user, null)) return;
 
         LivingEntity aimEntity = attacker.isRemote() ? baseEntity : user;
-        Vec3 aimVec = Vec3.directionFromRotation(aimEntity.getXRot(), aimEntity.getYRot());
-        Vec3 eyePos = aimEntity.getEyePosition();
-        net.minecraft.world.phys.BlockHitResult hit = world.clip(new net.minecraft.world.level.ClipContext(
-                eyePos, eyePos.add(aimVec.scale(5.0)),
-                net.minecraft.world.level.ClipContext.Block.COLLIDER,
-                net.minecraft.world.level.ClipContext.Fluid.NONE,
-                aimEntity
-        ));
-        final BlockPos bPos = hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK
-                ? hit.getBlockPos()
-                : aimEntity.blockPosition().relative(net.minecraft.core.Direction.getApproximateNearest(aimVec.x, aimVec.y, aimVec.z));
-        for (int x = -1; x < 2; x++) {
-            for (int y = -1; y < 2; y++) {
-                for (int z = -1; z < 2; z++) {
-                    final BlockPos curPos = bPos.offset(x, y, z);
+        Vec3 eyePos = AbstractSimpleAttack.getAimOrigin(attacker);
+        net.minecraft.world.phys.BlockHitResult hit = AbstractSimpleAttack.raycastAimedBlock(world, attacker, 5.0);
+        if (hit.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK) {
+            return;
+        }
 
-                    if (!mayBreak(user, curPos, s -> s.getBlock().getExplosionResistance() <= 10 && !s.isAir() && !s.hasBlockEntity())) {
+        final BlockPos bPos = hit.getBlockPos();
+        final net.minecraft.core.Direction hitFace = hit.getDirection();
+        final net.minecraft.core.Direction.Axis faceAxis = hitFace.getAxis();
+        final net.minecraft.core.Direction axisA = faceAxis == net.minecraft.core.Direction.Axis.X
+                ? net.minecraft.core.Direction.SOUTH
+                : net.minecraft.core.Direction.EAST;
+        final net.minecraft.core.Direction axisB = faceAxis == net.minecraft.core.Direction.Axis.Y
+                ? net.minecraft.core.Direction.SOUTH
+                : net.minecraft.core.Direction.UP;
+
+        for (int a = -1; a <= 1; a++) {
+            for (int b = -1; b <= 1; b++) {
+                final BlockPos curPos = bPos.relative(axisA, a).relative(axisB, b);
+
+                if (!mayBreak(user, curPos, s -> s.getBlock().getExplosionResistance() <= 10 && !s.isAir() && !s.hasBlockEntity())) {
+                    continue;
+                }
+
+                if (!curPos.equals(bPos)) {
+                    final net.minecraft.world.phys.BlockHitResult los = world.clip(new net.minecraft.world.level.ClipContext(
+                            eyePos, Vec3.atCenterOf(curPos),
+                            net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                            net.minecraft.world.level.ClipContext.Fluid.NONE,
+                            aimEntity
+                    ));
+                    if (los.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK && !los.getBlockPos().equals(curPos)) {
                         continue;
                     }
-
-                    final BlockState curState = world.getBlockState(curPos);
-                    world.levelEvent(null, 2001, curPos, getId(curState)); // Particles
-
-                    FallingBlockEntity fallingBlock = FallingBlockEntity.fall(world, curPos, curState);
-                    fallingBlock.setDeltaMovement(rotationVector.add(x * 0.5, 0.5, z * 0.5));
-                    fallingBlock.time = -120;
-                    fallingBlock.syncVelocity = true;
-                    fallingBlock.needsSync = true;
                 }
+
+                final BlockState curState = world.getBlockState(curPos);
+                world.levelEvent(null, 2001, curPos, getId(curState)); // Particles
+
+                FallingBlockEntity fallingBlock = FallingBlockEntity.fall(world, curPos, curState);
+                fallingBlock.setDeltaMovement(rotationVector.add(
+                        (axisA.getStepX() * a + axisB.getStepX() * b) * 0.35,
+                        0.45,
+                        (axisA.getStepZ() * a + axisB.getStepZ() * b) * 0.35
+                ));
+                fallingBlock.time = -120;
+                fallingBlock.syncVelocity = true;
+                fallingBlock.needsSync = true;
             }
         }
     }

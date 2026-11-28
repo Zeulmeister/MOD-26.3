@@ -52,6 +52,11 @@ loom {
                 vmArg "-Djcraft.selftest.client.outdir=" + System.getProperty("jcraft.selftest.client.outdir")
             }
         }
+        server {
+            if (System.getProperty("jcraft.selftest.allstands") != null) {
+                vmArg "-Djcraft.selftest.allstands=" + System.getProperty("jcraft.selftest.allstands")
+            }
+        }
     }
 }
 

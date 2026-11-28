@@ -2033,7 +2033,65 @@ public final class JCraft263ValidationTest {
                     screenFile + " must handle InputConstants.MOUSE_BUTTON_LEFT");
         }
 
-        // 9. README.md documents Origin & 30 Stands
+        // 9. Crosshair-Aligned Nearest-Block Breaking & Occlusion checks
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/api/attack/moves/AbstractSimpleAttack.class")) {
+            check(in != null, "AbstractSimpleAttack.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            for (String mName : List.of("raycastAimedBlock", "getAimOrigin", "getAimDirection", "getBlockBreakReach", "shouldUseSimpleBlockBreakage")) {
+                check(cn.methods.stream().anyMatch(m -> mName.equals(m.name)),
+                        "AbstractSimpleAttack must define " + mName);
+            }
+            var bbMethod = cn.methods.stream().filter(m -> "breakBlocks".equals(m.name)).findFirst().orElseThrow();
+            boolean callsDirectional = false;
+            boolean callsBetweenClosed = false;
+            for (var insn = bbMethod.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi) {
+                    if ("setBreakStateDirectional".equals(mi.name)) callsDirectional = true;
+                    if ("betweenClosedStream".equals(mi.name)) callsBetweenClosed = true;
+                }
+            }
+            check(callsDirectional && !callsBetweenClosed,
+                    "AbstractSimpleAttack.breakBlocks must use raycast setBreakStateDirectional instead of blind betweenClosedStream");
+        }
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/common/attack/moves/shared/MainBarrageAttack.class")) {
+            check(in != null, "MainBarrageAttack.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            check(cn.methods.stream().anyMatch(m -> "shouldUseSimpleBlockBreakage".equals(m.name)),
+                    "MainBarrageAttack must override shouldUseSimpleBlockBreakage");
+            var perfMethod = cn.methods.stream().filter(m -> "perform".equals(m.name)).findFirst().orElseThrow();
+            boolean callsRaycast = false;
+            boolean callsBelow = false;
+            for (var insn = perfMethod.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi) {
+                    if ("raycastAimedBlock".equals(mi.name)) callsRaycast = true;
+                    if ("below".equals(mi.name)) callsBelow = true;
+                }
+            }
+            check(callsRaycast && !callsBelow,
+                    "MainBarrageAttack.perform must use raycastAimedBlock and must not blind-break centerPos.below()");
+        }
+        try (InputStream in = cl.getResourceAsStream("net/arna/jcraft/common/attack/moves/starplatinum/BlockBreakingAttack.class")) {
+            check(in != null, "BlockBreakingAttack.class must exist");
+            ClassNode cn = new ClassNode();
+            new ClassReader(in).accept(cn, 0);
+            var hookMethod = cn.methods.stream().filter(m -> "performHook".equals(m.name)).findFirst().orElseThrow();
+            boolean callsRaycast = false;
+            boolean checksBlockHit = false;
+            for (var insn = hookMethod.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                if (insn instanceof org.objectweb.asm.tree.FieldInsnNode fi && "BLOCK".equals(fi.name)) {
+                    checksBlockHit = true;
+                }
+                if (insn instanceof org.objectweb.asm.tree.MethodInsnNode mi && "raycastAimedBlock".equals(mi.name)) {
+                    callsRaycast = true;
+                }
+            }
+            check(callsRaycast && checksBlockHit,
+                    "BlockBreakingAttack.performHook must call raycastAimedBlock and guard on HitResult.Type.BLOCK");
+        }
+
+        // 10. README.md documents Origin & 30 Stands
         String readme = Files.readString(Path.of("README.md"), StandardCharsets.UTF_8);
         check(readme.contains("Origin") && readme.contains("30 Stands"),
                 "README.md must highlight Origin and 30 playable Stands");

@@ -142,6 +142,11 @@ public final class AllStandsRuntimeDiagnostic {
     }
 
     private static void buildArena() {
+        for (int cx = 1; cx <= 5; cx++) {
+            for (int cz = 1; cz <= 5; cz++) {
+                world.setChunkForced(cx, cz, true);
+            }
+        }
         for (int dx = -10; dx <= 16; dx++) {
             for (int dz = -10; dz <= 10; dz++) {
                 world.setBlockAndUpdate(BlockPos.containing(ARENA_X + dx, ARENA_Y - 1, ARENA_Z + dz), Blocks.STONE.defaultBlockState());
@@ -166,6 +171,8 @@ public final class AllStandsRuntimeDiagnostic {
             cds.setCooldown(ct, 0);
         }
         user.removeEffect(JStatusRegistry.DAZED.asHolder());
+        user.removeEffect(JStatusRegistry.KNOCKDOWN.asHolder());
+        user.setPose(net.minecraft.world.entity.Pose.STANDING);
         user.setHealth(user.getMaxHealth());
         user.setPos(ARENA_X, ARENA_Y, ARENA_Z);
         user.setYRot(-90f);
@@ -174,6 +181,7 @@ public final class AllStandsRuntimeDiagnostic {
         user.setDeltaMovement(Vec3.ZERO);
 
         target.removeEffect(JStatusRegistry.DAZED.asHolder());
+        target.removeEffect(JStatusRegistry.KNOCKDOWN.asHolder());
         target.setHealth(target.getMaxHealth());
         target.setPos(ARENA_X + 2.5, ARENA_Y, ARENA_Z);
         target.setDeltaMovement(Vec3.ZERO);
@@ -538,7 +546,8 @@ public final class AllStandsRuntimeDiagnostic {
                     }
                     assertTrue(target.getHealth() > 100.0f,
                             "Crazy Diamond Restoration Hand heals ally target even with ENABLE_FRIENDLY_FIRE=false (hp=" + target.getHealth() + ")");
-                    cd.desummon();
+                    cd.cancelMove();
+                    cd.discard();
                 }
 
                 // 3. Chariot Requiem live 9-slot moveset, Soul Swap & Requiem Counter
@@ -550,6 +559,7 @@ public final class AllStandsRuntimeDiagnostic {
                 if (crStand instanceof ChariotRequiemEntity cr) {
                     assertTrue(cr.getMoveMap().getEntries().size() >= 9,
                             "Chariot Requiem MoveMap has full moveset (" + cr.getMoveMap().getEntries().size() + " entries)");
+                    target.setPos(ARENA_X - 6.0, ARENA_Y, ARENA_Z);
                     Husk swapA = new Husk(EntityTypes.HUSK, world);
                     Husk swapB = new Husk(EntityTypes.HUSK, world);
                     swapA.setNoAi(true);
@@ -682,6 +692,148 @@ public final class AllStandsRuntimeDiagnostic {
                     originComp.clearOriginLoadout();
                 }
 
+                // 6. Crosshair-Aligned Nearest-Block Aiming & Tree Non-Piercing (All Stands + Origin)
+                {
+                    resetFighters();
+                    target.setPos(ARENA_X - 6.0, ARENA_Y, ARENA_Z);
+                    boolean prevMiningBarrage = net.arna.jcraft.common.config.JServerConfig.MINING_BARRAGE.getValue();
+                    float prevBlockBreakMult = net.arna.jcraft.common.config.JServerConfig.BLOCK_BREAKAGE_MULTIPLIER.getValue();
+                    CommonStandComponent originComp = JComponentPlatformUtils.getStandComponent(user);
+                    originComp.setType(JStandTypeRegistry.ORIGIN.get());
+                    originComp.clearOriginLoadout();
+
+                    user.setPos(ARENA_X, ARENA_Y, ARENA_Z);
+                    user.setYRot(0f);
+                    user.setYHeadRot(0f);
+                    user.setXRot(12f);
+
+                    final BlockPos basePos = BlockPos.containing(ARENA_X, ARENA_Y, ARENA_Z);
+                    final BlockPos logBot = basePos.offset(0, 0, 2);
+                    final BlockPos logTop = basePos.offset(0, 1, 2);
+                    final BlockPos logCrown = basePos.offset(0, 2, 2);
+                    final BlockPos dirtBehindLow = basePos.offset(0, -1, 3);
+                    final BlockPos dirtBehindMid = basePos.offset(0, 0, 3);
+
+                    Husk occludedTarget = null;
+                    StandEntity<?, ?> aimStandRaw = null;
+                    try {
+                        net.arna.jcraft.common.config.JServerConfig.MINING_BARRAGE.setValue(true);
+                        net.arna.jcraft.common.config.JServerConfig.BLOCK_BREAKAGE_MULTIPLIER.setValue(1.0f);
+                        assertTrue(net.arna.jcraft.api.attack.moves.AbstractMove.mayBreak(user, null),
+                                "Phase 6 prerequisite: AbstractMove.mayBreak(user, null) enabled");
+
+                        aimStandRaw = JCraft.summon(world, user);
+                        assertTrue(aimStandRaw instanceof OriginEntity, "Phase 6 summoned OriginEntity cleanly");
+                        if (aimStandRaw instanceof OriginEntity origin) {
+                            origin.rebuildLoadoutFromUser(originComp);
+                            user.positionRider(origin);
+                            origin.setYRot(0f); origin.setYHeadRot(0f); origin.setXRot(12f);
+
+                            // 6.1 Normal Melee (Origin.HEAVY): breaks/damages aimed Oak Log, NOT dirt behind tree
+                            world.setBlockAndUpdate(logBot, Blocks.OAK_LOG.defaultBlockState());
+                            world.setBlockAndUpdate(logTop, Blocks.OAK_LOG.defaultBlockState());
+                            world.setBlockAndUpdate(dirtBehindLow, Blocks.DIRT.defaultBlockState());
+                            world.setBlockAndUpdate(dirtBehindMid, Blocks.DIRT.defaultBlockState());
+                            user.setShiftKeyDown(false);
+                            var heavyHits = OriginEntity.HEAVY.perform(origin, user);
+                            boolean heavyHitLog = world.getBlockState(logTop).isAir()
+                                    || net.arna.jcraft.api.misc.JBlockBreaker.getBreakage(world, logTop) > 0.0f;
+                            assertTrue(heavyHitLog,
+                                    "6.1 Normal melee hits/breaks aimed Oak Log on crosshair (hits=" + heavyHits.size() + ", logTop=" + world.getBlockState(logTop).getBlock() + ")");
+                            assertTrue(world.getBlockState(dirtBehindLow).is(Blocks.DIRT)
+                                    && world.getBlockState(dirtBehindMid).is(Blocks.DIRT)
+                                    && net.arna.jcraft.api.misc.JBlockBreaker.getBreakage(world, dirtBehindLow) == 0.0f
+                                    && net.arna.jcraft.api.misc.JBlockBreaker.getBreakage(world, dirtBehindMid) == 0.0f,
+                                    "6.1 Normal melee does NOT pierce tree or break ground behind it");
+
+                            // 6.2 Crouching Mining Barrage (MainBarrageAttack): breaks aimed Oak Log cleanly without breaking behind
+                            world.setBlockAndUpdate(logBot, Blocks.OAK_LOG.defaultBlockState());
+                            world.setBlockAndUpdate(logTop, Blocks.OAK_LOG.defaultBlockState());
+                            world.setBlockAndUpdate(dirtBehindLow, Blocks.DIRT.defaultBlockState());
+                            world.setBlockAndUpdate(dirtBehindMid, Blocks.DIRT.defaultBlockState());
+                            user.setShiftKeyDown(true);
+                            var barrageCopy = OriginEntity.BARRAGE.copy();
+                            barrageCopy.onInitiate(origin);
+                            barrageCopy.perform(origin, user);
+                            user.setShiftKeyDown(false);
+                            assertTrue(world.getBlockState(logTop).isAir(),
+                                    "6.2 Crouching Mining Barrage breaks aimed Oak Log to AIR");
+                            assertTrue(world.getBlockState(dirtBehindLow).is(Blocks.DIRT)
+                                    && world.getBlockState(dirtBehindMid).is(Blocks.DIRT),
+                                    "6.2 Crouching Mining Barrage does NOT break ground or blocks behind aimed tree");
+
+                            // 6.3 BlockBreakingAttack: front-face only on tree hit, zero floor-ripping when aiming into open air
+                            world.setBlockAndUpdate(logBot, Blocks.OAK_LOG.defaultBlockState());
+                            world.setBlockAndUpdate(logTop, Blocks.OAK_LOG.defaultBlockState());
+                            world.setBlockAndUpdate(dirtBehindLow, Blocks.DIRT.defaultBlockState());
+                            world.setBlockAndUpdate(dirtBehindMid, Blocks.DIRT.defaultBlockState());
+                            var starBreaker = new net.arna.jcraft.common.attack.moves.starplatinum.BlockBreakingAttack<OriginEntity>(
+                                    0, 0, 10, 1.0f, 8.0f, 10, 1.8f, 1.0f, 0.0f);
+                            starBreaker.performHook(origin, java.util.Set.of(), java.util.Set.of(),
+                                    world.damageSources().mobAttack(user), origin.position(),
+                                    net.arna.jcraft.api.attack.moves.AbstractSimpleAttack.getAimDirection(origin));
+                            assertTrue(world.getBlockState(dirtBehindLow).is(Blocks.DIRT)
+                                    && world.getBlockState(dirtBehindMid).is(Blocks.DIRT),
+                                    "6.3a BlockBreakingAttack does NOT launch/break dirt behind aimed tree");
+
+                            user.setXRot(-80f);
+                            user.positionRider(origin);
+                            origin.setYRot(0f); origin.setYHeadRot(0f); origin.setXRot(-80f);
+                            BlockPos floorUnderUser = basePos.below();
+                            assertTrue(world.getBlockState(floorUnderUser).is(Blocks.STONE),
+                                    "6.3b Prerequisite floor under user is STONE");
+                            starBreaker.performHook(origin, java.util.Set.of(), java.util.Set.of(),
+                                    world.damageSources().mobAttack(user), origin.position(),
+                                    net.arna.jcraft.api.attack.moves.AbstractSimpleAttack.getAimDirection(origin));
+                            assertTrue(world.getBlockState(floorUnderUser).is(Blocks.STONE),
+                                    "6.3b BlockBreakingAttack aiming into open air does NOT rip floor under player");
+
+                            // 6.4 Wall-occluded mob behind 3-high Oak Log wall: punch hits Oak Log wall, NOT mob behind it
+                            user.setXRot(12f);
+                            user.positionRider(origin);
+                            origin.setYRot(0f); origin.setYHeadRot(0f); origin.setXRot(12f);
+                            world.setBlockAndUpdate(logBot, Blocks.OAK_LOG.defaultBlockState());
+                            world.setBlockAndUpdate(logTop, Blocks.OAK_LOG.defaultBlockState());
+                            world.setBlockAndUpdate(logCrown, Blocks.OAK_LOG.defaultBlockState());
+                            occludedTarget = new Husk(EntityTypes.HUSK, world);
+                            occludedTarget.setNoAi(true);
+                            occludedTarget.setPos(ARENA_X, ARENA_Y, ARENA_Z + 3.2);
+                            world.addFreshEntity(occludedTarget);
+                            var heavyVsWall = OriginEntity.HEAVY.perform(origin, user);
+                            boolean wallDamaged = world.getBlockState(logTop).isAir()
+                                    || net.arna.jcraft.api.misc.JBlockBreaker.getBreakage(world, logTop) > 0.0f;
+                            assertTrue(heavyVsWall.isEmpty() && wallDamaged,
+                                    "6.4 Melee does NOT pierce 3-tall Oak Log wall to hit occluded mob; breaks Oak Log instead (hits=" + heavyVsWall.size() + ", logTop=" + world.getBlockState(logTop).getBlock() + ")");
+
+                            // 6.5 Point-blank crosshair hit: unobstructed mob at point-blank distance IS hit by Origin.LIGHT
+                            world.setBlockAndUpdate(logBot, Blocks.AIR.defaultBlockState());
+                            world.setBlockAndUpdate(logTop, Blocks.AIR.defaultBlockState());
+                            world.setBlockAndUpdate(logCrown, Blocks.AIR.defaultBlockState());
+                            user.setXRot(0f);
+                            user.positionRider(origin);
+                            origin.setYRot(0f); origin.setYHeadRot(0f); origin.setXRot(0f);
+                            occludedTarget.setPos(ARENA_X, ARENA_Y, ARENA_Z + 1.1);
+                            var pointBlankHits = OriginEntity.LIGHT.perform(origin, user);
+                            assertTrue(pointBlankHits.contains(occludedTarget),
+                                    "6.5 Point-blank unobstructed mob in crosshair IS hit cleanly by Origin.LIGHT");
+
+                            origin.desummon();
+                        }
+                    } finally {
+                        user.setShiftKeyDown(false);
+                        user.setXRot(0f);
+                        if (occludedTarget != null && occludedTarget.isAlive()) occludedTarget.discard();
+                        if (aimStandRaw != null && aimStandRaw.isAlive()) aimStandRaw.desummon();
+                        world.setBlockAndUpdate(logBot, Blocks.AIR.defaultBlockState());
+                        world.setBlockAndUpdate(logTop, Blocks.AIR.defaultBlockState());
+                        world.setBlockAndUpdate(logCrown, Blocks.AIR.defaultBlockState());
+                        world.setBlockAndUpdate(dirtBehindMid, Blocks.AIR.defaultBlockState());
+                        world.setBlockAndUpdate(dirtBehindLow, Blocks.STONE.defaultBlockState());
+                        net.arna.jcraft.common.config.JServerConfig.MINING_BARRAGE.setValue(prevMiningBarrage);
+                        net.arna.jcraft.common.config.JServerConfig.BLOCK_BREAKAGE_MULTIPLIER.setValue(prevBlockBreakMult);
+                    }
+                }
+
                 finish(server);
             }
         }
@@ -692,6 +844,13 @@ public final class AllStandsRuntimeDiagnostic {
         if (user != null && user.isAlive()) user.discard();
         if (target != null && target.isAlive()) target.discard();
         if (gravityDummy != null && gravityDummy.isAlive()) gravityDummy.discard();
+        if (world != null) {
+            for (int cx = 1; cx <= 5; cx++) {
+                for (int cz = 1; cz <= 5; cz++) {
+                    world.setChunkForced(cx, cz, false);
+                }
+            }
+        }
 
         if (failures.isEmpty()) {
             JCraft.LOGGER.info("[ALLSTANDS-DEBUG] === ALL_STANDS_CHECKS_PASSED ({} assertions) ===", checksPassed);

@@ -83,23 +83,19 @@ public final class MainBarrageAttack<A extends IAttacker<? extends A, ?>> extend
     }
 
     @Override
+    protected boolean shouldUseSimpleBlockBreakage() {
+        return !breakBlocks;
+    }
+
+    @Override
     public @NonNull Set<LivingEntity> perform(final A attacker, final LivingEntity user) {
         final Set<LivingEntity> targets = super.perform(attacker, user);
 
         if (breakBlocks) {
             final ServerLevel serverWorld = (ServerLevel) user.level();
-            final Entity miner = attacker.isRemote() ? attacker.getBaseEntity() : user;
-            final Vec3 lookDirection = attacker.isRemote()
-                    ? Vec3.directionFromRotation(miner.getXRot(), miner.getYRot())
-                    : Vec3.directionFromRotation(user.getXRot(), user.getYRot());
-            final Vec3 eyePos = miner.position().add(GravityChangerAPI.getEyeOffset(miner));
-
-            for (double d = 1.0; d <= 4.5; d += 1.0) {
-                final Vec3 stepPos = eyePos.add(lookDirection.scale(d));
-                final BlockPos centerPos = BlockPos.containing(stepPos);
-                tryBreak(serverWorld, centerPos, user);
-                tryBreak(serverWorld, centerPos.above(), user);
-                tryBreak(serverWorld, centerPos.below(), user);
+            final net.minecraft.world.phys.BlockHitResult hit = raycastAimedBlock(serverWorld, attacker, 4.5);
+            if (hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
+                tryBreak(serverWorld, hit.getBlockPos(), user);
             }
         }
 
