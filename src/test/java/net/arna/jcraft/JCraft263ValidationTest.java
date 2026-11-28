@@ -1722,6 +1722,8 @@ public final class JCraft263ValidationTest {
         check(bm.getAsJsonObject("attack_extras").get("shockwaves").getAsBoolean()
                 && bm.getAsJsonObject("extras").get("is_holdable").getAsBoolean(),
                 "Origin native barrage must enable shockwaves and holdable release-cancel");
+        check(bm.get("move_distance").getAsDouble() <= 0.9,
+                "Origin native barrage move_distance must stay <= 0.9 so dynamic first-person translucency engages like Star Platinum");
 
         // 2. Textures (5 stand textures + 8 ability icons + 4 stand discs)
         Path texRoot = RESOURCES_ROOT.resolve("assets/jcraft/textures/entity/stands/origin");
@@ -1846,6 +1848,16 @@ public final class JCraft263ValidationTest {
             check(oeCn.methods.stream().anyMatch(m -> "desummon".equals(m.name) && "(Z)V".equals(m.desc))
                             && oeCn.methods.stream().anyMatch(m -> "setState".equals(m.name)),
                     "OriginEntity must override desummon(boolean) and setState(...)");
+        }
+        try (InputStream orIn = cl.getResourceAsStream("net/arna/jcraft/client/renderer/entity/stands/OriginRenderer.class");
+             InputStream omIn = cl.getResourceAsStream("net/arna/jcraft/client/renderer/entity/stands/OriginRenderer$OriginModelRenderer.class");
+             InputStream ogIn = cl.getResourceAsStream("net/arna/jcraft/client/renderer/entity/layer/OriginGlowLayer.class")) {
+            check(orIn != null && omIn != null && ogIn != null,
+                    "OriginRenderer, OriginModelRenderer and OriginGlowLayer classes must exist");
+            ClassNode orCn = new ClassNode();
+            new ClassReader(orIn).accept(orCn, ClassReader.SKIP_CODE);
+            check(orCn.methods.stream().anyMatch(m -> "getEffectiveAlpha".equals(m.name)),
+                    "OriginRenderer must declare getEffectiveAlpha for combat translucency");
         }
 
         JsonObject enUs = parseJsonObject(RESOURCES_ROOT.resolve("assets/jcraft/lang/en_us.json"));

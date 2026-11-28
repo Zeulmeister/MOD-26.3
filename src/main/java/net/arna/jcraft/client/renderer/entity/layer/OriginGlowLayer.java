@@ -3,6 +3,7 @@ package net.arna.jcraft.client.renderer.entity.layer;
 import lombok.NonNull;
 import mod.azure.azurelib.render.AzRendererPipelineContext;
 import net.arna.jcraft.JCraft;
+import net.arna.jcraft.client.renderer.entity.stands.OriginRenderer;
 import net.arna.jcraft.client.util.JAzRenderAccess;
 import net.arna.jcraft.common.entity.stand.OriginEntity;
 import net.fabricmc.api.EnvType;
@@ -11,6 +12,7 @@ import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 import org.joml.Vector3f;
 
 import java.util.UUID;
@@ -25,13 +27,17 @@ public class OriginGlowLayer extends AbstractRenderLayer<OriginEntity> {
 
     @Override
     public void render(final @NonNull AzRendererPipelineContext<UUID, OriginEntity> pc) {
-        final RenderType cameo = RenderTypes.eyes(GLOW_LAYER);
+        final OriginEntity stand = pc.animatable();
+        final float standAlpha = OriginRenderer.getEffectiveAlpha(stand, pc.partialTick());
+        if (standAlpha <= 0.02f) {
+            return;
+        }
+
+        final RenderType cameo = RenderTypes.entityTranslucentEmissive(GLOW_LAYER);
         pc.setRenderType(cameo);
         pc.setVertexConsumer(pc.multiBufferSource().getBuffer(cameo));
         pc.setPackedLight(15728640);
         pc.setPackedOverlay(OverlayTexture.NO_OVERLAY);
-
-        final OriginEntity stand = pc.animatable();
         final int skin = stand.getSkin();
         final Vector3f aura = stand.getAuraColor();
         final float r;
@@ -57,7 +63,7 @@ public class OriginGlowLayer extends AbstractRenderLayer<OriginEntity> {
             alpha = 0.95f;
         }
         JAzRenderAccess.setRenderColorRgb(pc, r, g, b);
-        JAzRenderAccess.setAlpha(pc, alpha);
+        JAzRenderAccess.setAlpha(pc, Mth.clamp(alpha * standAlpha, 0.0f, 1.0f));
         pc.rendererPipeline().reRender(pc);
     }
 }

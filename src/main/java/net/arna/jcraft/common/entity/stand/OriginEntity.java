@@ -95,7 +95,7 @@ public class OriginEntity extends StandEntity<OriginEntity, OriginEntity.State>
             JStandTypeRegistry.ORIGIN, OriginEntity::registerMoves, OriginEntity.class, State.class);
 
     public static final SimpleUppercutAttack<OriginEntity> ABYSSAL_UPPERCUT = new SimpleUppercutAttack<OriginEntity>(
-            0, 6, 12, 1.35f, 5.5f, 16, 1.5f, 0.45f, 0.2f, 0.65f)
+            0, 6, 12, 0.85f, 5.5f, 16, 1.5f, 0.45f, 0.2f, 0.65f)
             .withAnim(State.UPPERCUT)
             .withSound(JSoundRegistry.ORIGIN_LIGHT)
             .withImpactSound(JSoundRegistry.IMPACT_1)
@@ -108,7 +108,7 @@ public class OriginEntity extends StandEntity<OriginEntity, OriginEntity.State>
             );
 
     public static final SimpleAttack<OriginEntity> LIGHT_FOLLOWUP = new SimpleAttack<OriginEntity>(
-            0, 6, 11, 1.45f, 5.8f, 10, 1.6f, 0.95f, -0.15f)
+            0, 6, 11, 0.90f, 5.8f, 10, 1.6f, 0.95f, -0.15f)
             .withAnim(State.LIGHT_FOLLOWUP)
             .withSound(JSoundRegistry.ORIGIN_LIGHT)
             .withImpactSound(JSoundRegistry.IMPACT_5)
@@ -124,7 +124,7 @@ public class OriginEntity extends StandEntity<OriginEntity, OriginEntity.State>
             );
 
     public static final SimpleAttack<OriginEntity> LIGHT = new SimpleAttack<OriginEntity>(
-            10, 4, 9, 1.35f, 4.5f, 12, 1.5f, 0.25f, 0.1f)
+            10, 4, 9, 0.85f, 4.5f, 12, 1.5f, 0.25f, 0.1f)
             .withFollowup(LIGHT_FOLLOWUP)
             .withCrouchingVariant(ABYSSAL_UPPERCUT)
             .withSound(JSoundRegistry.ORIGIN_LIGHT)
@@ -137,7 +137,7 @@ public class OriginEntity extends StandEntity<OriginEntity, OriginEntity.State>
             );
 
     public static final SimpleAttack<OriginEntity> GRAVITY_SLAM = new SimpleAttack<OriginEntity>(
-            60, 12, 20, 1.25f, 8.5f, 22, 2.65f, 1.15f, -0.35f)
+            60, 12, 20, 0.95f, 8.5f, 22, 2.65f, 1.15f, -0.35f)
             .withAnim(State.GRAB_HIT)
             .withSound(JSoundRegistry.ORIGIN_GRAB_HIT)
             .withImpactSound(JSoundRegistry.IMPACT_10)
@@ -154,7 +154,7 @@ public class OriginEntity extends StandEntity<OriginEntity, OriginEntity.State>
             );
 
     public static final SimpleAttack<OriginEntity> HEAVY = new SimpleAttack<OriginEntity>(
-            52, 15, 25, 1.5f, 9.5f, 24, 1.85f, 1.25f, 0.0f)
+            52, 15, 25, 1.0f, 9.5f, 24, 1.85f, 1.25f, 0.0f)
             .withCrouchingVariant(GRAVITY_SLAM)
             .withSound(JSoundRegistry.ORIGIN_HEAVY)
             .withImpactSound(JSoundRegistry.IMPACT_9)
@@ -171,7 +171,7 @@ public class OriginEntity extends StandEntity<OriginEntity, OriginEntity.State>
             );
 
     public static final MainBarrageAttack<OriginEntity> BARRAGE = new MainBarrageAttack<OriginEntity>(
-            120, 0, 42, 1.15f, 1.15f, 30, 2.0f, 0.22f, 0.0f, 3, Blocks.OBSIDIAN.defaultDestroyTime())
+            120, 0, 42, 0.85f, 1.15f, 30, 2.0f, 0.22f, 0.0f, 3, Blocks.OBSIDIAN.defaultDestroyTime())
             .withSound(JSoundRegistry.ORIGIN_BARRAGE)
             .withImpactSound(JSoundRegistry.IMPACT_3)
             .withHitSpark(JParticleType.HIT_SPARK_2)
@@ -181,7 +181,7 @@ public class OriginEntity extends StandEntity<OriginEntity, OriginEntity.State>
             );
 
     public static final SimpleAttack<OriginEntity> SPECIAL1 = new SimpleAttack<OriginEntity>(
-            120, 9, 17, 1.55f, 7.0f, 20, 1.85f, 0.45f, 0.1f)
+            120, 9, 17, 1.0f, 7.0f, 20, 1.85f, 0.45f, 0.1f)
             .withInitAction(LungeAction.lunge(0.65f, 0.05f).isNotFree())
             .withSound(JSoundRegistry.ORIGIN_SPECIAL1)
             .withImpactSound(JSoundRegistry.IMPACT_5)
@@ -195,7 +195,7 @@ public class OriginEntity extends StandEntity<OriginEntity, OriginEntity.State>
             );
 
     public static final SimpleMultiHitAttack<OriginEntity> SPECIAL2 = new SimpleMultiHitAttack<OriginEntity>(
-            150, 22, 1.5f, 2.8f, 14, 1.85f, 0.3f, 0.1f, IntSet.of(6, 12, 18))
+            150, 22, 0.95f, 2.8f, 14, 1.85f, 0.3f, 0.1f, IntSet.of(6, 12, 18))
             .withSound(JSoundRegistry.ORIGIN_SPECIAL2)
             .withImpactSound(JSoundRegistry.IMPACT_3)
             .withHitAnimation(CommonHitPropertyComponent.HitAnimation.LOW)
@@ -207,7 +207,7 @@ public class OriginEntity extends StandEntity<OriginEntity, OriginEntity.State>
             );
 
     public static final SimpleAttack<OriginEntity> GRAB_HIT = new SimpleAttack<OriginEntity>(
-            0, 12, 20, 1.45f, 7.5f, 22, 1.75f, 1.1f, 0.0f)
+            0, 12, 20, 0.95f, 7.5f, 22, 1.75f, 1.1f, 0.0f)
             .withSound(JSoundRegistry.ORIGIN_GRAB_HIT)
             .withImpactSound(JSoundRegistry.IMPACT_10)
             .withHitSpark(JParticleType.HIT_SPARK_3)
@@ -218,7 +218,7 @@ public class OriginEntity extends StandEntity<OriginEntity, OriginEntity.State>
             );
 
     public static final GrabAttack<OriginEntity, State> SPECIAL3 = new GrabAttack<OriginEntity, State>(
-            200, 10, 20, 1.45f, 2.5f, 20, 1.6f, 0.0f, 0.1f, GRAB_HIT, StateContainer.of(State.GRAB_HIT))
+            200, 10, 20, 0.95f, 2.5f, 20, 1.6f, 0.0f, 0.1f, GRAB_HIT, StateContainer.of(State.GRAB_HIT))
             .withSound(JSoundRegistry.ORIGIN_GRAB)
             .withInfo(
                     Component.translatable("move.jcraft.origin.default.special3.name"),

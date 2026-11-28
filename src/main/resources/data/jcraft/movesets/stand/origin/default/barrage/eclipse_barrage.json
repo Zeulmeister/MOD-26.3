@@ -41,7 +41,7 @@
     "interval": 3,
     "knockback": 0.22,
     "mineable_hardness": 50.0,
-    "move_distance": 1.15,
+    "move_distance": 0.85,
     "offset": 0.0,
     "stun": 30,
     "windup": 0

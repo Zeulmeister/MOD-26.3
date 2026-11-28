@@ -1071,6 +1071,27 @@ public final class ClientVisualDiagnostic {
                     if (sp != null && JUtils.getStand(sp) instanceof OriginEntity origin) {
                         JComponentPlatformUtils.getCooldowns(sp).clear();
                         origin.setMoveStun(0);
+                        origin.initMove(MoveClass.BARRAGE);
+                    }
+                });
+                client.options.setCameraType(CameraType.FIRST_PERSON);
+                phase = 3831;
+                waitTicks = 5;
+            }
+            case 3831 -> {
+                final boolean translucentFpBarrage = JUtils.getStand(client.player) instanceof OriginEntity o
+                        && o.getMoveStun() > 0
+                        && o.getState() == OriginEntity.State.BARRAGE
+                        && net.arna.jcraft.client.renderer.entity.stands.OriginRenderer.getEffectiveAlpha(o, 0.0f) <= 0.40f;
+                assertTrue(translucentFpBarrage,
+                        "Origin Barrage is translucent in first-person combat (alpha <= 0.40 matching Star Platinum)");
+                capture(client, "25_origin_first_person_barrage.png");
+                final IntegratedServer srv = client.getSingleplayerServer();
+                srv.execute(() -> {
+                    ServerPlayer sp = getServerPlayer(srv);
+                    if (sp != null && JUtils.getStand(sp) instanceof OriginEntity origin) {
+                        JComponentPlatformUtils.getCooldowns(sp).clear();
+                        origin.setMoveStun(0);
                         origin.initMove(MoveClass.HEAVY);
                     }
                 });

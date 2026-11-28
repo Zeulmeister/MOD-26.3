@@ -51,7 +51,7 @@
       },
       "hitbox_size": 2.65,
       "knockback": 1.15,
-      "move_distance": 1.25,
+      "move_distance": 0.95,
       "offset": -0.35,
       "stun": 22,
       "windup": 12
@@ -101,7 +101,7 @@
     },
     "hitbox_size": 1.85,
     "knockback": 1.25,
-    "move_distance": 1.5,
+    "move_distance": 1.0,
     "offset": 0.0,
     "stun": 24,
     "windup": 15
